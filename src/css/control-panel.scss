@@ -1,0 +1,98 @@
+@import "./themes/control-panel.scss";
+
+.control-panel {
+    background-color: var(--cp-bg-color);
+    border-bottom: 1px solid var(--cp-border-color);
+    margin-bottom: 0px;
+    height: 48px;
+}
+
+#control-panel-content {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+#login a {
+    color: var(--cp-text-color);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+#login a:hover {
+    background-color: var(--cp-text-color);
+    color: var(--cp-bg-color);
+    cursor: pointer;
+}
+
+.dropbutton {
+    background-color: var(--cp-bg-color);
+    color: var(--cp-text-color);
+    border: none;
+    border-radius: 0;
+    padding: 15px 30px;
+    font-size: 16px;
+    cursor: pointer;
+    outline: none;
+}
+
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    border: 1px solid var(--cp-border-color);
+    border-right: 0px;
+    background-color: var(--cp-bg-color);
+    width: 127.5px;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    z-index: 20;
+}
+
+.dropdown-content a {
+    color: var(--cp-text-color);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+.dropdown-content a:hover {
+    background-color: var(--cp-text-color);
+    color: var(--cp-bg-color);
+    cursor: pointer;
+}
+
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+#navigation-sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 250px;
+    border-right: 1px solid var(--cp-border-color);
+    background-color: var(--cp-bg-color);
+    color: var(--cp-text-color);
+}
+
+#navigation-sidebar-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+#navigation-sidebar-content a {
+    color: var(--cp-text-color);
+    text-decoration: none;
+}
+
+#navigation-sidebar-content span {
+    color: var(--cp-text-inactive-color);
+    text-decoration: none;
+}

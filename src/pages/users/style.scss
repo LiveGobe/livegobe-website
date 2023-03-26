@@ -1,0 +1,33 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+}
+
+ol {
+    padding-top: 10px;
+    margin-bottom: 10px;
+}
+
+footer {
+    width: 100%;
+    position: absolute;
+    bottom: 0;
+    padding: 10px;
+}
+
+menu {
+    display: flex;
+    justify-content: center;
+    list-style-type: none;
+    overflow: hidden;
+}
+
+menu li {
+    float: left;
+    margin: 0px 10px;
+}

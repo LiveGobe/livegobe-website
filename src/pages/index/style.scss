@@ -1,0 +1,66 @@
+@import "../../css/control-panel.scss";
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+}
+
+#user-card {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    width: 60vw;
+    border: 1px solid black;
+    border-radius: 25px;
+}
+
+#user-card header {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+}
+
+#tools {
+    height: 40vh;
+    display: flex;
+    padding: 20px 10px;
+    border-top: 1px solid black;
+    border-bottom: 1px solid black;
+    position: relative;
+    overflow-y: scroll;
+}
+
+#tools a {
+    text-align: center;
+    width: 7rem;
+    height: 3rem;
+    margin: 10px;
+    overflow: hidden;
+    border: 1px solid black;
+    border-radius: 10px;
+    line-height: 15px;
+    padding: 10px;
+}
+
+a, a:active, a:visited {
+    text-decoration: none;
+    color: black;
+}
+
+#user-card footer {
+    padding: 15px;
+}
+
+.block {
+    display: block;
+}
+
+#settings a {
+    cursor: pointer;
+}

@@ -1,0 +1,103 @@
+body {
+    --text-color: black;
+    --border-color: black;
+    --background-color: white;
+}
+
+body[data-theme="dark"] {
+    --text-color: white;
+    --border-color: white;
+    --background-color: rgb(20, 20, 20);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+a {
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+#wrapper {
+    position: relative;
+    border: 1px solid var(--border-color);
+    width: 800px;
+    height: 600px;
+}
+
+#title {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#back {
+    padding: 10px;
+    border-right: 1px solid var(--border-color);
+}
+
+h1 {
+    padding: 10px;
+}
+
+#body {
+    padding: 10px;
+}
+
+#password {
+    width: 80%;
+}
+
+#generate {
+    width: 150px;
+}
+
+#options {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.column {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+
+input[type="number"] {
+    margin-right: 10px;
+}
+
+label {
+    position: relative;
+    bottom: 5px;
+}
+
+label#passlength {
+    bottom: 0px;
+}
+
+#footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 10px;
+    border-top: 1px solid var(--border-color);
+}

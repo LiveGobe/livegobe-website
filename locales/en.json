@@ -1,0 +1,162 @@
+{
+    "test": "Test string",
+    "api": {
+        "error": {
+            "404": "Endpoint does not exist"
+        },
+        "locales": {
+            "message": {
+                "success": "Language {0} loaded successfully",
+                "fail": "Loaded fallback language"
+            }
+        },
+        "login": {
+            "loggedin": "Already logged in",
+            "invalid": "Invalid login or password",
+            "success": "Login successful"
+        },
+        "filestorage": {
+            "exists": "Filestorage already exists",
+            "success": "Successfully created filestorage",
+            "pathmissing": "Path is not specified",
+            "pathinvalid": "Specified path does not exist",
+            "missing": "Storage does not exist, create it first",
+            "filemissing": "No files to upload",
+            "fexists": "File/Folder {0} already exists",
+            "folder": {
+                "namemissing": "Folder name is missing",
+                "nameinvalid": "Folder name is invalid",
+                "created": "Folder {0} successfully created",
+                "idmissing": "Folder ID is missing",
+                "idinvalid": "Specified folder does not exist",
+                "unchanged": "Folder is unchanged",
+                "changed": "Folder {0} successfully updated",
+                "deleted": "Folder {0} successfully deleted"
+            },
+            "file": {
+                "toobig": "File is too big",
+                "uploaded": "File {0} successfully uploaded",
+                "idinvalid": "Specified file does not exist",
+                "nameinvalid": "File name is invalid",
+                "unchanged": "File is unchanged",
+                "changed": "File {0} successfully updated",
+                "deleted": "File {0} successfully deleted"
+            },
+            "files": {
+                "skipped": "Upload skipped, all files exist",
+                "toobig": "Files are too big",
+                "uploaded": "{0} files successfully uploaded, {1} files skipped, {2} files failed"
+            }
+        }
+    },
+    "page": {
+        "index": {
+            "name": "Main Page",
+            "content": {
+                "tools": {
+                    "admin": "Admin Tools",
+                    "filestorage": "Filestorage",
+                    "passwordgenerator": "Password Generator",
+                    "gallery": "Gallery"
+                },
+                "language": "Lang",
+                "theme": {
+                    "name": "Theme",
+                    "light": "Light",
+                    "dark": "Dark"
+                }
+            }
+        },
+        "login": {
+            "name": "Login",
+            "content": {
+                "username": "Username",
+                "password": "Password",
+                "remember": "Remember me",
+                "submit": "Login",
+                "back": "Return"
+            }
+        },
+        "passwordgenerator": {
+            "back": "Return",
+            "title": "LG Password Generator",
+            "passwordhere": "Your password will appear here",
+            "generate": "Generate",
+            "passwordlength": "Length of the password (5-75)",
+            "includenumbers": "Include numbers (0-9)",
+            "includeuppercase": "Include uppercase letters (A-Z)",
+            "includespecial": "Include special symbols (!@#$%^&*()-+_=[]{},./?<>)",
+            "copytoclipboard": "Copy generated password to clipboard"
+        }
+    },
+    "filestorage": {
+        "title": "File Storage",
+        "file": {
+            "name": "Name",
+            "size": "Size",
+            "privacy": "Private",
+            "date": "Uploaded",
+            "title": "Download {file}",
+            "owner": "Owner",
+            "md5": "MD5",
+            "download": "Download"
+        },
+        "folder": {
+            "name": "Name",
+            "size": "Size"
+        },
+        "action": {
+            "default": {
+                "createfolder": "Create Folder",
+                "uploadfile": "Upload File",
+                "uploadfiles": "Upload Files"
+            },
+            "folder": {
+                "open": "Open",
+                "rename": "Rename",
+                "delete": "Delete"
+            },
+            "file": {
+                "show": "Show",
+                "download": "Download",
+                "share": "Share link",
+                "rename": "Rename",
+                "move": "Move",
+                "delete": "Delete"
+            }
+        },
+        "message": {
+            "fexists": "File/Folder {0} already exists",
+            "folder": {
+                "create": "Folder name:",
+                "nameinvalid": "Folder name is invalid",
+                "rename": "New folder name:",
+                "delete": "Are you sure you want to delete {0} files?"
+            },
+            "file": {
+                "nameinvalid": "File name is invalid",
+                "rename": "New file name:",
+                "toobig": "File is too big",
+                "move": "Move to folder:",
+                "link": "Copied link to clipboard",
+                "delete": "Are you sure you want to delete {0}?"
+            },
+            "files": {
+                "nameinvalid": "One or more files have invalid names",
+                "toobig": "Files are too big",
+                "exists": "Selected files already exist"
+            }
+        },
+        "available": "{0} of {1} available"
+    },
+    "user": {
+        "profile": "Profile",
+        "settings": "Settings",
+        "logout": "Logout"
+    },
+    "navigation": {
+        "home": "Home",
+        "filestorage": "File Storage"
+    },
+    "copyright": "LiveGobe © 2022"
+}

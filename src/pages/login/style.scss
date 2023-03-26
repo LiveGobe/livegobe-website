@@ -1,0 +1,119 @@
+body {
+    --bg-color: rgb(255, 255, 255);
+    --text-color: rgb(0, 0, 0);
+    --submit-border-color: rgb(0, 0, 0);
+    --submit-bg-color: rgb(0, 0, 0);
+    --submit-text-color: rgb(255, 255, 255);
+    --back-border-color: rgb(0, 0, 0);
+    --back-bg-color: rgb(0, 0, 0);
+    --back-text-color: rgb(255, 255, 255);
+    --submit-border-color-hover: rgb(0, 0, 0);
+    --submit-bg-color-hover: rgb(0, 0, 0);
+    --back-border-color-hover: rgb(0, 0, 0);
+    --back-bg-color-hover: rgb(0, 0, 0);
+}
+
+body.dark-theme {
+    --bg-color: rgb(0, 0, 0);
+    --text-color: rgb(255, 255, 255);
+}
+
+body {
+    margin: 0;
+    color: var(--text-color);
+    background-color: var(--bg-color);
+}
+
+#login-form {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: fixed;
+    border: 1px solid var(--text-color);
+    border-radius: 5px;
+    width: 400px;
+    height: 500px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+form {
+    margin: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+#login-buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    width: 100%;
+    margin: 40px 0px;
+}
+
+#remember-form {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+label {
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    font-weight: bold;
+    font-size: 20px;
+    margin-bottom: 10px;
+    margin-top: 10px;
+}
+
+input[type="text"], input[type="password"] {
+    border: 1px solid var(--text-color);
+    border-radius: 5px;
+    width: calc(100% - 10px);
+    height: 30px;
+    padding: 0 4px;
+}
+
+button, input[type="submit"] {
+    border: 1px solid;
+    border-radius: 5px;
+    width: 150px;
+    height: 40px;
+}
+
+input[type="submit"] {
+    border-color: var(--submit-border-color);
+    background-color: var(--submit-bg-color);
+    color: var(--submit-text-color);
+}
+
+button {
+    border-color: var(--back-border-color);
+    background-color: var(--back-bg-color);
+    color: var(--back-text-color);
+}
+
+input[type="submit"]:hover, button:hover {
+    cursor: pointer;
+}
+
+button:hover {
+    border-color: var(--back-border-color-hover);
+    background-color: var(--back-bg-color-hover);
+}
+
+input[type="submit"]:hover {
+    border-color: var(--submit-border-color-hover);
+    background-color: var(--submit-bg-color-hover);
+}
+
+#error-message {
+    border: 1px solid rgb(139, 0, 0);
+    border-radius: 5px;
+    background-color: rgb(209, 0, 0);
+    color: white;
+    width: calc(100% - 30px);
+    margin: 10px;
+    padding: 4px;
+}

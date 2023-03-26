@@ -1,0 +1,52 @@
+body {
+    --fs-text-color: rgb(0, 0, 0);
+    --fs-border-color: rgb(0, 0, 0);
+    --fs-bg-color: rgb(255, 255, 255);
+    --fs-item-color: rgb(0, 0, 0);
+    --fs-item-bg-color: rgb(255, 255, 255);
+    --fs-selected-bg-color: rgb(0, 0, 0);
+    --fs-selected-text-color: rgb(255, 255, 255);
+    --fs-action-bg-color: rgb(245, 245, 245);
+    --fs-action-text-color: rgb(0, 0, 0);
+    --fs-action-hover-bg-color: rgb(0, 0, 0);
+    --fs-action-hover-text-color: rgb(255, 255, 255);
+    --fs-action-active-bg-color: rgb(50, 50, 50);
+    --fs-action-active-text-color: rgb(255, 255, 255);
+    --fs-info-bg-color: rgb(245, 245, 245);
+    --fs-info-text-color: rgb(0, 0, 0);
+    --fs-processing-bg-color: rgb(66, 66, 66);
+    --fs-processing-text-color: rgb(255, 255, 255);
+    --fs-message-bg-color: rgb(0, 200, 0);
+    --fs-message-text-color: rgb(255, 255, 255);
+    --fs-message-border-color: rgb(0, 175, 0);
+    --fs-message-hover-bg-color: rgb(0, 175, 0);
+    --fs-error-bg-color: rgb(200, 0, 0);
+    --fs-error-text-color: rgb(255, 255, 255);
+    --fs-error-border-color: rgb(175, 0, 0);
+    --fs-error-hover-bg-color: rgb(175, 0, 0);
+    --fs-upload-bg-color: rgb(0, 176, 209);
+    --fs-upload-hover-bg-color: rgb(0, 133, 156);
+    --fs-upload-text-color: rgb(255, 255, 255);
+    --fs-upload-border-color: rgb(0, 132, 163);
+    --fs-progress-bg-color: rgb(0, 150, 0);
+    --fs-progress-text-color: rgb(255, 255, 255);
+}
+
+body[data-theme="dark"] {
+    --fs-text-color: rgb(255, 255, 255);
+    --fs-border-color: rgb(225, 225, 225);
+    --fs-bg-color: rgb(50, 50, 50);
+    --fs-item-color: rgb(255, 255, 255);
+    --fs-item-bg-color: rgb(45, 47, 54);
+    --fs-selected-bg-color: rgb(106, 114, 143);
+    --fs-selected-text-color: rgb(255, 255, 255);
+    --fs-action-bg-color: rgb(40, 40, 40);
+    --fs-action-text-color: rgb(255, 255, 255);
+    --fs-action-hover-bg-color: rgb(210, 210, 210);
+    --fs-action-hover-text-color: rgb(0, 0, 0);
+    --fs-action-active-bg-color: rgb(190, 190, 190);
+    --fs-action-active-text-color: rgb(0, 0, 0);
+    --fs-info-bg-color: rgb(40, 40, 40);
+    --fs-info-text-color: rgb(255, 255, 255);
+    --fs-processing-bg-color: rgb(80, 80, 80);
+}

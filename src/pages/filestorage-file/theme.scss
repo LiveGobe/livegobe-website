@@ -1,0 +1,24 @@
+body {
+    --fsf-border-color: rgb(0, 0, 0);
+    --fsf-bg-color: rgb(255, 255, 255);
+    --fsf-text-color: rgb(0, 0, 0);
+    --fsf-link-color: rgb(0, 0, 255);
+    --fsf-link-hover-color: rgb(255, 0, 0);
+    --fsf-content-bg-color: rgb(255, 255, 255);
+    --fsf-download-bg-color: rgb(38, 96, 255);
+    --fsf-download-text-color: rgb(255, 255, 255);
+    --fsf-download-border-color: rgb(38, 96, 255);
+    --fsf-download-hover-color: rgb(77, 124, 255);
+}
+
+body[data-theme="dark"] {
+    --fsf-border-color: rgb(240, 240, 240);
+    --fsf-bg-color: rgb(25, 25, 25);
+    --fsf-text-color: rgb(255, 255, 255);
+    --fsf-link-color: rgb(78, 149, 255);
+    --fsf-content-bg-color: rgb(60, 60, 60);
+    --fsf-download-bg-color: rgb(38, 96, 255);
+    --fsf-download-text-color: rgb(255, 255, 255);
+    --fsf-download-border-color: rgb(38, 96, 255);
+    --fsf-download-hover-color: rgb(77, 124, 255);
+}
