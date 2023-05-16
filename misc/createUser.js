@@ -74,6 +74,7 @@ prompt.get(prompts.env, function(err, env) {
                 const user = new User({ username: username, password: bcrypt.hashSync(password, 10), name: name });
                 await user.save();
                 console.log(`User ${username} (${name}) created successfully`);
+                mongoose.connection.close();
             });
         });
     });
