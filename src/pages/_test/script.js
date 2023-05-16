@@ -3,22 +3,22 @@ import i18n from "../../js/repack-locales";
 import { staticUrl } from "../../js/utils";
 import { io } from "socket.io-client";
 
-i18n.init().then(() => {
-    $(() => {
-        $("#header").text(i18n.t("test"));
-        $("#img1").attr("src", staticUrl("images/AAA.jpg"));
-        $("#img2").attr("src", staticUrl("images/BBB.png"));
-        const socket = io();
-        socket.onAny(event => {
-            console.log(event);
-        });
+await i18n.init();
 
-        socket.on("message", message => {
-            console.log(message);
-        });
+$(() => {
+    $("#header").text(i18n.t("test"));
+    $("#img1").attr("src", staticUrl("images/AAA.jpg"));
+    $("#img2").attr("src", staticUrl("images/BBB.png"));
+    const socket = io();
+    socket.onAny(event => {
+        console.log(event);
+    });
 
-        socket.on("connect_error", err => {
-            console.log(err);
-        })
+    socket.on("message", message => {
+        console.log(message);
+    });
+
+    socket.on("connect_error", err => {
+        console.log(err);
     })
-});
+})

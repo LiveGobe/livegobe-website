@@ -58,6 +58,9 @@ sources.forEach(source => {
  */
 module.exports = {
     mode: env,
+    experiments: {
+        topLevelAwait: true
+    },
     externals: config.public.externals || {},
     entry: entries,
     output: {
