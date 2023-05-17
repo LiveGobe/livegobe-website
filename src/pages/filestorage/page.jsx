@@ -46,6 +46,9 @@ function Filestorage(props) {
                 </div>
             </div>
             <div id="filestorage-browse">
+                <div id="search-section">
+                    <input type="text" id="search-field" placeholder="Search..." />
+                </div>
                 <div id="folders-list" />
                 <div id="files-list" />
             </div>

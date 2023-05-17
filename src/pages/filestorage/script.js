@@ -239,8 +239,10 @@ import "../../js/nav-sidebar";
             }
 
             function updateFolders() {
+                let filter = $("#search-field").val();
                 storage.folders.sort((a, b) => { return a.name.localeCompare(b.name) });
                 let folders = storage.folders, $f = $folders.clone();
+                if (filter.length) folders = folders.filter(e => { return e.name.toLowerCase().includes(filter) });
                 $selected = undefined;
                 $folders.empty();
 
@@ -296,8 +298,11 @@ import "../../js/nav-sidebar";
             }
 
             function updateFiles() {
+                let filter = $("#search-field").val();
                 storage.files.sort((a, b) => { return a.name.localeCompare(b.name) });
                 let files = storage.files, $f = $files.clone();
+                if (filter.length) files = files.filter(e => { return e.name.toLowerCase().includes(filter) });
+                $selected = undefined;
                 $files.empty();
                 
                 files.forEach(file => {
@@ -368,6 +373,12 @@ import "../../js/nav-sidebar";
             const moveFilePrompt = $("#move-file-prompt").val();
             const deleteFilePrompt = $("#delete-file-prompt").val();
             const copyFileLink = $("#copy-file-link").val();
+
+            const $searchFilter = $("#search-field");
+            $searchFilter.on("input", function(e) {
+                updateFolders();
+                updateFiles();
+            });
 
             const $createFolder = $("#action-create-folder");
             $createFolder.on("click", function(e) {

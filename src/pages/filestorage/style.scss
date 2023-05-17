@@ -80,6 +80,15 @@ body {
     border-bottom: 1px solid var(--fs-border-color);
 }
 
+#search-section {
+    border-bottom: 1px solid var(--fs-border-color);
+}
+
+#search-field {
+    margin: 1rem;
+    width: calc(100% - 2.5rem);
+}
+
 .folder, .file {
     color: var(--fs-item-text-color);
     background-color: var(--fs-item-bg-color);
