@@ -242,7 +242,7 @@ import "../../js/nav-sidebar";
                 let filter = $("#search-field").val();
                 storage.folders.sort((a, b) => { return a.name.localeCompare(b.name) });
                 let folders = storage.folders, $f = $folders.clone();
-                if (filter.length) folders = folders.filter(e => { return e.name.toLowerCase().includes(filter) });
+                if (filter.length) folders = folders.filter(e => { return e.name.toLowerCase().includes(filter.toLowerCase()) });
                 $selected = undefined;
                 $folders.empty();
 
@@ -301,7 +301,7 @@ import "../../js/nav-sidebar";
                 let filter = $("#search-field").val();
                 storage.files.sort((a, b) => { return a.name.localeCompare(b.name) });
                 let files = storage.files, $f = $files.clone();
-                if (filter.length) files = files.filter(e => { return e.name.toLowerCase().includes(filter) });
+                if (filter.length) files = files.filter(e => { return e.name.toLowerCase().includes(filter.toLowerCase()) });
                 $selected = undefined;
                 $files.empty();
                 
