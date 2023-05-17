@@ -49,6 +49,9 @@
             }
         }
     },
+    "theme": {
+        "switch": "Switch Theme"
+    },
     "page": {
         "index": {
             "name": "Main Page",
@@ -105,6 +108,7 @@
             "md5": "MD5",
             "download": "Download"
         },
+        "search": "Search...",
         "folder": {
             "name": "Name",
             "size": "Size"
