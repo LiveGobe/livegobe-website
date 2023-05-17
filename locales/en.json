@@ -91,6 +91,10 @@
     },
     "filestorage": {
         "title": "File Storage",
+        "create": {
+            "message": "No filestorage found, create one",
+            "button": "Create Filestorage"
+        },
         "file": {
             "name": "Name",
             "size": "Size",
