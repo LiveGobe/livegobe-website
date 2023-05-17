@@ -46,7 +46,7 @@ async function main() {
             maxAge: config.session.cookieAge,
             secure: app.get("env") == "production",
             httpOnly: true,
-            sameSite: "strict",
+            sameSite: "lax",
         },
         store: new MongoStore({
             mongoUrl: app.get("env") == "production" ? config.mongodb.uriProd : config.mongodb.uriDev,
