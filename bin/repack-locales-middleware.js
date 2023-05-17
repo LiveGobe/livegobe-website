@@ -29,6 +29,7 @@ module.exports = function(options = {}) {
 
     // Create a middleware function
     return function(req, res, next) {
+        const missingLocales = {};
         const getLocale = function(key, values) {
             try {
                 key.startsWith('.') && (key = key.substr(1));
@@ -37,6 +38,8 @@ module.exports = function(options = {}) {
                 text ||= key;
                 return values ? text.replace(/\{([^}]+)\}/g, (m, key) => values[key] ? values[key] : m) : text;
             } catch(e) {
+                key.split(".").reduce((o, s) => { return o[s] ||= {} }, missingLocales);
+                fs.writeFileSync(path.join(options.directory, `${req.language}-missing.json`), JSON.stringify(missingLocales));
                 return key;
             }
         };
