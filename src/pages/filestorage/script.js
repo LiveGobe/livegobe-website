@@ -218,7 +218,7 @@ import "../../js/nav-sidebar";
                             if (data.success) {
                                 let index = storage.files.findIndex(f => f.path == file.path && f.name == file.name);
                                 storage.files[index].private = !file.private;
-                                updateFileInfo(storage.files[index]);
+                                if (file._id == $selected?.attr("id")) updateFileInfo(storage.files[index]);
                             } else {
                                 createError(data.message);
                             }
