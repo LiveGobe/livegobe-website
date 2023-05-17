@@ -24,6 +24,6 @@ import $ from "jquery";
                 $body.attr("data-theme", "light");
             break;
         }
-        document.cookie = "theme=" + $body.attr("data-theme");
+        document.cookie = "theme=" + $body.attr("data-theme") + "; path=/";
     });
 }();
