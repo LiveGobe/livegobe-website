@@ -414,9 +414,18 @@ import "../../js/nav-sidebar";
                 let file = $fileInput[0].files[0];
 
                 if (!file) return;
-                if (!filenameValid(file.name)) return createError(fileNameInvalid);
-                if (storage.files.find(f => f.name == file.name && f.path == storage.path) || storage.folders.find(f => f.name == file.name && f.path == storage.path)) return createError(fExists.replace("_", file.name));
-                if (file.size + storage.size > storage.maxSize) return createError(fileSizeToobig);
+                if (!filenameValid(file.name)) {
+                    $fileInput.val("");
+                    return createError(fileNameInvalid);
+                }
+                if (storage.files.find(f => f.name == file.name && f.path == storage.path) || storage.folders.find(f => f.name == file.name && f.path == storage.path)) {
+                    $fileInput.val("");
+                    return createError(fExists.replace("_", file.name));
+                }
+                if (file.size + storage.size > storage.maxSize) {
+                    $fileInput.val("");
+                    return createError(fileSizeToobig);
+                }
 
                 let formData = new FormData();
                 formData.append("file", file);
@@ -500,16 +509,25 @@ import "../../js/nav-sidebar";
                 if (!files.length) return;
                 let s = 0;
                 for (let i = 0; i < files.length; i++) {
-                    if (!filenameValid(files[i].name)) return createError(filesNameInvalid);
+                    if (!filenameValid(files[i].name)) {
+                        $filesInput.val("");
+                        return createError(filesNameInvalid);
+                    }
                     if (storage.files.find(f => f.name == files[i].name && f.path == storage.path) || storage.folders.find(f => f.name == files[i].name && f.path == storage.path)) {
                         files.splice(i--, 1);
                         continue;
                     }
                     s += files[i].size;
-                    if (s + storage.size > storage.maxSize) return createError(filesSizeToobig);
+                    if (s + storage.size > storage.maxSize) {
+                        $filesInput.val("");
+                        return createError(filesSizeToobig);
+                    }
                 }
 
-                if (!files.length) return createError(filesExists);
+                if (!files.length) {
+                    $filesInput.val("");
+                    return createError(filesExists);
+                }
 
                 let formData = new FormData();
                 for (let i = 0; i < files.length; i++) {
@@ -637,7 +655,7 @@ import "../../js/nav-sidebar";
                                 }
                             });
                             storage.folders[index].name = name;
-                            if ($selected.attr("id") == folder._id) updateFolderInfo(storage.folders[index]);
+                            if ($selected?.attr("id") == folder._id) updateFolderInfo(storage.folders[index]);
                             updateFolders();
                             createMessage(data.message);
                         } else {
@@ -688,9 +706,9 @@ import "../../js/nav-sidebar";
                                 }
                             }
                             storage.folders.splice(index, 1);
+                            if ($selected?.attr("id") == folder._id) deselectAll();
                             updateFolders();
                             updateAvailableSize();
-                            if ($selected.attr("id") == folder._id) deselectAll();
                             createMessage(data.message);
                         } else {
                             createError(data.message);
@@ -754,9 +772,8 @@ import "../../js/nav-sidebar";
                         if (data.success) {
                             let index = storage.files.findIndex(f => f._id == file._id);
                             storage.files[index].name = name;
-                            
                             updateFiles();
-                            if ($selected.attr("id") == file._id) updateFileInfo(storage.files[index]);
+                            if ($selected?.attr("id") == file._id) updateFileInfo(storage.files[index]);
                             createMessage(data.message);
                         } else {
                             createError(data.message);
@@ -795,8 +812,8 @@ import "../../js/nav-sidebar";
                         if (data.success) {
                             let index = storage.files.findIndex(f => f._id == file._id);
                             storage.files[index].path = path;
+                            if ($selected?.attr("id") == file._id) deselectAll();
                             updateFiles();
-                            if ($selected.attr("id") == file._id) deselectAll();
                             createMessage(data.message);
                         } else {
                             createError(data.message);
@@ -832,8 +849,8 @@ import "../../js/nav-sidebar";
                             let index = storage.files.findIndex(f => f._id == file._id);
                             storage.size -= storage.files[index].size;
                             storage.files.splice(index, 1);
+                            if ($selected?.attr("id") == file._id) deselectAll();
                             updateFiles();
-                            if ($selected.attr("id") == file._id) deselectAll();
                             updateAvailableSize();
                             createMessage(data.message);
                         } else {
