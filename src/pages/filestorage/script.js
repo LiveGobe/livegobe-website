@@ -155,7 +155,8 @@ import "../../js/nav-sidebar";
                     .append($("<span>").attr("id", "upload-text").text(message))
                     .append($("<br>"))
                     .append($("<div>").attr("id", "upload-progress").text("0%"))
-                    .append($("<progress>").attr("value", 0).attr("max", 100).addClass("upload-progress"));
+                    .append($("<progress>").attr("value", 0).attr("max", 100).addClass("upload-progress"))
+                    .append($("<span>").attr("id", "upload-speed").text("_"));
                 $uploads.append(m);
                 return m;
             }
@@ -435,6 +436,7 @@ import "../../js/nav-sidebar";
                 let uploadHovered = false;
                 let aborted = false;
                 let loaded = 0, total = file.size, percent = 0;
+                let startTime = Date.now();
                 let $upload = createUploadMessage(file.name);
                 let $progressText = $upload.find("#upload-progress");
 
@@ -452,13 +454,16 @@ import "../../js/nav-sidebar";
                         let xhr = new window.XMLHttpRequest();
                         xhr.upload.addEventListener("progress", function(e) {
                             if (e.lengthComputable) {
+                                let elapsedTime = Date.now() - startTime;
                                 loaded = e.loaded;
                                 total = e.total;
+                                let uploadSpeed = formatBytes(loaded / elapsedTime * 1000);
                                 percent = Math.round((loaded / total) * 100);
                                 let $progressText = $upload.find("#upload-progress");
                                 if (!uploadHovered) $progressText.text(percent + "%");
                                 else $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
                                 $upload.find(".upload-progress").val(percent);
+                                $upload.find("#upload-speed").text(`${uploadSpeed}/s`);
                             }
                         });
                         $upload.on("click", function() {
@@ -545,6 +550,7 @@ import "../../js/nav-sidebar";
                 let uploadHovered = false;
                 let aborted = false;
                 let loaded = 0, total = s, percent = 0;
+                let startTime = Date.now();
                 let $upload = createUploadMessage(text);
                 let $progressText = $upload.find("#upload-progress");
 
@@ -562,13 +568,16 @@ import "../../js/nav-sidebar";
                         let xhr = new window.XMLHttpRequest();
                         xhr.upload.addEventListener("progress", function(e) {
                             if (e.lengthComputable) {
+                                let elapsedTime = Date.now() - startTime;
                                 loaded = e.loaded;
                                 total = e.total;
+                                let uploadSpeed = formatBytes(loaded / elapsedTime * 1000);
                                 percent = Math.round((loaded / total) * 100);
                                 let $progressText = $upload.find("#upload-progress");
                                 if (!uploadHovered) $progressText.text(percent + "%");
                                 else $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
                                 $upload.find(".upload-progress").val(percent);
+                                $upload.find("#upload-speed").text(`${uploadSpeed}/s`);
                             }
                         });
                         $upload.on("click", function() {
