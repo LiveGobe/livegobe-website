@@ -1,5 +1,5 @@
 # Web App README
-This is a web application built with Node.js and Express.js. It uses MongoDB as its database and Passport.js for authentication.
+This is a web application built with Node.js and Express.js. It uses MongoDB as its database and Passport.js for authentication, React for Server Side Rendering and Static Site Generation, SASS for styling.
 
 ## Features
 - User authentication and authorization
