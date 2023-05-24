@@ -4,7 +4,7 @@ $(() => {
     function generatePass(length, charset) {
         let val = "";
         for (let i = 0; i < length; i++) {
-            val += charset.charAt(Math.floor(Math.random() * charset.length));
+            val += charset[Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / 0x100000000 * charset.length)]
         }
 
         return val;
