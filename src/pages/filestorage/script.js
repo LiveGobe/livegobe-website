@@ -206,6 +206,7 @@ import "../../js/nav-sidebar";
 
                     if ($selected.hasClass("processing")) return;
                     $selected.addClass("processing");
+                    storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
                     $.ajax({
                         url: "/api/v1/filestorage/file",
                         method: "PATCH",
@@ -224,9 +225,11 @@ import "../../js/nav-sidebar";
                                 createError(data.message);
                             }
                             $(`#${file._id}`).removeClass("processing");
+                            storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                         },
                         error: function(xhr, status, err) {
                             $(`#${file._id}`).removeClass("processing");
+                            storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                             createError(xhr.responseJSON?.message || err);
                         }
                     });
@@ -242,8 +245,18 @@ import "../../js/nav-sidebar";
             function updateFolders() {
                 let filter = $("#search-field").val();
                 storage.folders.sort((a, b) => { return a.name.localeCompare(b.name) });
-                let folders = storage.folders, $f = $folders.clone();
-                if (filter.length) folders = folders.filter(e => { return e.name.toLowerCase().includes(filter.toLowerCase()) });
+                let folders = storage.folders;
+                if (filter.length) {
+                    let filtered = [];
+                    let filters = filter.split(" ").filter(n => n);
+                    for (let i = 0; i < filters.length; i++) {
+                        folders = storage.folders.filter(e => { return e.name.toLowerCase().includes(filters[i].toLowerCase()) });
+                        folders.forEach((folder) => {
+                            if (!filtered.includes(folder)) filtered.push(folder);
+                        })
+                    }
+                    folders = filtered;
+                }
                 $selected = undefined;
                 $folders.empty();
 
@@ -275,8 +288,7 @@ import "../../js/nav-sidebar";
                     if (folder.path != storage.path) return;
 
                     let element = $("<div>").attr("id", folder._id).text(folder.name).addClass(["folder", "unselectable"]).attr("title", `Open ${folder.name}`);
-                    if ($f.has(`#${folder._id}.processing`).length) element.addClass("processing");
-                    if ($f.has(`#${folder._id}.selected`).length) selectElement(element);
+                    if (storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing) element.addClass("processing");
 
                     element.on("click", function(e) {
                         e.stopPropagation();
@@ -301,8 +313,18 @@ import "../../js/nav-sidebar";
             function updateFiles() {
                 let filter = $("#search-field").val();
                 storage.files.sort((a, b) => { return a.name.localeCompare(b.name) });
-                let files = storage.files, $f = $files.clone();
-                if (filter.length) files = files.filter(e => { return e.name.toLowerCase().includes(filter.toLowerCase()) });
+                let files = storage.files;
+                if (filter.length) {
+                    let filtered = [];
+                    let filters = filter.split(" ").filter(n => n);
+                    for (let i = 0; i < filters.length; i++) {
+                        files = storage.files.filter(e => { return e.name.toLowerCase().includes(filters[i].toLowerCase()) });
+                        files.forEach((file) => {
+                            if (!filtered.includes(file)) filtered.push(file);
+                        })
+                    }
+                    files = filtered;
+                }
                 $selected = undefined;
                 $files.empty();
                 
@@ -310,8 +332,7 @@ import "../../js/nav-sidebar";
                     if (file.path != storage.path) return;
 
                     let element = $("<div>").attr("id", file._id).text(file.name).addClass(["file", "unselectable"]).attr("title", `Show ${file.name}`);
-                    if ($f.has(`#${file._id}.processing`).length) element.addClass("processing");
-                    if ($f.has(`#${file._id}.selected`).length) selectElement(element);
+                    if (storage.files[storage.files.findIndex(n => n._id == file._id)].processing) element.addClass("processing");
 
                     element.on("click", function(e) {
                         e.stopPropagation();
@@ -632,8 +653,8 @@ import "../../js/nav-sidebar";
             const $renameFolder = $("#action-rename-folder");
             $renameFolder.on("click", function(e) {
                 let element = $selected;
-                let folder = storage.folders.find(f => f._id == element.attr("id"));
                 if (element.hasClass("processing")) return;
+                let folder = storage.folders.find(f => f._id == element.attr("id"));
                 let name = prompt(renameFolderPrompt);
 
                 if (!name) return;
@@ -641,6 +662,7 @@ import "../../js/nav-sidebar";
                 if (storage.folders.find(f => f.name == name && f.path == storage.path) || storage.files.find(f => f.name == name && f.path == storage.path)) return createError(fExists.replace("_", name));
 
                 element.addClass("processing");
+                storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = true;
                 $.ajax({
                     url: "/api/v1/filestorage/folder",
                     method: "PATCH",
@@ -671,9 +693,11 @@ import "../../js/nav-sidebar";
                             createError(data.message);
                         }
                         $(`#${folder._id}`).removeClass("processing");
+                        storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = false;
                     },
                     error: function(xhr, status, err) {
                         $(`#${folder._id}`).removeClass("processing");
+                        storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = false;
                         createError(xhr.responseJSON?.message || err);
                     }
                 });
@@ -682,14 +706,15 @@ import "../../js/nav-sidebar";
             const $deleteFolder = $("#action-delete-folder");
             $deleteFolder.on("click", function(e) {
                 let element = $selected;
-                let folder = storage.folders.find(f => f._id == element.attr("id"));
                 if (element.hasClass("processing")) return;
+                let folder = storage.folders.find(f => f._id == element.attr("id"));
                 let count = getFilesCount(folder.name, folder.path);
                 let del = true;
                 if (count > 0) del = confirm(`${deleteFolderPrompt.replace("_", count)}`);
                 if (!del) return;
 
                 element.addClass("processing");
+                storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = true;
                 $.ajax({
                     url: "/api/v1/filestorage/folder",
                     method: "DELETE",
@@ -726,6 +751,7 @@ import "../../js/nav-sidebar";
                     },
                     error: function(xhr, status, err) {
                         $(`#${folder._id}`).removeClass("processing");
+                        storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = false;
                         createError(xhr.responseJSON?.message || err);
                     }
                 });
@@ -734,24 +760,24 @@ import "../../js/nav-sidebar";
             const $showFile = $("#action-show-file");
             $showFile.on("click", function(e) {
                 let element = $selected;
-                let file = storage.files.find(f => f._id == element.attr("id"));
                 if (element.hasClass("processing")) return;
+                let file = storage.files.find(f => f._id == element.attr("id"));
                 window.open(`/filestorage/v/${encodeURI(storage.owner)}/${encodeURI(file._id)}`, "_blank");
             });
 
             const $downloadFile = $("#action-download-file");
             $downloadFile.on("click", function(e) {
                 let element = $selected;
-                let file = storage.files.find(f => f._id == element.attr("id"));
                 if (element.hasClass("processing")) return;
+                let file = storage.files.find(f => f._id == element.attr("id"));
                 window.open(`/filestorage/d/${encodeURI(storage.owner)}/${encodeURI(file._id)}`, "_blank");
             });
 
             const $shareFile = $("#action-share-file");
             $shareFile.on("click", function(e) {
                 let element = $selected;
-                let file = storage.files.find(f => f._id == element.attr("id"));
                 if (element.hasClass("processing")) return;
+                let file = storage.files.find(f => f._id == element.attr("id"));
                 navigator.clipboard.writeText(`${window.location.origin}/filestorage/v/${encodeURI(storage.owner)}/${encodeURI(file._id)}`);
                 createMessage(copyFileLink);
             });
@@ -759,8 +785,8 @@ import "../../js/nav-sidebar";
             const $renameFile = $("#action-rename-file");
             $renameFile.on("click", function(e) {
                 let element = $selected;
-                let file = storage.files.find(f => f._id == element.attr("id"));
                 if (element.hasClass("processing")) return;
+                let file = storage.files.find(f => f._id == element.attr("id"));
                 let name = prompt(renameFilePrompt);
 
                 if (!name) return;
@@ -768,6 +794,7 @@ import "../../js/nav-sidebar";
                 if (storage.files.find(f => f.name == name && f.path == storage.path) || storage.folders.find(f => f.name == name && f.path == storage.path)) return createError(fExists.replace("_", name));
 
                 element.addClass("processing");
+                storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
                 $.ajax({
                     url: "/api/v1/filestorage/file",
                     method: "PATCH",
@@ -788,9 +815,11 @@ import "../../js/nav-sidebar";
                             createError(data.message);
                         }
                         $(`#${file._id}`).removeClass("processing");
+                        storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                     },
                     error: function(xhr, status, err) {
                         $(`#${file._id}`).removeClass("processing");
+                        storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                         createError(xhr.responseJSON?.message || err);
                     }
                 });
@@ -799,8 +828,8 @@ import "../../js/nav-sidebar";
             const $moveFile = $("#action-move-file");
             $moveFile.on("click", function(e) {
                 let element = $selected;
-                let file = storage.files.find(f => f._id == element.attr("id"));
                 if (element.hasClass("processing")) return;
+                let file = storage.files.find(f => f._id == element.attr("id"));
                 let path = prompt(moveFilePrompt);
 
                 if (!path) return;
@@ -808,6 +837,7 @@ import "../../js/nav-sidebar";
                 if (!path.endsWith("/")) path += "/";
 
                 element.addClass("processing");
+                storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
                 $.ajax({
                     url: "/api/v1/filestorage/file",
                     method: "PATCH",
@@ -828,9 +858,11 @@ import "../../js/nav-sidebar";
                             createError(data.message);
                         }
                         $(`#${file._id}`).removeClass("processing");
+                        storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                     },
                     error: function(xhr, status, err) {
                         $(`#${file._id}`).removeClass("processing");
+                        storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                         createError(xhr.responseJSON?.message || err);
                     }
                 });
@@ -839,12 +871,13 @@ import "../../js/nav-sidebar";
             const $deleteFile = $("#action-delete-file");
             $deleteFile.on("click", function(e) {
                 let element = $selected;
-                let file = storage.files.find(f => f._id == element.attr("id"));
                 if (element.hasClass("processing")) return;
+                let file = storage.files.find(f => f._id == element.attr("id"));
 
                 if (!confirm(deleteFilePrompt.replace("_", file.name))) return;
 
                 element.addClass("processing");
+                storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
                 $.ajax({
                     url: "/api/v1/filestorage/file",
                     method: "DELETE",
@@ -869,6 +902,7 @@ import "../../js/nav-sidebar";
                     },
                     error: function(xhr, status, err) {
                         $(`#${file._id}`).removeClass("processing");
+                        storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                         createError(xhr.responseJSON?.message || err);
                     }
                 });
