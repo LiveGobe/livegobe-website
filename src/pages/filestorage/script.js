@@ -1,4 +1,4 @@
-import { formatBytes, filenameValid, foldernameValid } from "../../js/utils";
+import { formatBytes, filenameValid, foldernameValid, formatTime } from "../../js/utils";
 import $ from "jquery";
 import "../../js/nav-sidebar";
 
@@ -156,7 +156,9 @@ import "../../js/nav-sidebar";
                     .append($("<br>"))
                     .append($("<div>").attr("id", "upload-progress").text("0%"))
                     .append($("<progress>").attr("value", 0).attr("max", 100).addClass("upload-progress"))
-                    .append($("<span>").attr("id", "upload-speed").text("_"));
+                    .append($("<div>").attr("id", "upload-speed-time")
+                        .append($("<span>").attr("id", "upload-speed").text("_"))
+                        .append($("<span>").attr("id", "upload-time").text("_")));
                 $uploads.append(m);
                 return m;
             }
@@ -481,10 +483,12 @@ import "../../js/nav-sidebar";
                                 let uploadSpeed = formatBytes(loaded / elapsedTime * 1000);
                                 percent = Math.round((loaded / total) * 100);
                                 let $progressText = $upload.find("#upload-progress");
+                                let estimatedTime = (total - loaded) / loaded * elapsedTime / 1000;
                                 if (!uploadHovered) $progressText.text(percent + "%");
                                 else $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
                                 $upload.find(".upload-progress").val(percent);
                                 $upload.find("#upload-speed").text(`${uploadSpeed}/s`);
+                                $upload.find("#upload-time").text(formatTime(estimatedTime));
                             }
                         });
                         $upload.on("click", function() {
@@ -594,11 +598,13 @@ import "../../js/nav-sidebar";
                                 total = e.total;
                                 let uploadSpeed = formatBytes(loaded / elapsedTime * 1000);
                                 percent = Math.round((loaded / total) * 100);
+                                let estimatedTime = (total - loaded) / loaded * elapsedTime / 1000;
                                 let $progressText = $upload.find("#upload-progress");
                                 if (!uploadHovered) $progressText.text(percent + "%");
                                 else $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
                                 $upload.find(".upload-progress").val(percent);
                                 $upload.find("#upload-speed").text(`${uploadSpeed}/s`);
+                                $upload.find("#upload-time").text(formatTime(estimatedTime));
                             }
                         });
                         $upload.on("click", function() {

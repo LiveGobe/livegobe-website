@@ -20,3 +20,10 @@ export function staticUrl(url) {
 	if (process.env.NODE_ENV == "production") return `${config.public.staticLinkProd}${url}`
 	else return `${config.public.staticLinkDev}${url}`;
 }
+
+export function formatTime(s) {
+    let hours = Math.floor(s / 3600);
+    let minutes = Math.floor((s % 3600) / 60);
+    let seconds = Math.floor(s % 60);
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+}
