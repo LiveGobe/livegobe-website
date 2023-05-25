@@ -90,6 +90,12 @@
             "includeuppercase": "Include uppercase letters (A-Z)",
             "includespecial": "Include special symbols (!@#$%^&*()-+_=[]{},./?<>)",
             "copytoclipboard": "Copy generated password to clipboard"
+        },
+        "users": {
+            "name": "Users List"
+        },
+        "users-user": {
+            "name": "{0} User Profile"
         }
     },
     "filestorage": {

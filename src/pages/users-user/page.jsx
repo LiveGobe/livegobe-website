@@ -5,7 +5,7 @@ const utils = require("../../../bin/utils");
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.users-user.name")}>
+            <Head title={props.t("page.users-user.name", { "0": props.pageUser.name } )}>
                 <link rel="stylesheet" href={utils.bundleUrl("users-user.css")} />
             </Head>
             <body>
