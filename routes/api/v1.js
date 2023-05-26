@@ -345,7 +345,7 @@ router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFile
         let index = storage.files.findIndex(f => f.id == fileId);
         let file = storage.files[index];
         let mvPath = path.join(process.cwd(), config.filestorage.path, `${req.user.id}${file.path}`);
-        fs.unlinkSync(path.join(mvPath, file.name));
+        fs.rmSync(path.join(mvPath, file.name), { force: true, recursive: true });
         storage.files.splice(index, 1);
         storage.size -= file.size;
         storage.save().then(storage => {

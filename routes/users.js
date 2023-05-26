@@ -16,10 +16,12 @@ router.get("/", (req, res) => {
     })
 });
 
-router.get("/:user", (req, res) => {
+router.get("/:user", (req, res, next) => {
     if (!req.user) return res.redirect("/login");
 
     User.findOne({ username: req.params.user }).then(user => {
+        if (!user) return next();
+
         res.serve("users-user", { pageUser: user });
     }).catch(err => {
         res.status(500).send(err.message);
