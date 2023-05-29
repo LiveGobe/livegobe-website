@@ -22,7 +22,7 @@
     "express-fileupload": "^1.4.0",
     "express-react-views": "^0.11.0",
     "express-session": "^1.17.3",
-    "helmet": "^6.1.5",
+    "helmet": "^6.2.0",
     "jquery": "^3.6.4",
     "jquery.hotkeys": "^0.1.0",
     "mongoose": "^7.1.0",
