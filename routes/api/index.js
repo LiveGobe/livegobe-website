@@ -1,6 +1,7 @@
 const express = require("express");
 const passport = require("passport");
 const router = express.Router();
+const utils = require("../../bin/utils");
 
 router.use((req, res, next) => {
     // If there's a session, then we're good
@@ -22,7 +23,8 @@ router.use((req, res, next) => {
 // Default routes
 router.get("/locales", (req, res) => {
     let locale, language = req.query.lang || req.body.lang, message;
-    if (typeof language == "string") language = language.replace(/[\.\/\\]/g, "");
+    if (typeof language == "string") language = utils.sanitizeFilename(language);
+    else language = "";
     try {
         locale = require(`../../locales/${language}.json`);
         message = req.t("api.locales.message.success", { "0": language });
