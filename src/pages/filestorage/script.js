@@ -692,7 +692,7 @@ import "../../js/nav-sidebar";
                                 }
                             });
                             storage.folders[index].name = name;
-                            if ($selected?.attr("id") == folder._id) updateFolderInfo(storage.folders[index]);
+                            if ($selected?.attr("id") == folder._id) deselectAll();
                             updateFolders();
                             createMessage(data.message);
                         } else {
@@ -814,8 +814,8 @@ import "../../js/nav-sidebar";
                         if (data.success) {
                             let index = storage.files.findIndex(f => f._id == file._id);
                             storage.files[index].name = name;
+                            if ($selected?.attr("id") == file._id) deselectAll();
                             updateFiles();
-                            if ($selected?.attr("id") == file._id) updateFileInfo(storage.files[index]);
                             createMessage(data.message);
                         } else {
                             createError(data.message);

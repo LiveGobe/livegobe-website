@@ -9,7 +9,7 @@ $(() => {
     $("#header").text(i18n.t("test"));
     $("#img1").attr("src", staticUrl("images/AAA.jpg"));
     $("#img2").attr("src", staticUrl("images/BBB.png"));
-    const socket = io();
+    const socket = io({ transports: ["websocket"] });
     socket.onAny(event => {
         console.log(event);
     });
