@@ -14,6 +14,7 @@ module.exports = function(props) {
                 <p>{txt}</p>
                 <img id="img1" />
                 <img id="img2" />
+                <img id="img3" />
             </div>
             <script src="/public/bundles/_test.js" />
             <link rel="stylesheet" href="/public/bundles/_test.css" />

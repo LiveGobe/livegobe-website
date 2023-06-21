@@ -7,8 +7,9 @@ await i18n.init();
 
 $(() => {
     $("#header").text(i18n.t("test"));
-    $("#img1").attr("src", staticUrl("images/AAA.jpg"));
-    $("#img2").attr("src", staticUrl("images/BBB.png"));
+    $("#img1").attr("src", i18n.l("images/AAA.jpg"));
+    $("#img2").attr("src", i18n.l("images/BBB.png"));
+    $("#img3").attr("src", staticUrl("images/CCC.png"));
     const socket = io({ transports: ["websocket"] });
     socket.onAny(event => {
         console.log(event);

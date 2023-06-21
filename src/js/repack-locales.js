@@ -1,5 +1,5 @@
 import { parse as parseCookie } from "cookie";
-
+import { staticUrl } from "./utils";
 
 class i18n {
     static locales = {};
@@ -57,7 +57,13 @@ class i18n {
         }
     }
 
+    static link = function(src) {
+        const index = src.lastIndexOf(".");
+        return staticUrl(src.substr(0, index) + `-${this.language}` + src.substr(index));
+    };
+
     static t = this.translate;
+    static l = this.link;
 }
 
 

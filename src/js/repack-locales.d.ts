@@ -30,6 +30,7 @@ declare class i18n {
     static init(options?: LocaleOptions): Promise<void>;
     /**
      * Get translated string by key
+     * 
      * Use after init was completed
      * @param key Key for string
      * @param values Values for insertion
@@ -37,11 +38,26 @@ declare class i18n {
     static translate(key: string, values?: object): string;
     /**
      * Get translated string by key
+     * 
      * Use after init was completed
      * @param key Key for string
      * @param values Values for insertion
      */
     static t(key: string, values?: object): string;
+    /**
+     * Get link to localized source
+     * 
+     * Use after init was completed
+     * @param src Link to source
+     */
+    static link(src: string): string;
+    /**
+     * Get link to localized source
+     * 
+     * Use after init was completed
+     * @param src Link to source
+     */
+    static l(src: string): string;
     static language: string;
     static locales: object;
 };
