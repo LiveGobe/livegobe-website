@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const cookieParser = require("cookie");
 const langParser = require("accept-language-parser");
+const { staticUrl } = require("./utils");
 const locales = {};
 
 module.exports = function(options = {}) {
@@ -45,6 +46,10 @@ module.exports = function(options = {}) {
                 return key;
             }
         };
+        const getLink = function(src) {
+            const index = src.lastIndexOf(".");
+            return staticUrl(src.substr(0, index) + `-${req.language}` + src.substr(index));
+        };
         const query = req.query[options.queryName];
         const cookie = cookieParser.parse(req.headers.cookie || "")[options.cookieName];
         const acceptLanguage = langParser.parse(req.header("accept-language")).find(l => options.supportedLanguages.includes(l.code));
@@ -52,6 +57,7 @@ module.exports = function(options = {}) {
         req.language = res.locals.language = language;
         req.locales = res.locals.locales = locales[options.directory][language];
         req.t = req.translate = res.locals.t = res.locals.translate = getLocale;
+        req.l = req.link = res.locals.l = res.locals.link = getLink;
 
         next();
     };

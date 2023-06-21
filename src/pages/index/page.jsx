@@ -40,6 +40,7 @@ module.exports = function(props) {
                     </div>
                     <footer>
                         <span id="copyright">LiveGobe © 2022</span>
+                        <img src={props.l("img/logo.png")} />
                     </footer>
                 </div>
             </body>

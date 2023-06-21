@@ -43,13 +43,23 @@ declare global {
              */
             t(key: string, values?: object): string;
             /**
-                 * Use to get a locale string by key. If the key is not found, it will return the key.
-                 * 
-                 * Include values to replace the placeholders in the locale string.
-                 * @param key {string} The key, pointing to the locale string, separated by dots, like `key.subkey.subsubkey`.
-                 * @param values {object} The values to replace the placeholders in the locale string.
-                 */
+             * Use to get a locale string by key. If the key is not found, it will return the key.
+             * 
+             * Include values to replace the placeholders in the locale string.
+             * @param key {string} The key, pointing to the locale string, separated by dots, like `key.subkey.subsubkey`.
+             * @param values {object} The values to replace the placeholders in the locale string.
+             */
              translate(key: string, values?: object): string;
+             /**
+             * Use to get a link to source file from `public` folder.
+             * @param src {string} The link to the file, e.g. `img/logo.png`.
+             */
+            l(src: string): string;
+            /**
+             * Use to get a link to source file from `public` folder.
+             * @param src {string} The link to the file, e.g. `img/logo.png`.
+             */
+            link(src: string): string;
         }
 
         interface Response {
@@ -78,6 +88,16 @@ declare global {
                  * @param values {object} The values to replace the placeholders in the locale string.
                  */
                  translate(key: string, values?: object): string;
+                 /**
+                 * Use to get a link to source file from `public` folder.
+                 * @param src {string} The link to the file, e.g. `img/logo.png`.
+                 */
+                l(src: string): string;
+                /**
+                 * Use to get a link to source file from `public` folder.
+                 * @param src {string} The link to the file, e.g. `img/logo.png`.
+                 */
+                link(src: string): string;
             }
         }
     }
