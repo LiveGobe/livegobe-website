@@ -40,7 +40,8 @@ module.exports = function(options = {}) {
                 return values ? text.replace(/\{([^}]+)\}/g, (m, key) => values[key] ? values[key] : m) : text;
             } catch(e) {
                 if (process.env.NODE_ENV != "production") {
-                    key.split(".").reduce((o, s) => { return o[s] ||= {} }, missingLocales);
+                    let keys = key.split(".");
+                    keys.reduce((o, s, i) => { return i == keys.length - 1 ? o[s] = "" : o[s] ||= {} }, missingLocales);
                     fs.writeFileSync(path.join(options.directory, `${req.language}-missing.json`), JSON.stringify(missingLocales));
                 }
                 return key;
