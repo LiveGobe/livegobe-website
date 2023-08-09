@@ -661,7 +661,7 @@ import "../../js/nav-sidebar";
                 let element = $selected;
                 if (element.hasClass("processing")) return;
                 let folder = storage.folders.find(f => f._id == element.attr("id"));
-                let name = prompt(renameFolderPrompt);
+                let name = prompt(renameFolderPrompt, folder.name);
 
                 if (!name) return;
                 if (!foldernameValid(name)) return createError(folderNameInvalid);
@@ -793,7 +793,7 @@ import "../../js/nav-sidebar";
                 let element = $selected;
                 if (element.hasClass("processing")) return;
                 let file = storage.files.find(f => f._id == element.attr("id"));
-                let name = prompt(renameFilePrompt);
+                let name = prompt(renameFilePrompt, file.name);
 
                 if (!name) return;
                 if (!filenameValid(name)) return createError(fileNameInvalid);
