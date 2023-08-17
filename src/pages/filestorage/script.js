@@ -836,7 +836,7 @@ import "../../js/nav-sidebar";
                 let element = $selected;
                 if (element.hasClass("processing")) return;
                 let file = storage.files.find(f => f._id == element.attr("id"));
-                let path = prompt(moveFilePrompt);
+                let path = prompt(moveFilePrompt, storage.path);
 
                 if (!path) return;
                 if (!path.startsWith("/")) path = "/" + path;
