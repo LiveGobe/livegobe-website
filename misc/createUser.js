@@ -5,11 +5,6 @@ const mongoose = require("mongoose");
 const config = require("../config");
 const bcrypt = require("bcrypt");
 
-function clearLine() {
-    process.stdout.moveCursor(0, -1);
-    process.stdout.clearLine(1);
-}
-
 prompt.message = "";
 prompt.delimiter = "";
 
@@ -17,7 +12,7 @@ prompt.start();
 
 const prompts = {
     env: {
-        name: "environment",
+        name: "env",
         description: colors.yellow("Environment (dev/prod):"),
         type: "string",
         required: true
@@ -47,7 +42,7 @@ prompt.get(prompts.env, function(err, env) {
         console.log(err);
         return;
     }
-    env = env == "production" || env == "prod" || env == "p" ? "production" : "development"
+    env = env.env == "production" || env.env == "prod" || env.env == "p" ? "production" : "development"
     // Ask for username
     prompt.get(prompts.username, function(err, username) {
         if (err) {
@@ -70,7 +65,7 @@ prompt.get(prompts.env, function(err, env) {
                 }
                 name = name.name;
                 await mongoose.connect(env == "production" ? config.mongodb.uriProd : config.mongodb.uriDev, { useNewUrlParser: true })
-
+                console.log(env == "production" ? config.mongodb.uriProd : config.mongodb.uriDev);
                 const user = new User({ username: username, password: bcrypt.hashSync(password, 10), name: name });
                 await user.save();
                 console.log(`User ${username} (${name}) created successfully`);
