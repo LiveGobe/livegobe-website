@@ -163,7 +163,7 @@ router.route("/filestorage/folder").post((req, res) => {
     });
 });
 
-router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFileDir: path.join(process.cwd(), "tmp") }), (req, res) => {
+router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFileDir: path.join(process.cwd(), "tmp"), defParamCharset: "utf-8" }), (req, res) => {
     if (!req.user) return res.json({ success: false, message: req.t("api.usermissing") });
 
     let filePath = req.query.path || req.body.path;
@@ -181,7 +181,7 @@ router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFile
         // if there's one file to upload
         if (req.files.file) {
             let file = req.files.file;
-
+            
             if (storage.files.find(f => f.name == file.name && f.path == filePath) || storage.folders.find(f => f.name == file.name && f.path == filePath)) return res.json({ success: false, message: req.t("api.filestorage.fexists", { "0": file.name }) });
             if (storage.size + file.size > storage.maxSize) return res.json({ success: false, message: req.t("api.filestorage.file.toobig"), size: file.size, available: storage.maxSize - storage.size });
 
