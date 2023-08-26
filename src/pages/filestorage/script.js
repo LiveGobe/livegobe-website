@@ -248,9 +248,9 @@ import "../../js/nav-sidebar";
                 let filter = $("#search-field").val();
                 storage.folders.sort((a, b) => { return a.name.localeCompare(b.name) });
                 let folders = storage.folders;
+                let filters = filter.split(" ").filter(n => n);
                 if (filter.length) {
                     let filtered = [];
-                    let filters = filter.split(" ").filter(n => n);
                     for (let i = 0; i < filters.length; i++) {
                         folders = storage.folders.filter(e => { return e.name.toLowerCase().includes(filters[i].toLowerCase()) });
                         folders.forEach((folder) => {
@@ -289,7 +289,12 @@ import "../../js/nav-sidebar";
                 folders.forEach(folder => {
                     if (folder.path != storage.path) return;
 
-                    let element = $("<div>").attr("id", folder._id).text(folder.name).addClass(["folder", "unselectable"]).attr("title", `Open ${folder.name}`);
+                    let folderName = folder.name;
+                    for (let i = 0; i < filters.length; i++) {
+                        folderName = folderName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
+                    }
+                    
+                    let element = $("<div>").attr("id", folder._id).html(folderName).addClass(["folder", "unselectable"]).attr("title", `Open ${folder.name}`);
                     if (storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing) element.addClass("processing");
 
                     element.on("click", function(e) {
@@ -316,9 +321,9 @@ import "../../js/nav-sidebar";
                 let filter = $("#search-field").val();
                 storage.files.sort((a, b) => { return a.name.localeCompare(b.name) });
                 let files = storage.files;
+                let filters = filter.split(" ").filter(n => n);
                 if (filter.length) {
                     let filtered = [];
-                    let filters = filter.split(" ").filter(n => n);
                     for (let i = 0; i < filters.length; i++) {
                         files = storage.files.filter(e => { return e.name.toLowerCase().includes(filters[i].toLowerCase()) });
                         files.forEach((file) => {
@@ -333,7 +338,12 @@ import "../../js/nav-sidebar";
                 files.forEach(file => {
                     if (file.path != storage.path) return;
 
-                    let element = $("<div>").attr("id", file._id).text(file.name).addClass(["file", "unselectable"]).attr("title", `Show ${file.name}`);
+                    let fileName = file.name;
+                    for (let i = 0; i < filters.length; i++) {
+                        fileName = fileName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
+                    }
+
+                    let element = $("<div>").attr("id", file._id).html(fileName).addClass(["file", "unselectable"]).attr("title", `Show ${file.name}`);
                     if (storage.files[storage.files.findIndex(n => n._id == file._id)].processing) element.addClass("processing");
 
                     element.on("click", function(e) {

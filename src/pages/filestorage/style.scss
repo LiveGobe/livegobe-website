@@ -189,3 +189,8 @@ body {
     display: flex;
     justify-content: space-between;
 }
+
+.highlighted {
+    background-color: var(--fs-highlighted-background-color);
+    color: var(--fs-highlighted-text-color);
+}
