@@ -5,9 +5,12 @@ const User = require("../models/user");
 router.get("/", (req, res) => {
     if (!req.user) return res.redirect("/login");
 
-    User.find().limit(50).then(users => {
-        User.countDocuments().then(count => {
-            res.serve("users", { users, docsNumber: count, page: req.query.page || 1 });
+    let maxOnPage = 25;
+    let page = (req.query.page || 1) - 1;
+
+    User.countDocuments().then(count => {
+        User.find().skip(maxOnPage * Math.max(0, Math.min(count / maxOnPage - 1, page))).limit(maxOnPage).then(users => {
+            res.serve("users", { users, docsNumber: count, page: Math.max(0, Math.min(count / maxOnPage - 1, page)) + 1, maxOnPage });
         }).catch(err => {
             res.status(500).send(err.message);
         })
