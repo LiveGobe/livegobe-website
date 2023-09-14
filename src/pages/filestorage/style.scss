@@ -82,11 +82,18 @@ body {
 
 #search-section {
     border-bottom: 1px solid var(--fs-border-color);
+    display: flex;
+    align-items: center;
 }
 
 #search-field {
     margin: 1rem;
-    width: calc(100% - 2.5rem);
+    width: 100%;
+}
+
+#copy-path {
+    height: 80%;
+    margin-right: 10px;
 }
 
 .folder, .file {

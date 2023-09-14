@@ -407,11 +407,18 @@ import "../../js/nav-sidebar";
             const moveFilePrompt = $("#move-file-prompt").val();
             const deleteFilePrompt = $("#delete-file-prompt").val();
             const copyFileLink = $("#copy-file-link").val();
+            const copyPathMessage = $("#copy-path-message").val();
 
             const $searchFilter = $("#search-field");
             $searchFilter.on("input", function(e) {
                 updateFolders();
                 updateFiles();
+            });
+
+            const $copyPath = $("#copy-path");
+            $copyPath.on("click", function(e) {
+                navigator.clipboard.writeText(storage.path);
+                createMessage(copyPathMessage);
             });
 
             const $createFolder = $("#action-create-folder");
@@ -846,7 +853,7 @@ import "../../js/nav-sidebar";
                 let element = $selected;
                 if (element.hasClass("processing")) return;
                 let file = storage.files.find(f => f._id == element.attr("id"));
-                let path = prompt(moveFilePrompt, storage.path);
+                let path = decodeURI(prompt(moveFilePrompt, storage.path));
 
                 if (!path) return;
                 if (!path.startsWith("/")) path = "/" + path;

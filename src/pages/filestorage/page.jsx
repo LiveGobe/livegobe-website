@@ -48,6 +48,8 @@ function Filestorage(props) {
             <div id="filestorage-browse">
                 <div id="search-section">
                     <input type="text" id="search-field" placeholder={props.t("filestorage.search")} />
+                    <input type="hidden" id="copy-path-message" value={props.t("filestorage.message.copypath")} />
+                    <button id="copy-path">{props.t("filestorage.copypath")}</button>
                 </div>
                 <div id="folders-list" />
                 <div id="files-list" />

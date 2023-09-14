@@ -139,7 +139,9 @@
                 "delete": "Delete"
             }
         },
+        "copypath": "Copy Path",
         "message": {
+            "copypath": "Path successfully copied to clipboard",
             "fexists": "File/Folder {0} already exists",
             "folder": {
                 "create": "Folder name:",

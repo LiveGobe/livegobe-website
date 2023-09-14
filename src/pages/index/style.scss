@@ -29,6 +29,8 @@ body {
 #tools {
     height: 40vh;
     display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
     padding: 20px 10px;
     border-top: 1px solid black;
     border-bottom: 1px solid black;
@@ -38,8 +40,8 @@ body {
 
 #tools a {
     text-align: center;
-    width: 7rem;
-    height: 3rem;
+    width: 120px;
+    height: 50px;
     margin: 10px;
     overflow: hidden;
     border: 1px solid black;
