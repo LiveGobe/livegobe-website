@@ -66,19 +66,7 @@ async function main() {
     app.use(helmet({
         contentSecurityPolicy: {
             useDefaults: false,
-            directives: {
-                defaultSrc: ["'self'", "livegobe.ru", "*.livegobe.ru"],
-                baseUri: ["'self'", "livegobe.ru", "*.livegobe.ru"],
-                blockAllMixedContent: [],
-                fontSrc: ["*"],
-                formAction: ["'self'", "livegobe.ru", "*.livegobe.ru"],
-                frameAncestors: ["'self'", "livegobe.ru", "*.livegobe.ru"],
-                imgSrc: ["*"],
-                objectSrc: ["'none'"],
-                scriptSrc: ["*", "'unsafe-eval'", "'unsafe-inline'"],
-                scriptSrcAttr: ["'none'"],
-                styleSrc: ["'self'", "livegobe.ru", "*.livegobe.ru", "'unsafe-inline'"]
-            }
+            directives: config.helmet.directives
         }
     }));
 

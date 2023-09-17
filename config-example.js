@@ -1,4 +1,19 @@
 module.exports = {
+    helmet: {
+        directives: {
+            defaultSrc: ["'self'", "example.com", "*.example.com"],
+            baseUri: ["'self'", "example.com", "*.example.com"],
+            blockAllMixedContent: [],
+            fontSrc: ["*"],
+            formAction: ["'self'", "example.com", "*.example.com"],
+            frameAncestors: ["'self'", "example.com", "*.example.com"],
+            imgSrc: ["*"],
+            objectSrc: ["'none'"],
+            scriptSrc: ["*", "'unsafe-eval'", "'unsafe-inline'"],
+            scriptSrcAttr: ["'none'"],
+            styleSrc: ["'self'", "example.com", "*.example.com", "'unsafe-inline'"]
+        }
+    },
     source: {
         folder: "./src/"
     },
@@ -10,7 +25,7 @@ module.exports = {
     },
     public: {
         staticLinkDev: "/public/",
-        staticLinkProd: "https://static.livegobe.ru/",
+        staticLinkProd: "https://static.example.com/",
         bundlesFolder: "./public/bundles/",
         pagesFolder: "./public/pages/",
         externals: {
