@@ -4,6 +4,26 @@ import "../../js/nav-sidebar";
 
 !function() {
     const createButton = $("#create-storage");
+    /**
+     * @typedef {Object} Storage
+     * @prop {String} owner owner id
+     * @prop {Number} size filestorage current size
+     * @prop {Number} maxSize filestorage max size
+     * @prop {Object[]} folders folders
+     * @prop {String} folders[].name folder name
+     * @prop {String} folders[].description folder description
+     * @prop {String} folders[].path folder path
+     * @prop {Object[]} files files
+     * @prop {String} files[].name file name
+     * @prop {String} files[].description file description
+     * @prop {String} files[].path file path
+     * @prop {Date} files[].date file upload date
+     * @prop {Number} files[].size file size
+     * @prop {Boolean} files[].private is file private or not
+     * @prop {String} files[].md5 file md5 hash
+     */
+
+    /** @type {Storage} */
     let storage;
 
     if (createButton.length != 0) {
