@@ -10,9 +10,14 @@ function UserButton(props) {
     )
 
     return (
-        <a href={`/users/${props.user.username}`}>
-            <div id="username">{props.user.name} ({props.user.username})</div>
-        </a>
+        <div id="user">
+            <a href={`/users/${props.user.username}`}>
+                <div id="username">{props.user.name} ({props.user.username})</div>
+            </a>
+            <a href="/logout">
+                <div id="logout">{props.t("user.logout")}</div>
+            </a>
+        </div>
     )
 }
 

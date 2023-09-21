@@ -172,7 +172,8 @@
     },
     "navigation": {
         "home": "Home",
-        "filestorage": "File Storage"
+        "filestorage": "File Storage",
+        "passwordgenerator": "Password Generator"
     },
     "copyright": "LiveGobe © 2022"
 }

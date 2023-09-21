@@ -59,10 +59,45 @@ a, a:active, a:visited {
     padding: 15px;
 }
 
+#lang-dropdown, #theme-dropdown {
+    border: 1px solid rgb(0, 0, 0);
+    padding: 5px;
+    border-radius: 10px;
+}
+
+#logout, #username {
+    border: 1px solid rgb(0, 0, 0);
+    padding: 5px;
+    border-radius: 10px;
+}
+
+#settings {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
 .block {
     display: block;
 }
 
 #settings a {
     cursor: pointer;
+}
+
+div#user {
+    display: flex;
+    gap: 20px;
+}
+
+.dropdown-content {
+    left: 0;
+    top: 100%;
+}
+
+@media screen and (max-width: 600px) {
+    div#user {
+        flex-direction: column;
+        gap: 2px;
+    }
 }

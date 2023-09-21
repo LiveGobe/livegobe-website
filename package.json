@@ -1,6 +1,6 @@
 {
   "name": "lg-website",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "My website rewritten",
   "main": "index.js",
   "scripts": {

@@ -27,21 +27,21 @@ module.exports = function(props) {
                                     <label id="passlength" htmlFor="passwordlength">{props.t("page.passwordgenerator.passwordlength")}</label>
                                 </div>
                                 <div>
-                                    <input type="checkbox" name="includenumbers" id="includenumbers" defaultChecked />
+                                    <input type="checkbox" name="includenumbers" id="includenumbers" />
                                     <label htmlFor="includenumbers">{props.t("page.passwordgenerator.includenumbers")}</label>
                                 </div>
                                 <div>
-                                    <input type="checkbox" name="includeuppercase" id="includeuppercase" defaultChecked />
+                                    <input type="checkbox" name="includeuppercase" id="includeuppercase" />
                                     <label htmlFor="includeuppercase">{props.t("page.passwordgenerator.includeuppercase")}</label>
                                 </div>
                                 <div>
-                                    <input type="checkbox" name="includespecial" id="includespecial" defaultChecked />
+                                    <input type="checkbox" name="includespecial" id="includespecial" />
                                     <label htmlFor="includespecial">{props.t("page.passwordgenerator.includespecial")}</label>
                                 </div>
                             </div>
                             <div className="column">
                                 <div>
-                                    <input type="checkbox" name="copytoclipboard" id="copytoclipboard" defaultChecked />
+                                    <input type="checkbox" name="copytoclipboard" id="copytoclipboard" />
                                     <label htmlFor="copytoclipboard">{props.t("page.passwordgenerator.copytoclipboard")}</label>
                                 </div>
                             </div>

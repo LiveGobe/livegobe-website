@@ -172,7 +172,8 @@
     },
     "navigation": {
         "home": "Главная",
-        "filestorage": "Файловое Хранилище"
+        "filestorage": "Файловое Хранилище",
+        "passwordgenerator": "Генератор Паролей"
     },
     "copyright": "LiveGobe © 2022"
 }

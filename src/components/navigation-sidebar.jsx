@@ -7,6 +7,7 @@ function NavigationSidebar(props) {
             <div id="navigation-sidebar-content">
                 {props.page == "home" ? <span>{props.t("navigation.home")}</span> : <a href="/">{props.t("navigation.home")}</a>}
                 {props.page == "filestorage" ? <span>{props.t("navigation.filestorage")}</span> : <a href="/filestorage/browse">{props.t("navigation.filestorage")}</a>}
+                {props.page == "passwordgenerator" ? <span>{props.t("navigation.passwordgenerator")}</span> : <a href="/password_generator">{props.t("navigation.passwordgenerator")}</a>}
             </div>
         </div>
     );
