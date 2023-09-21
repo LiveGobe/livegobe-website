@@ -29,8 +29,12 @@ UserSchema.methods.validPassword = function(password) {
     return bcrypt.compareSync(password, this.password);
 };
 
-UserSchema.methods.isPermitted = function(perm) {
+UserSchema.methods.hasRole = function(perm) {
     return this.permissions.includes(perm.toLowerCase());
+}
+
+UserSchema.methods.allowFilestorage = function() {
+    return this.hasRole("admin") || this.hasRole("filestorage");
 }
 
 module.exports = User = mongoose.model('User', UserSchema);

@@ -11,6 +11,7 @@ router.get('/', (req, res) => {
 
 function browseFilestorage(req, res) {
     if (!req.user) return res.redirect("/login?redirect=/filestorage/browse");
+    if (!req.user.allowFilestorage()) return res.redirect("/login?redirect=/filestorage/browse");
 
     FileStorage.findOne({ owner: req.user.id }).then(storage => {
         res.serve("filestorage", { storage: storage, user: req.user });

@@ -2,6 +2,20 @@ const React = require("react");
 const Head = require("../../components/head");
 const utils = require("../../../bin/utils");
 
+function UserButton(props) {
+    if (!props.user) return (
+        <a href={`/login`}>
+            <div id="username">{props.t("page.login.name")}</div>
+        </a>
+    )
+
+    return (
+        <a href={`/users/${props.user.username}`}>
+            <div id="username">{props.user.name} ({props.user.username})</div>
+        </a>
+    )
+}
+
 module.exports = function(props) {
     return (
         <html lang={props.language}>
@@ -12,9 +26,7 @@ module.exports = function(props) {
             <body>
                 <div id="user-card">
                     <header>
-                        <a href={`/users/${props.user.username}`}>
-                            <div id="username">{props.user.name} ({props.user.username})</div>
-                        </a>
+                        <UserButton {...props} />
                         <div id="settings">
                             <div id="lang-dropdown" className="dropdown">
                                 <span>{props.t("page.index.content.language")}</span>
@@ -34,8 +46,8 @@ module.exports = function(props) {
                         </div>
                     </header>
                     <div id="tools">
-                        {props.user.isPermitted("admin") ? <a href="/admin">{props.t("page.index.content.tools.admin")}</a> : ""}
-                        <a href="/filestorage/browse">{props.t("page.index.content.tools.filestorage")}</a>
+                        {props.user && props.user.hasRole("admin") ? <a href="/admin">{props.t("page.index.content.tools.admin")}</a> : ""}
+                        {props.user && props.user.allowFilestorage() ? <a href="/filestorage/browse">{props.t("page.index.content.tools.filestorage")}</a> : ""}
                         <a href="/password_generator">{props.t("page.index.content.tools.passwordgenerator")}</a>
                     </div>
                     <footer>
