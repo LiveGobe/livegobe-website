@@ -287,11 +287,8 @@ import "../../js/nav-sidebar";
 
                     element.on("click", function(e) {
                         e.stopPropagation();
-                        if (element.hasClass("selected")) return;
-                        $folders.find(".selected").removeClass("selected");
-                        $files.find(".selected").removeClass("selected");
-                        element.addClass("selected");
-                        $selected = element;
+                        selectElement(element);
+                        hideInfo();
                     });
 
                     element.on("dblclick", function(e) {
@@ -697,6 +694,7 @@ import "../../js/nav-sidebar";
             $renameFolder.on("click", function(e) {
                 let element = $selected;
                 if (element.hasClass("processing")) return;
+                if (element.attr("id") == "back") return;
                 let folder = storage.folders.find(f => f._id == element.attr("id"));
                 let name = prompt(renameFolderPrompt, folder.name);
 
@@ -750,6 +748,7 @@ import "../../js/nav-sidebar";
             $deleteFolder.on("click", function(e) {
                 let element = $selected;
                 if (element.hasClass("processing")) return;
+                if (element.attr("id") == "back") return;
                 let folder = storage.folders.find(f => f._id == element.attr("id"));
                 let count = getFilesCount(folder.name, folder.path);
                 let del = true;
