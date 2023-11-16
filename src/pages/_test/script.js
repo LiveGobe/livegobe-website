@@ -10,6 +10,21 @@ $(() => {
     $("#img1").attr("src", i18n.l("images/AAA.jpg"));
     $("#img2").attr("src", i18n.l("images/BBB.png"));
     $("#img3").attr("src", staticUrl("images/CCC.png"));
+    $("#item-1").next(".inside-box").css("background-color", "red");
+
+    $.ajax({
+        url: "/api/v1/filestorage/folder",
+        method: "POST",
+        data: { cringe: "sas" },
+        success: function(data) {
+            console.log("Got Data");
+            console.log(data);
+        },
+        error: function(xhr, status, err) {
+            console.log("Got Error")
+        }
+    });
+
     const socket = io({ transports: ["websocket"] });
     socket.onAny(event => {
         console.log(event);

@@ -38,23 +38,24 @@ router.get("/locales", (req, res) => {
 });
 
 router.post("/login", (req, res, next) => {
-    if (req.user) return res.json({ success: false, message: req.t("api.login.loggedin")})
+    if (req.user) return res.status(400).json({ message: req.t("api.login.loggedin")})
     
     passport.authenticate("local", (err, user, info) => {
         if (err) return next(err);
 
-        if (!user) return res.json({ success: false, message: req.t("api.login.invalid")});
+        if (!user) return res.status(403).json({ message: req.t("api.login.invalid")});
 
         req.logIn(user, (err) => {
             if (err) return next(err);
             if (req.body.remember == "true") req.session.cookie.maxAge = null;
-            res.json({ success: true, message: req.t("api.login.success")});
+            res.json({ message: req.t("api.login.success")});
         });
     })(req, res, next);
 });
 
 // Versioned routes
 router.use("/v1", require("./v1"));
+router.use("/v2", require("./v2"));
 
 // 404 hanler
 router.use((req, res) => {

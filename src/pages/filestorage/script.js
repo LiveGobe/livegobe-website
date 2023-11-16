@@ -30,19 +30,23 @@ import "../../js/nav-sidebar";
         createButton.on("click", function(e) {
             createButton.prop("disabled", true);
             $.ajax({
-                url: "/api/v1/filestorage",
+                url: "/api/v2/filestorage",
                 method: "POST",
                 data: {},
                 success: function(data) {
-                    if (data.success) {
-                        window.location.reload();
-                    } else {
-                        createError(data.message);
-                        createButton.prop("disabled", false);
-                    }
+                    window.location.reload();
                 },
                 error: function(xhr, status, err) {
-                    createError(xhr.responseJSON?.message || err);
+                    let msg = xhr.responseJSON?.message ?? err;
+                    let $messages = $("#filestorage-messages");
+                    let ms = $messages.find(".message");
+                    if (ms.length == 6) ms[5].remove();
+                    let m = $("<div>").addClass(["message", "unselectable", "error"]).text(msg);
+                    m.on("click", function(e) {
+                        e.stopPropagation();
+                        m.remove();
+                    });
+                    $messages.prepend(m);
                     createButton.prop("disabled", false);
                 }
             })
@@ -230,7 +234,7 @@ import "../../js/nav-sidebar";
                     $selected.addClass("processing");
                     storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
                     $.ajax({
-                        url: "/api/v1/filestorage/file",
+                        url: "/api/v2/filestorage/file",
                         method: "PATCH",
                         data: {
                             file: {
@@ -239,20 +243,16 @@ import "../../js/nav-sidebar";
                             }
                         },
                         success: function(data) {
-                            if (data.success) {
-                                let index = storage.files.findIndex(f => f.path == file.path && f.name == file.name);
-                                storage.files[index].private = !file.private;
-                                if (file._id == $selected?.attr("id")) updateFileInfo(storage.files[index]);
-                            } else {
-                                createError(data.message);
-                            }
+                            let index = storage.files.findIndex(f => f.path == file.path && f.name == file.name);
+                            storage.files[index].private = !file.private;
+                            if (file._id == $selected?.attr("id")) updateFileInfo(storage.files[index]);
                             $(`#${file._id}`).removeClass("processing");
                             storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                         },
                         error: function(xhr, status, err) {
                             $(`#${file._id}`).removeClass("processing");
                             storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
-                            createError(xhr.responseJSON?.message || err);
+                            createError(xhr.responseJSON?.message ?? err);
                         }
                     });
                 });
@@ -446,23 +446,19 @@ import "../../js/nav-sidebar";
                 if (storage.folders.find(f => f.name == name && f.path == storage.path) || storage.files.find(f => f.name == name && f.path == storage.path)) return createError(fExists.replace("_", name));
 
                 $.ajax({
-                    url: "/api/v1/filestorage/folder",
+                    url: "/api/v2/filestorage/folder",
                     method: "POST",
                     data: {
                         name: name,
                         path: storage.path
                     },
                     success: function(data) {
-                        if (data.success) {
-                            storage.folders.push(data.folder);
-                            updateFolders();
-                            createMessage(data.message);
-                        } else {
-                            createError(data.message);
-                        }
+                        storage.folders.push(data.folder);
+                        updateFolders();
+                        createMessage(data.message);
                     },
                     error: function(xhr, status, err) {
-                        createError(xhr.responseJSON?.message || err);
+                        createError(xhr.responseJSON?.message ?? err);
                     }
                 })
             });
@@ -531,25 +527,21 @@ import "../../js/nav-sidebar";
                         });
                         return xhr;
                     },
-                    url: "/api/v1/filestorage/file",
+                    url: "/api/v2/filestorage/file",
                     method: "POST",
                     data: formData,
                     cache: false,
                     contentType: false,
                     processData: false,
                     success: function(data) {
-                        if (data.success) {
-                            storage.files.push(data.file);
-                            storage.size += data.file.size;
-                            updateAvailableSize();
-                            updateFiles();
-                            createMessage(data.message);
-                        } else {
-                            createError(data.message);
-                        }
+                        storage.files.push(data.file);
+                        storage.size += data.file.size;
+                        updateAvailableSize();
+                        updateFiles();
+                        createMessage(data.message);
                     },
                     error: function(xhr, status, err) {
-                        if (!aborted) createError(xhr.responseJSON?.message || err);
+                        if (!aborted) createError(xhr.responseJSON?.message ?? err);
                     },
                     complete: function() {
                         $upload.remove();
@@ -647,25 +639,21 @@ import "../../js/nav-sidebar";
                         });
                         return xhr;
                     },
-                    url: "/api/v1/filestorage/file",
+                    url: "/api/v2/filestorage/file",
                     method: "POST",
                     data: formData,
                     cache: false,
                     contentType: false,
                     processData: false,
                     success: function(data) {
-                        if (data.success) {
-                            storage.files = storage.files.concat(data.files);
-                            data.files.forEach(f => storage.size += f.size);
-                            updateFiles();
-                            updateAvailableSize();
-                            createMessage(data.message);
-                        } else {
-                            createError(data.message);
-                        }
+                        storage.files = storage.files.concat(data.files);
+                        data.files.forEach(f => storage.size += f.size);
+                        updateFiles();
+                        updateAvailableSize();
+                        createMessage(data.message);
                     },
                     error: function(xhr, status, err) {
-                        if (!aborted) createError(xhr.responseJSON?.message || err);
+                        if (!aborted) createError(xhr.responseJSON?.message ?? err);
                     },
                     complete: function() {
                         $upload.remove();
@@ -705,7 +693,7 @@ import "../../js/nav-sidebar";
                 element.addClass("processing");
                 storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = true;
                 $.ajax({
-                    url: "/api/v1/filestorage/folder",
+                    url: "/api/v2/filestorage/folder",
                     method: "PATCH",
                     data: {
                         folder: {
@@ -714,32 +702,28 @@ import "../../js/nav-sidebar";
                         }
                     },
                     success: function(data) {
-                        if (data.success) {
-                            let index = storage.folders.findIndex(f => f._id == folder._id);
-                            storage.folders.forEach(f => {
-                                if (f.path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
-                                    f.path = f.path.replace(storage.folders[index].path + storage.folders[index].name + "/", storage.folders[index].path + name + "/");
-                                }
-                            });
-                            storage.files.forEach(f => {
-                                if (f.path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
-                                    f.path = f.path.replace(storage.folders[index].path + storage.folders[index].name + "/", storage.folders[index].path + name + "/");
-                                }
-                            });
-                            storage.folders[index].name = name;
-                            if ($selected?.attr("id") == folder._id) deselectAll();
-                            updateFolders();
-                            createMessage(data.message);
-                        } else {
-                            createError(data.message);
-                        }
+                        let index = storage.folders.findIndex(f => f._id == folder._id);
+                        storage.folders.forEach(f => {
+                            if (f.path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
+                                f.path = f.path.replace(storage.folders[index].path + storage.folders[index].name + "/", storage.folders[index].path + name + "/");
+                            }
+                        });
+                        storage.files.forEach(f => {
+                            if (f.path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
+                                f.path = f.path.replace(storage.folders[index].path + storage.folders[index].name + "/", storage.folders[index].path + name + "/");
+                            }
+                        });
+                        storage.folders[index].name = name;
+                        if ($selected?.attr("id") == folder._id) deselectAll();
+                        updateFolders();
+                        createMessage(data.message);
                         $(`#${folder._id}`).removeClass("processing");
                         storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = false;
                     },
                     error: function(xhr, status, err) {
                         $(`#${folder._id}`).removeClass("processing");
                         storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = false;
-                        createError(xhr.responseJSON?.message || err);
+                        createError(xhr.responseJSON?.message ?? err);
                     }
                 });
             });
@@ -758,7 +742,7 @@ import "../../js/nav-sidebar";
                 element.addClass("processing");
                 storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = true;
                 $.ajax({
-                    url: "/api/v1/filestorage/folder",
+                    url: "/api/v2/filestorage/folder",
                     method: "DELETE",
                     data: {
                         folder: {
@@ -766,35 +750,31 @@ import "../../js/nav-sidebar";
                         }
                     },
                     success: function(data) {
-                        if (data.success) {
-                            let index = storage.folders.findIndex(f => f._id == folder._id);
-                            for (let i = index + 1; i < storage.folders.length; i++) {
-                                if (storage.folders[i].path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
-                                    storage.folders.splice(i, 1);
-                                    i--;
-                                }
+                        let index = storage.folders.findIndex(f => f._id == folder._id);
+                        for (let i = index + 1; i < storage.folders.length; i++) {
+                            if (storage.folders[i].path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
+                                storage.folders.splice(i, 1);
+                                i--;
                             }
-                            for (let i = 0; i < storage.files.length; i++) {
-                                if (storage.files[i].path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
-                                    storage.size -= storage.files[i].size;
-                                    storage.files.splice(i, 1);
-                                    i--;
-                                }
-                            }
-                            storage.folders.splice(index, 1);
-                            if ($selected?.attr("id") == folder._id) deselectAll();
-                            updateFolders();
-                            updateAvailableSize();
-                            createMessage(data.message);
-                        } else {
-                            createError(data.message);
                         }
+                        for (let i = 0; i < storage.files.length; i++) {
+                            if (storage.files[i].path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
+                                storage.size -= storage.files[i].size;
+                                storage.files.splice(i, 1);
+                                i--;
+                            }
+                        }
+                        storage.folders.splice(index, 1);
+                        if ($selected?.attr("id") == folder._id) deselectAll();
+                        updateFolders();
+                        updateAvailableSize();
+                        createMessage(data.message);
                         $(`#${folder._id}`).removeClass("processing");
                     },
                     error: function(xhr, status, err) {
                         $(`#${folder._id}`).removeClass("processing");
                         storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = false;
-                        createError(xhr.responseJSON?.message || err);
+                        createError(xhr.responseJSON?.message ?? err);
                     }
                 });
             });
@@ -838,7 +818,7 @@ import "../../js/nav-sidebar";
                 element.addClass("processing");
                 storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
                 $.ajax({
-                    url: "/api/v1/filestorage/file",
+                    url: "/api/v2/filestorage/file",
                     method: "PATCH",
                     data: {
                         file: {
@@ -847,22 +827,18 @@ import "../../js/nav-sidebar";
                         }
                     },
                     success: function(data) {
-                        if (data.success) {
-                            let index = storage.files.findIndex(f => f._id == file._id);
-                            storage.files[index].name = name;
-                            if ($selected?.attr("id") == file._id) deselectAll();
-                            updateFiles();
-                            createMessage(data.message);
-                        } else {
-                            createError(data.message);
-                        }
+                        let index = storage.files.findIndex(f => f._id == file._id);
+                        storage.files[index].name = name;
+                        if ($selected?.attr("id") == file._id) deselectAll();
+                        updateFiles();
+                        createMessage(data.message);
                         $(`#${file._id}`).removeClass("processing");
                         storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                     },
                     error: function(xhr, status, err) {
                         $(`#${file._id}`).removeClass("processing");
                         storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
-                        createError(xhr.responseJSON?.message || err);
+                        createError(xhr.responseJSON?.message ?? err);
                     }
                 });
             });
@@ -881,7 +857,7 @@ import "../../js/nav-sidebar";
                 element.addClass("processing");
                 storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
                 $.ajax({
-                    url: "/api/v1/filestorage/file",
+                    url: "/api/v2/filestorage/file",
                     method: "PATCH",
                     data: {
                         file: {
@@ -890,22 +866,18 @@ import "../../js/nav-sidebar";
                         }
                     },
                     success: function(data) {
-                        if (data.success) {
-                            let index = storage.files.findIndex(f => f._id == file._id);
-                            storage.files[index].path = path;
-                            if ($selected?.attr("id") == file._id) deselectAll();
-                            updateFiles();
-                            createMessage(data.message);
-                        } else {
-                            createError(data.message);
-                        }
+                        let index = storage.files.findIndex(f => f._id == file._id);
+                        storage.files[index].path = path;
+                        if ($selected?.attr("id") == file._id) deselectAll();
+                        updateFiles();
+                        createMessage(data.message);
                         $(`#${file._id}`).removeClass("processing");
                         storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
                     },
                     error: function(xhr, status, err) {
                         $(`#${file._id}`).removeClass("processing");
                         storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
-                        createError(xhr.responseJSON?.message || err);
+                        createError(xhr.responseJSON?.message ?? err);
                     }
                 });
             });
@@ -921,7 +893,7 @@ import "../../js/nav-sidebar";
                 element.addClass("processing");
                 storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
                 $.ajax({
-                    url: "/api/v1/filestorage/file",
+                    url: "/api/v2/filestorage/file",
                     method: "DELETE",
                     data: {
                         file: {
@@ -929,27 +901,26 @@ import "../../js/nav-sidebar";
                         }
                     },
                     success: function(data) {
-                        if (data.success) {
-                            let index = storage.files.findIndex(f => f._id == file._id);
-                            storage.size -= storage.files[index].size;
-                            storage.files.splice(index, 1);
-                            if ($selected?.attr("id") == file._id) deselectAll();
-                            updateFiles();
-                            updateAvailableSize();
-                            createMessage(data.message);
-                        } else {
-                            createError(data.message);
-                        }
+                        let index = storage.files.findIndex(f => f._id == file._id);
+                        storage.size -= storage.files[index].size;
+                        storage.files.splice(index, 1);
+                        if ($selected?.attr("id") == file._id) deselectAll();
+                        updateFiles();
+                        updateAvailableSize();
+                        createMessage(data.message);
                         $(`#${file._id}`).removeClass("processing");
                     },
                     error: function(xhr, status, err) {
                         $(`#${file._id}`).removeClass("processing");
                         storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
-                        createError(xhr.responseJSON?.message || err);
+                        createError(xhr.responseJSON?.message ?? err);
                     }
                 });
             });
 
+            /**
+             * @type {JQuery<HTMLElement>}
+             */
             let $selected = undefined;
 
             updatePath();
@@ -963,17 +934,13 @@ import "../../js/nav-sidebar";
         }
 
         $.ajax({
-            url: "/api/v1/filestorage",
+            url: "/api/v2/filestorage",
             method: "GET",
             success: function(data) {
-                if (data.success) {
-                    loadStorage(data.storage);
-                } else {
-                    createError(data.message);
-                }
+                loadStorage(data.storage);
             },
             error: function(xhr, status, err) {
-                createError(xhr.responseJSON?.message || err);
+                createError(xhr.responseJSON?.message ?? err);
             }
         })
     }

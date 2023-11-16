@@ -28,7 +28,7 @@ module.exports = function(props) {
                 <script src={utils.bundleUrl("index.js")} />
                 <link rel="stylesheet" href={utils.bundleUrl("index.css")} />
             </Head>
-            <body>
+            <body data-theme={props.theme}>
                 <div id="user-card">
                     <header>
                         <UserButton {...props} />

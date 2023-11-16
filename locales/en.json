@@ -1,6 +1,7 @@
 {
     "test": "Test string",
     "api": {
+        "usermissing": "No logged-in user found",
         "error": {
             "404": "Endpoint does not exist"
         },

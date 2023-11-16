@@ -16,6 +16,11 @@ module.exports = function(props) {
                 <img id="img2" />
                 <img id="img3" />
             </div>
+            <div id="box">
+                <div className="inside-box" id="item-1">ITEM 1</div>
+                <div className="inside-box" id="item-2">ITEM 2</div>
+                <div className="inside-box" id="item-3">ITEM 3</div>
+            </div>
             <script src="/public/bundles/_test.js" />
             <link rel="stylesheet" href="/public/bundles/_test.css" />
         </>

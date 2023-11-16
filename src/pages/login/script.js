@@ -21,16 +21,11 @@ $(() => {
                 remember
             },
             success: function(data) {
-                if (data.success) {
-                    window.location.href = redirect;
-                } else {
-                    errorMessage.show();
-                    errorMessage.text(data.message);
-                }
+                window.location.href = redirect;
             },
             error: function(xhr, status, error) {
                 errorMessage.show();
-                errorMessage.text(error);
+                errorMessage.text(xhr.responseJSON?.message ?? error);
             }
         })
     });

@@ -1,5 +1,6 @@
 body {
     --bg-color: rgb(255, 255, 255);
+    --login-bg-color: rgb(240, 240, 240);
     --text-color: rgb(0, 0, 0);
     --submit-border-color: rgb(0, 0, 0);
     --submit-bg-color: rgb(0, 0, 0);
@@ -13,9 +14,16 @@ body {
     --back-bg-color-hover: rgb(0, 0, 0);
 }
 
-body.dark-theme {
+body[data-theme=dark] {
     --bg-color: rgb(0, 0, 0);
+    --login-bg-color: rgb(25, 25, 25);
     --text-color: rgb(255, 255, 255);
+    --submit-bg-color: rgb(255, 255, 255);
+    --submit-text-color: rgb(0, 0, 0);
+    --back-bg-color: rgb(255, 255, 255);
+    --back-text-color: rgb(0, 0, 0);
+    --submit-bg-color-hover: rgb(200, 200, 200);
+    --back-bg-color-hover: rgb(200, 200, 200);
 }
 
 body {
@@ -25,6 +33,7 @@ body {
 }
 
 #login-form {
+    background-color: var(--login-bg-color);
     display: flex;
     flex-direction: column;
     justify-content: space-between;

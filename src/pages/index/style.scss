@@ -1,22 +1,39 @@
 @import "../../css/control-panel.scss";
 
+body {
+    --main-color: hsl(0, 0%, 100%);
+    --secondary-color: hsl(0, 0%, 0%);
+    --tetriary-color: hsl(0, 0%, 100%);
+    --border-color: hsl(0, 0%, 0%);
+}
+
+body[data-theme=dark] {
+    --main-color: hsl(0, 0%, 0%);
+    --secondary-color: hsl(0, 0%, 100%);
+    --tetriary-color: hsl(0, 0%, 15%);
+    --border-color: hsl(0, 0%, 100%);
+}
+
 * {
     box-sizing: border-box;
 }
 
 body {
+    background-color: var(--main-color);
+    color: var(--secondary-color);
     width: 100vw;
     height: 100vh;
     margin: 0;
 }
 
 #user-card {
+    background-color: var(--tetriary-color);
     position: absolute;
     top: 50%;
     left: 50%;
     translate: -50% -50%;
     width: 60vw;
-    border: 1px solid black;
+    border: 1px solid var(--border-color);
     border-radius: 25px;
 }
 
@@ -32,8 +49,8 @@ body {
     flex-wrap: wrap;
     align-content: flex-start;
     padding: 20px 10px;
-    border-top: 1px solid black;
-    border-bottom: 1px solid black;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
     position: relative;
     overflow-y: scroll;
 }
@@ -44,7 +61,7 @@ body {
     height: 50px;
     margin: 10px;
     overflow: hidden;
-    border: 1px solid black;
+    border: 1px solid var(--border-color);
     border-radius: 10px;
     line-height: 15px;
     padding: 10px;
@@ -52,7 +69,7 @@ body {
 
 a, a:active, a:visited {
     text-decoration: none;
-    color: black;
+    color: var(--secondary-color);
 }
 
 #user-card footer {
@@ -60,13 +77,13 @@ a, a:active, a:visited {
 }
 
 #lang-dropdown, #theme-dropdown {
-    border: 1px solid rgb(0, 0, 0);
+    border: 1px solid var(--border-color);
     padding: 5px;
     border-radius: 10px;
 }
 
 #logout, #username {
-    border: 1px solid rgb(0, 0, 0);
+    border: 1px solid var(--border-color);
     padding: 5px;
     border-radius: 10px;
 }
