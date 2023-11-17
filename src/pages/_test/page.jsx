@@ -21,6 +21,7 @@ module.exports = function(props) {
                 <div className="inside-box" id="item-2">ITEM 2</div>
                 <div className="inside-box" id="item-3">ITEM 3</div>
             </div>
+            <iframe src="/" id="index-page" width="500" height="500"></iframe>
             <script src="/public/bundles/_test.js" />
             <link rel="stylesheet" href="/public/bundles/_test.css" />
         </>

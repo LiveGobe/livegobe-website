@@ -2,9 +2,10 @@ body {
     --text-color: black;
     --border-color: black;
     --background-color: white;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
 }
 
-body[data-theme="dark"] {
+body[data-theme=dark] {
     --text-color: white;
     --border-color: white;
     --background-color: rgb(20, 20, 20);
