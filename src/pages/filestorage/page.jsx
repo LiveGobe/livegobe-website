@@ -54,40 +54,45 @@ function Filestorage(props) {
                 <div id="folders-list" />
                 <div id="files-list" />
             </div>
-            <div id="filestorage-actions">
-                <input type="file" id="file-input" style={{ visibility: "hidden", position: "absolute", width: 0, height: 0}} />
-                <input type="file" id="files-input" multiple style={{ visibility: "hidden", position: "absolute", width: 0, height: 0}} />
-                <input type="hidden" id="create-folder-prompt" value={props.t("filestorage.message.folder.create")} />
-                <input type="hidden" id="folder-name-invalid" value={props.t("filestorage.message.folder.nameinvalid")} />
-                <input type="hidden" id="file-name-invalid" value={props.t("filestorage.message.file.nameinvalid")} />
-                <input type="hidden" id="files-name-invalid" value={props.t("filestorage.message.files.nameinvalid")} />
-                <input type="hidden" id="file-size-toobig" value={props.t("filestorage.message.file.toobig")} />
-                <input type="hidden" id="files-size-toobig" value={props.t("filestorage.message.files.toobig")} />
-                <input type="hidden" id="rename-folder-prompt" value={props.t("filestorage.message.folder.rename")} />
-                <input type="hidden" id="delete-folder-prompt" value={props.t("filestorage.message.folder.delete", {"0": "_"})} />
-                <input type="hidden" id="rename-file-prompt" value={props.t("filestorage.message.file.rename")} />
-                <input type="hidden" id="fexists" value={props.t("filestorage.message.fexists", {"0": "_"})} />
-                <input type="hidden" id="files-exists" value={props.t("filestorage.message.files.exists")} />
-                <input type="hidden" id="move-file-prompt" value={props.t("filestorage.message.file.move")} />
-                <input type="hidden" id="delete-file-prompt" value={props.t("filestorage.message.file.delete", {"0": "_"})} />
-                <input type="hidden" id="copy-file-link" value={props.t("filestorage.message.file.link")} />
-                <div id="default-actions">
-                    <div id="action-create-folder" className="unselectable action">{props.t("filestorage.action.default.createfolder")}</div>
-                    <div id="action-upload-file" className="unselectable action">{props.t("filestorage.action.default.uploadfile")}</div>
-                    <div id="action-upload-files" className="unselectable action">{props.t("filestorage.action.default.uploadfiles")}</div>
+            <div id="right-panel">
+                <div id="filestorage-actions">
+                    <input type="file" id="file-input" style={{ visibility: "hidden", position: "absolute", width: 0, height: 0}} />
+                    <input type="file" id="files-input" multiple style={{ visibility: "hidden", position: "absolute", width: 0, height: 0}} />
+                    <input type="hidden" id="create-folder-prompt" value={props.t("filestorage.message.folder.create")} />
+                    <input type="hidden" id="folder-name-invalid" value={props.t("filestorage.message.folder.nameinvalid")} />
+                    <input type="hidden" id="file-name-invalid" value={props.t("filestorage.message.file.nameinvalid")} />
+                    <input type="hidden" id="files-name-invalid" value={props.t("filestorage.message.files.nameinvalid")} />
+                    <input type="hidden" id="file-size-toobig" value={props.t("filestorage.message.file.toobig")} />
+                    <input type="hidden" id="files-size-toobig" value={props.t("filestorage.message.files.toobig")} />
+                    <input type="hidden" id="rename-folder-prompt" value={props.t("filestorage.message.folder.rename")} />
+                    <input type="hidden" id="delete-folder-prompt" value={props.t("filestorage.message.folder.delete", {"0": "_"})} />
+                    <input type="hidden" id="rename-file-prompt" value={props.t("filestorage.message.file.rename")} />
+                    <input type="hidden" id="fexists" value={props.t("filestorage.message.fexists", {"0": "_"})} />
+                    <input type="hidden" id="files-exists" value={props.t("filestorage.message.files.exists")} />
+                    <input type="hidden" id="move-file-prompt" value={props.t("filestorage.message.file.move")} />
+                    <input type="hidden" id="delete-file-prompt" value={props.t("filestorage.message.file.delete", {"0": "_"})} />
+                    <input type="hidden" id="copy-file-link" value={props.t("filestorage.message.file.link")} />
+                    <div id="default-actions">
+                        <div id="action-create-folder" className="unselectable action">{props.t("filestorage.action.default.createfolder")}</div>
+                        <div id="action-upload-file" className="unselectable action">{props.t("filestorage.action.default.uploadfile")}</div>
+                        <div id="action-upload-files" className="unselectable action">{props.t("filestorage.action.default.uploadfiles")}</div>
+                    </div>
+                    <div id="folder-actions" style={{display: "none"}}>
+                        <div id="action-open-folder" className="unselectable action">{props.t("filestorage.action.folder.open")}</div>
+                        <div id="action-rename-folder" className="unselectable action">{props.t("filestorage.action.folder.rename")}</div>
+                        <div id="action-delete-folder" className="unselectable action">{props.t("filestorage.action.folder.delete")}</div>
+                    </div>
+                    <div id="file-actions" style={{display: "none"}}>
+                        <div id="action-show-file" className="unselectable action">{props.t("filestorage.action.file.show")}</div>
+                        <div id="action-download-file" className="unselectable action">{props.t("filestorage.action.file.download")}</div>
+                        <div id="action-share-file" className="unselectable action">{props.t("filestorage.action.file.share")}</div>
+                        <div id="action-rename-file" className="unselectable action">{props.t("filestorage.action.file.rename")}</div>
+                        <div id="action-move-file" className="unselectable action">{props.t("filestorage.action.file.move")}</div>
+                        <div id="action-delete-file" className="unselectable action">{props.t("filestorage.action.file.delete")}</div>
+                    </div>
                 </div>
-                <div id="folder-actions" style={{display: "none"}}>
-                    <div id="action-open-folder" className="unselectable action">{props.t("filestorage.action.folder.open")}</div>
-                    <div id="action-rename-folder" className="unselectable action">{props.t("filestorage.action.folder.rename")}</div>
-                    <div id="action-delete-folder" className="unselectable action">{props.t("filestorage.action.folder.delete")}</div>
-                </div>
-                <div id="file-actions" style={{display: "none"}}>
-                    <div id="action-show-file" className="unselectable action">{props.t("filestorage.action.file.show")}</div>
-                    <div id="action-download-file" className="unselectable action">{props.t("filestorage.action.file.download")}</div>
-                    <div id="action-share-file" className="unselectable action">{props.t("filestorage.action.file.share")}</div>
-                    <div id="action-rename-file" className="unselectable action">{props.t("filestorage.action.file.rename")}</div>
-                    <div id="action-move-file" className="unselectable action">{props.t("filestorage.action.file.move")}</div>
-                    <div id="action-delete-file" className="unselectable action">{props.t("filestorage.action.file.delete")}</div>
+                <div id="preview">
+                    <div id="preview-content" />
                 </div>
             </div>
             <div id="filestorage-messages" />

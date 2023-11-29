@@ -35,12 +35,35 @@ body {
     overflow-y: auto;
 }
 
+#right-panel {
+    display: flex;
+    width: 20%;
+    overflow: hidden;
+    justify-content: space-between;
+    flex-direction: column;
+}
+
 #filestorage-actions {
     color: var(--fs-action-text-color);
     background-color: var(--fs-action-bg-color);
     border-left: 1px solid var(--fs-border-color);
-    width: 20%;
-    overflow: hidden;
+    height: 50%;
+}
+
+#preview {
+    height: 50%;
+    color: var(--fs-action-text-color);
+    background-color: var(--fs-action-bg-color);
+    border-left: 1px solid var(--fs-border-color);
+    border-top: 1px solid var(--fs-border-color);
+}
+
+#preview-content {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 #info-section-main {

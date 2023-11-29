@@ -68,6 +68,7 @@ import "../../js/nav-sidebar";
             const $browse = $("#filestorage-browse");
             $browse.on("click", function(e) {
                 deselectAll();
+                removePreview();
             });
 
             $(document).on("keydown", function(e) {
@@ -299,6 +300,7 @@ import "../../js/nav-sidebar";
                         $searchFilter.val("");
                         updateFolders();
                         updateFiles();
+                        removePreview();
                     });
 
                     $folders.append(element);
@@ -330,6 +332,7 @@ import "../../js/nav-sidebar";
                         $searchFilter.val("");
                         updateFolders();
                         updateFiles();
+                        removePreview();
                     });
                     
                     $folders.append(element);
@@ -369,6 +372,7 @@ import "../../js/nav-sidebar";
                         e.stopPropagation();
                         updateFileInfo(file);
                         selectElement(element);
+                        showPreview(file);
                     });
 
                     element.on("dblclick", function(e) {
@@ -378,6 +382,37 @@ import "../../js/nav-sidebar";
                     $files.append(element);
 
                 });
+            }
+
+            function removePreview() {
+                $("#preview-content").empty();
+            }
+
+            function showPreview(file) {
+                removePreview();
+                let $preview = $("#preview-content");
+                let extension = file.name.split(".").pop();
+                switch (extension) {
+                    case "jpeg":
+                    case "jpg":
+                    case "png":
+                    case "apng":
+                    case "svg":
+                    case "bmp":
+                    case "ico":
+                    case "gif":
+                    $preview.append($("<img>").attr("width", "90%").attr("alt", file.name).attr("src", `/filestorage/r/${storage.owner}/${file._id}`));
+                    break;
+                    case "mp3":
+                    case "wav":
+                    case "ogg":
+                    $preview.append($("<audio controls>").attr("width", "90%").attr("src", `/filestorage/r/${storage.owner}/${file._id}`));
+                    break;
+                    case "mp4":
+                    case "webm":
+                    $preview.append($("<video controls>").attr("controlslist", "nodownload").attr("width", "90%").attr("src", `/filestorage/r/${storage.owner}/${file._id}`));
+                    break;
+                }
             }
 
             const $availableSpace = $("#info-main-content span");
