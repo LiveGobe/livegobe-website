@@ -137,6 +137,7 @@ body {
     background-color: var(--fs-message-bg-color);
     border: 1px solid var(--fs-message-border-color);
     border-radius: 10px;
+    overflow-wrap: break-word;
 }
 
 .message:hover {
@@ -158,6 +159,7 @@ body {
     left: 0;
     display: flex;
     flex-direction: column-reverse;
+    max-height: 100%;
 }
 
 .upload-message {
@@ -174,6 +176,27 @@ body {
 
 .upload-message:hover {
     background-color: var(--fs-upload-hover-bg-color);
+}
+
+// Scroll bar
+.upload-message::-webkit-scrollbar {
+    width: 10px;
+}
+
+.upload-message::-webkit-scrollbar-track {
+    background: var(--fs-scrollbar-track-color);
+    border-radius: 20px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.upload-message::-webkit-scrollbar-thumb {
+    background: var(--fs-scrollbar-thumb-color);
+    border-radius: 20px;
+}
+
+.upload-message::-webkit-scrollbar-thumb:hover {
+    background: var(--fs-scrollbar-thumb-hover-color);
 }
 
 #upload-progress {
@@ -201,4 +224,14 @@ body {
 .highlighted {
     background-color: var(--fs-highlighted-background-color);
     color: var(--fs-highlighted-text-color);
+}
+
+#info-file-name, #info-folder-name {
+    overflow-wrap: break-word;
+}
+
+div.upload-message {
+    overflow-y: auto;
+    overflow-x: hidden;
+    overflow-wrap: break-word;
 }

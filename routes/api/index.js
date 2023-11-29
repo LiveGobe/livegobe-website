@@ -59,7 +59,7 @@ router.use("/v2", require("./v2"));
 
 // 404 hanler
 router.use((req, res) => {
-    res.status(404).json({ success: true, message: req.t("api.error.404") });
+    res.status(404).json({ message: req.t("api.error.404") });
 })
 
 module.exports = router;

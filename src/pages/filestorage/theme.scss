@@ -32,6 +32,9 @@ body {
     --fs-upload-border-color: rgb(0, 132, 163);
     --fs-progress-bg-color: rgb(0, 150, 0);
     --fs-progress-text-color: rgb(255, 255, 255);
+    --fs-scrollbar-track-color: rgb(0, 100, 122);
+    --fs-scrollbar-thumb-color: rgb(90, 196, 214);
+    --fs-scrollbar-thumb-hover-color: rgb(131, 200, 212);
 }
 
 body[data-theme="dark"] {

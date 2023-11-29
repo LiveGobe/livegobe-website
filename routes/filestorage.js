@@ -25,11 +25,11 @@ router.get("/browse/*", browseFilestorage);
 
 router.get("/v/:userId/:fileId", (req, res) => {
     FileStorage.findOne({ owner: req.params.userId }, "owner files").populate("owner").then(storage => {
-        if (!storage) return res.status(404).serve("404");
+        if (!storage) return res.status(404).serve("_404");
 
         let file = storage.files.find(file => file.id == req.params.fileId);
 
-        if (!file || (file.private && storage.owner.id != req.user?.id)) return res.status(404).serve("404");
+        if (!file || (file.private && storage.owner.id != req.user?.id)) return res.status(404).serve("_404");
         
         res.serve("filestorage-file", { file: file, user: req.user, owner: storage.owner });
     }).catch(err => {
@@ -39,13 +39,28 @@ router.get("/v/:userId/:fileId", (req, res) => {
 
 router.get("/d/:userId/:fileId", (req, res) => {
     FileStorage.findOne({ owner: req.params.userId }, "owner files").populate("owner").then(storage => {
-        if (!storage) return res.status(404).serve("404");
+        if (!storage) return res.sendStatus(404);
 
         let file = storage.files.find(file => file.id == req.params.fileId);
 
-        if (!file || (file.private && storage.owner.id != req.user?.id)) return res.status(404).serve("404");
+        if (!file || (file.private && storage.owner.id != req.user?.id)) return res.sendStatus(404);
 
         res.download(path.join(__dirname, "..", config.filestorage.path, `${storage.owner.id}${file.path}${file.name}`), file.name);
+    }).catch(err => {
+        console.log(err)
+        res.status(500).serve("500", { message: err });
+    });
+});
+
+router.get("/r/:userId/:fileId", (req, res) => {
+    FileStorage.findOne({ owner: req.params.userId }, "owner files").populate("owner").then(storage => {
+        if (!storage) return res.sendStatus(404);
+
+        let file = storage.files.find(file => file.id == req.params.fileId);
+
+        if (!file || (file.private && storage.owner.id != req.user?.id)) return res.sendStatus(404);
+
+        res.sendFile(path.join(__dirname, "..", config.filestorage.path, `${storage.owner.id}${file.path}${file.name}`), file.name);
     }).catch(err => {
         console.log(err)
         res.status(500).serve("500", { message: err });
