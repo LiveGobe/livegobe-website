@@ -169,11 +169,13 @@
     "user": {
         "profile": "Профиль",
         "settings": "Настройки",
-        "logout": "Выйти"
+        "logout": "Выйти",
+        "login": "Войти"
     },
     "navigation": {
         "home": "Главная",
         "filestorage": "Файловое Хранилище",
+        "filestorageFile": "Файловое Хранилище - Скачать Файл",
         "passwordgenerator": "Генератор Паролей"
     },
     "copyright": "LiveGobe © 2022"

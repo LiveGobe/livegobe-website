@@ -49,5 +49,6 @@ module.exports = {
     filestorage: {
         path: "/filestorage/"
     },
-    port: 8080
+    port: 8080,
+    domainName: "your domain name"
 }

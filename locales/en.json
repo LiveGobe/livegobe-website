@@ -169,11 +169,13 @@
     "user": {
         "profile": "Profile",
         "settings": "Settings",
-        "logout": "Logout"
+        "logout": "Logout",
+        "login": "Login"
     },
     "navigation": {
         "home": "Home",
         "filestorage": "File Storage",
+        "filestorageFile": "File Storage - Download a File",
         "passwordgenerator": "Password Generator"
     },
     "copyright": "LiveGobe © 2022"

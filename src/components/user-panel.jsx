@@ -1,7 +1,7 @@
 const React = require('react');
 
 function UserPanel(props) {
-    if (!props.user) return (<div id="login"><a href="/login">{props.t("user.login")}</a></div>);
+    if (!props.user) return (<div id="login"><a href={`/login${props.loginRedirectLink ? "?redirect=" + props.loginRedirectLink : ""}`}>{props.t("user.login")}</a></div>);
 
     return (
         <div id="user-panel" className="dropdown">

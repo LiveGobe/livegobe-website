@@ -2,6 +2,7 @@ const React = require('react');
 const Head = require('../../components/head');
 const ControlPanel = require('../../components/control-panel');
 const utils = require('../../../bin/utils');
+const config = require("../../../config");
 
 function FilePage(props) {
     return (
@@ -12,11 +13,11 @@ function FilePage(props) {
                     <meta property="og:title" content={`Download ${props.file.name}`} />
                     <meta property="og:image" content={utils.staticUrl("images/home.png")} />
                     <meta property="og:description" content="Download a file from filestorage" />
-                    <meta property="og:url" content={`https://livegobe.ru/v/${props.owner.id}/${props.file.id}`} />
+                    <meta property="og:url" content={`https://${config.domainName}/filestorage/v/${props.owner.id}/${props.file.id}`} />
                 </Head>
             </head>
             <body data-theme={props.theme}>
-                <ControlPanel {...props} page="filestorage" />
+                <ControlPanel {...props} page="filestorageFile" loginRedirectLink={`/filestorage/v/${props.owner.id}/${props.file.id}`} />
                 <div id="content" className="center">
                     <h1>{`${props.file.name} - ${utils.formatBytes(props.file.size)}`}</h1>
                     <div id="owner">{`${props.t("filestorage.file.owner")}: `}<a href={`/users/${props.owner.username}`} target="_blank">{props.owner.name}</a></div>

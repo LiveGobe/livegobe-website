@@ -2,6 +2,7 @@ const React = require('react');
 const Head = require("../../components/head");
 const ControlPanel = require('../../components/control-panel');
 const utils = require("../../../bin/utils");
+const config = require("../../../config");
 
 function Filestorage(props) {
     if (!props.storage) return (
@@ -107,11 +108,11 @@ function FilestorageBrowse(props) {
             <head>
                 <Head title={props.t("filestorage.title")}>
                     <link rel="stylesheet" href={utils.bundleUrl("filestorage.css")} />
-                    <link rel="alternate" href="https://livegobe.ru/filestorage/browse" hrefLang="x-default" />
+                    <link rel="alternate" href={`https://${config.domainName}/filestorage/browse`} hrefLang="x-default" />
                     <meta property="og:title" content="Filestorage" />
                     <meta property="og:image" content={utils.staticUrl("images/home.png")} />
-                    <meta property="og:description" content="Filestorage application on livegobe.ru" />
-                    <meta property="og:url" content="https://livegobe.ru/filestorage/browse" />
+                    <meta property="og:description" content={`Filestorage application on ${config.domainName}`} />
+                    <meta property="og:url" content={`https://${config.domainName}/filestorage/browse`} />
                 </Head>
             </head>
             <body data-theme={props.theme}>

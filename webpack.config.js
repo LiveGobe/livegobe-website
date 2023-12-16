@@ -20,7 +20,7 @@ function renderFile(page) {
         // render component
         let result = config.render.doctype + renderToStaticMarkup(createElement(component));
         // save it to output folder
-        let pageName = path.dirname(page).split("\\").at(-1).slice(config.render.keepPrefix ? 0 : config.render.staticPrefix.length);
+        let pageName = path.dirname(page).split(/\\|\//).at(-1).slice(config.render.keepPrefix ? 0 : config.render.staticPrefix.length);
         fs.mkdirSync(staticDir, { recursive: true });
         fs.writeFileSync(path.join(staticDir, pageName + ".html"), result);
         console.log(`Static page ${colors.yellow(pageName)} rendered ${colors.green("sccessfully")}`);

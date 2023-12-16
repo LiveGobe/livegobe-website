@@ -47,7 +47,6 @@ router.get("/d/:userId/:fileId", (req, res) => {
 
         res.download(path.join(__dirname, "..", config.filestorage.path, `${storage.owner.id}${file.path}${file.name}`), file.name);
     }).catch(err => {
-        console.log(err)
         res.status(500).serve("500", { message: err });
     });
 });
@@ -62,7 +61,6 @@ router.get("/r/:userId/:fileId", (req, res) => {
 
         res.sendFile(path.join(__dirname, "..", config.filestorage.path, `${storage.owner.id}${file.path}${file.name}`), file.name);
     }).catch(err => {
-        console.log(err)
         res.status(500).serve("500", { message: err });
     });
 });
