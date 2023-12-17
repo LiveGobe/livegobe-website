@@ -18,7 +18,12 @@ function Filestorage(props) {
                 <div id="info-section-folder" style={{display: "none"}} />
             </div>
             <div id="filestorage-browse" />
-            <div id="filestorage-actions" />
+            <div id="right-panel">
+                <div id="filestorage-actions" />
+                <div id="preview">
+                    <div id="preview-content" />
+                </div>
+            </div>
         </div>
     );
 
@@ -104,7 +109,7 @@ function Filestorage(props) {
 
 function FilestorageBrowse(props) {
     return (
-        <html lang={props.lang}>
+        <html lang={props.language}>
             <head>
                 <Head title={props.t("filestorage.title")}>
                     <link rel="stylesheet" href={utils.bundleUrl("filestorage.css")} />
