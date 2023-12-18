@@ -113,12 +113,15 @@
             "title": "Download {file}",
             "owner": "Owner",
             "md5": "MD5",
-            "download": "Download"
+            "download": "Download",
+            "show": "Show {0}"
         },
         "search": "Search...",
         "folder": {
             "name": "Name",
-            "size": "Size"
+            "size": "Size",
+            "back": "Go Back",
+            "open": "Open {0}"
         },
         "action": {
             "default": {

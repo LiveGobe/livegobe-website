@@ -1,6 +1,9 @@
 import { formatBytes, filenameValid, foldernameValid, formatTime } from "../../js/utils";
 import $ from "jquery";
 import "../../js/nav-sidebar";
+import i18n from "../../js/repack-locales";
+
+await i18n.init();
 
 !function() {
     const createButton = $("#create-storage");
@@ -284,7 +287,7 @@ import "../../js/nav-sidebar";
                 $folders.empty();
 
                 if (storage.path != "/") {
-                    let element = $("<div>").text("..").attr("id", "back").addClass(["folder", "unselectable"]).attr("title", "Go back");
+                    let element = $("<div>").text("..").attr("id", "back").addClass(["folder", "unselectable"]).attr("title", i18n.t("filestorage.folder.back"));
 
                     element.on("click", function(e) {
                         e.stopPropagation();
@@ -314,7 +317,7 @@ import "../../js/nav-sidebar";
                         folderName = folderName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                     }
                     
-                    let element = $("<div>").attr("id", folder._id).html(folderName).addClass(["folder", "unselectable"]).attr("title", `Open ${folder.name}`);
+                    let element = $("<div>").attr("id", folder._id).html(folderName).addClass(["folder", "unselectable"]).attr("title", i18n.t("filestorage.folder.open", { 0: folder.name}));
                     if (storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing) element.addClass("processing");
 
                     element.on("click", function(e) {
@@ -365,7 +368,7 @@ import "../../js/nav-sidebar";
                         fileName = fileName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                     }
 
-                    let element = $("<div>").attr("id", file._id).html(fileName).addClass(["file", "unselectable"]).attr("title", `Show ${file.name}`);
+                    let element = $("<div>").attr("id", file._id).html(fileName).addClass(["file", "unselectable"]).attr("title", i18n.t("filestorage.file.show", { 0: file.name }));
                     if (storage.files[storage.files.findIndex(n => n._id == file._id)].processing) element.addClass("processing");
 
                     element.on("click", function(e) {
@@ -589,7 +592,7 @@ import "../../js/nav-sidebar";
 
             const $uploadFile = $("#action-upload-file");
             $uploadFile.on("click", function(e) {
-                $fileInput.click();
+                $fileInput.trigger("click");
             });
 
             const $filesInput = $("#files-input");
@@ -701,18 +704,13 @@ import "../../js/nav-sidebar";
 
             const $uploadFiles = $("#action-upload-files");
             $uploadFiles.on("click", function(e) {
-                $filesInput.click();
+                $filesInput.trigger("click");
             });
 
             const $openFolder = $("#action-open-folder");
             $openFolder.on("click", function(e) {
                 if ($selected.hasClass("processing")) return;
-                window.history.pushState(null, null, `/filestorage/browse${storage.path}${encodeURI($selected.text())}`);
-                hideInfo();
-                hideActions();
-                updatePath();
-                updateFolders();
-                updateFiles();
+                $selected.trigger("dblclick");
             });
 
             const $renameFolder = $("#action-rename-folder");

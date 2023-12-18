@@ -113,12 +113,15 @@
             "title": "Скачать {file}",
             "owner": "Владелец",
             "md5": "MD5",
-            "download": "Скачать"
+            "download": "Скачать",
+            "show": "Показать {0}"
         },
         "search": "Поиск...",
         "folder": {
             "name": "Имя",
-            "size": "Размер"
+            "size": "Размер",
+            "back": "Назад",
+            "open": "Открыть {0}"
         },
         "action": {
             "default": {
