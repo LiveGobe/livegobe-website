@@ -109,7 +109,7 @@
             "name": "Имя",
             "size": "Размер",
             "privacy": "Приватный",
-            "date": "Дата Загрузкии",
+            "date": "Дата Загрузки",
             "title": "Скачать {file}",
             "owner": "Владелец",
             "md5": "MD5",
@@ -181,5 +181,5 @@
         "filestorageFile": "Файловое Хранилище - Скачать Файл",
         "passwordgenerator": "Генератор Паролей"
     },
-    "copyright": "LiveGobe © 2022"
+    "copyright": "LiveGobe © 2022-2024"
 }
