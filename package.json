@@ -25,14 +25,14 @@
     "helmet": "^6.2.0",
     "jquery": "^3.7.1",
     "jquery.hotkeys": "^0.1.0",
-    "mongoose": "^7.6.7",
+    "mongoose": "^7.6.8",
     "passport": "^0.7.0",
     "passport-custom": "^1.1.1",
     "passport-local": "^1.0.0",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "socket.io-client": "^4.7.3",
-    "socket.io": "^4.7.2",
+    "socket.io": "^4.7.3",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
