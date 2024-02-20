@@ -26,7 +26,6 @@ body {
     border-radius: 20px;
     color: var(--fsf-text-color);
     background-color: var(--fsf-content-bg-color);
-    overflow: hidden;
 }
 
 #owner a:link, #owner a:visited {
@@ -55,4 +54,11 @@ body {
 #content h1, #content div {
     overflow-wrap: normal;
     text-align: center;
+}
+
+@media screen and (max-width: 600px) {
+    #content {
+        width: 100%;
+        height: 80%;
+    }
 }
