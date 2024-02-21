@@ -56,7 +56,7 @@ module.exports = function(props) {
                         <a href="/password_generator">{props.t("page.index.content.tools.passwordgenerator")}</a>
                     </div>
                     <footer>
-                        <span id="copyright">LiveGobe © 2022</span>
+                        <span id="copyright">{props.t("copyright")}</span>
                     </footer>
                 </div>
             </body>
