@@ -939,7 +939,10 @@ await i18n.init();
                         let index = storage.files.findIndex(f => f._id == file._id);
                         storage.size -= storage.files[index].size;
                         storage.files.splice(index, 1);
-                        if ($selected?.attr("id") == file._id) deselectAll();
+                        if ($selected?.attr("id") == file._id) {
+                            deselectAll();
+                            removePreview();
+                        }
                         updateFiles();
                         updateAvailableSize();
                         createMessage(data.message);
