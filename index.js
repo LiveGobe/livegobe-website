@@ -17,7 +17,7 @@ const routes = require("./routes");
 async function main() {
     // Connet to DB
     try {
-        await mongoose.connect(process.env.NODE_ENV == "production" ? config.mongodb.uriProd : config.mongodb.uriDev, { useNewUrlParser: true });
+        await mongoose.connect(process.env.NODE_ENV == "production" ? config.mongodb.uriProd : config.mongodb.uriDev);
     } catch (e) {
         console.error(e);
         process.exit(1);
