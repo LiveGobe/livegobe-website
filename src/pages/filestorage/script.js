@@ -562,6 +562,7 @@ await i18n.init();
                             }
                         });
                         $upload.on("click", function() {
+                            if (loaded >= total) return;
                             aborted = true;
                             xhr.abort();
                         });
@@ -674,6 +675,7 @@ await i18n.init();
                             }
                         });
                         $upload.on("click", function() {
+                            if (loaded >= total) return;
                             aborted = true;
                             xhr.abort();
                         });

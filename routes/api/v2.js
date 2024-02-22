@@ -163,7 +163,7 @@ router.route("/filestorage/folder").post((req, res) => {
     });
 });
 
-router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFileDir: path.join(process.cwd(), "tmp"), defParamCharset: "utf-8", uploadTimeout: 0, debug: true }), (req, res) => {
+router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFileDir: path.join(process.cwd(), "tmp"), defParamCharset: "utf-8" }), (req, res) => {
     if (!req.user) return res.status(403).json({ message: req.t("api.usermissing") });
 
     let filePath = req.query.path || req.body.path;
