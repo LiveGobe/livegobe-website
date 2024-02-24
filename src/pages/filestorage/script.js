@@ -574,6 +574,7 @@ await i18n.init();
                     cache: false,
                     contentType: false,
                     processData: false,
+                    timeout: 0,
                     success: function(data) {
                         storage.files.push(data.file);
                         storage.size += data.file.size;
@@ -687,6 +688,7 @@ await i18n.init();
                     cache: false,
                     contentType: false,
                     processData: false,
+                    timeout: 0,
                     success: function(data) {
                         storage.files = storage.files.concat(data.files);
                         data.files.forEach(f => storage.size += f.size);
