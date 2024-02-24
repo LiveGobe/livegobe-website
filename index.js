@@ -102,7 +102,7 @@ async function main() {
     });
 
     // Socket Server
-    const httpServer = http.createServer(app);
+    const httpServer = http.createServer({ requestTimeout: 60 * 60 * 1000 }, app);
     const io = new sio.Server(httpServer);
 
     // Socket Handling
