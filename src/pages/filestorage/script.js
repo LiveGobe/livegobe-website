@@ -503,6 +503,9 @@ await i18n.init();
                 })
             });
 
+            // Uploads counter for safety
+            let uploadsInProgress = 0;
+
             const $fileInput = $("#file-input");
             $fileInput.on("change", function(e) {
                 let file = $fileInput[0].files[0];
@@ -541,6 +544,7 @@ await i18n.init();
                     uploadHovered = false;
                     $progressText.text(percent + "%");
                 });
+                uploadsInProgress += 1;
 
                 $.ajax({
                     xhr: function() {
@@ -588,6 +592,7 @@ await i18n.init();
                     complete: function() {
                         $upload.remove();
                         $fileInput.val("");
+                        uploadsInProgress -= 1;
                     }
                 })
             });
@@ -655,6 +660,7 @@ await i18n.init();
                     uploadHovered = false;
                     $progressText.text(percent + "%");
                 });
+                uploadsInProgress += 1;
 
                 $.ajax({
                     xhr: function() {
@@ -702,6 +708,7 @@ await i18n.init();
                     complete: function() {
                         $upload.remove();
                         $filesInput.val("");
+                        uploadsInProgress -= 1;
                     }
                 })
             });
@@ -973,6 +980,8 @@ await i18n.init();
             updateFolders();
             updateFiles();
             updateAvailableSize();
+
+            window.onbeforeunload = () => { if (uploadsInProgress > 0) return "Prevent" }
         }
 
         $.ajax({
