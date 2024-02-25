@@ -468,6 +468,7 @@ await i18n.init();
 
             const $searchFilter = $("#search-field");
             $searchFilter.on("input", function(e) {
+                if (storage.processing) return;
                 updateFolders();
                 updateFiles();
             });
@@ -478,8 +479,36 @@ await i18n.init();
                 createMessage(copyPathMessage);
             });
 
+            const $refresh = $("#refresh");
+            $refresh.on("click", function(e) {
+                $files.empty();
+                $folders.empty();
+                $availableSpace.text(availableSpace);
+                storage.processing = true;
+                hideActions();
+
+                $.ajax({
+                    url: "/api/v2/filestorage",
+                    method: "GET",
+                    success: function(data) {
+                        storage = data.storage;
+                        updatePath();
+                        updateAvailableSize();
+                        updateFiles();
+                        updateFolders();
+                    },
+                    error: function(xhr, status, err) {
+                        createError(xhr.responseJSON?.message ?? err);
+                    },
+                    complete: function() {
+                        storage.processing = undefined;
+                    }
+                })
+            });
+
             const $createFolder = $("#action-create-folder");
             $createFolder.on("click", function(e) {
+                if (storage.processing) return;
                 let name = prompt(createFolderPrompt);
                 if (!name) return;
                 if (!foldernameValid(name)) return createError(folderNameInvalid);
@@ -599,6 +628,7 @@ await i18n.init();
 
             const $uploadFile = $("#action-upload-file");
             $uploadFile.on("click", function(e) {
+                if (storage.processing) return;
                 $fileInput.trigger("click");
             });
 
@@ -715,6 +745,7 @@ await i18n.init();
 
             const $uploadFiles = $("#action-upload-files");
             $uploadFiles.on("click", function(e) {
+                if (storage.processing) return;
                 $filesInput.trigger("click");
             });
 

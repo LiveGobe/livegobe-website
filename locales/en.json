@@ -144,6 +144,7 @@
             }
         },
         "copypath": "Copy Path",
+        "refresh": "Refresh",
         "message": {
             "copypath": "Path successfully copied to clipboard",
             "fexists": "File/Folder {0} already exists",
