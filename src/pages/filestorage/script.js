@@ -481,6 +481,7 @@ await i18n.init();
 
             const $refresh = $("#refresh");
             $refresh.on("click", function(e) {
+                $refresh.prop("disabled", true);
                 $files.empty();
                 $folders.empty();
                 $availableSpace.text(availableSpace);
@@ -502,6 +503,7 @@ await i18n.init();
                     },
                     complete: function() {
                         storage.processing = undefined;
+                        $refresh.prop("disabled", false);
                     }
                 })
             });
