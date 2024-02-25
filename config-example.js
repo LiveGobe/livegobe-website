@@ -50,5 +50,8 @@ module.exports = {
         path: "/filestorage/"
     },
     port: 8080,
-    domainName: "your domain name"
+    domainName: "your domain name",
+    server: {
+        requestTimeout: 60 * 60 * 1000
+    }
 }
