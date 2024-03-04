@@ -100,6 +100,9 @@ dist
 # Publicly available files
 public/
 
+# VS Code config
+.vscode/
+
 # vuepress build output
 .vuepress/dist
 
