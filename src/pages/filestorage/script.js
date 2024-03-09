@@ -293,6 +293,7 @@ await i18n.init();
                         e.stopPropagation();
                         selectElement(element);
                         hideInfo();
+                        removePreview();
                     });
 
                     element.on("dblclick", function(e) {
@@ -324,6 +325,7 @@ await i18n.init();
                         e.stopPropagation();
                         updateFolderInfo(folder);
                         selectElement(element);
+                        removePreview();
                     });
 
                     element.on("dblclick", function(e) {
@@ -534,7 +536,6 @@ await i18n.init();
                 })
             });
 
-            // Uploads counter for safety
             let uploadsInProgress = 0;
 
             const $fileInput = $("#file-input");
