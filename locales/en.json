@@ -1,186 +1,217 @@
 {
-    "test": "Test string",
-    "api": {
-        "usermissing": "No logged-in user found",
-        "error": {
-            "404": "Endpoint does not exist"
-        },
-        "locales": {
-            "message": {
-                "success": "Language {0} loaded successfully",
-                "fail": "Loaded fallback language"
-            }
-        },
-        "login": {
-            "loggedin": "Already logged in",
-            "invalid": "Invalid login or password",
-            "success": "Login successful"
-        },
-        "filestorage": {
-            "exists": "Filestorage already exists",
-            "success": "Successfully created filestorage",
-            "pathmissing": "Path is not specified",
-            "pathinvalid": "Specified path does not exist",
-            "missing": "Storage does not exist, create it first",
-            "filemissing": "No files to upload",
-            "fexists": "File/Folder {0} already exists",
-            "folder": {
-                "namemissing": "Folder name is missing",
-                "nameinvalid": "Folder name is invalid",
-                "created": "Folder {0} successfully created",
-                "idmissing": "Folder ID is missing",
-                "idinvalid": "Specified folder does not exist",
-                "unchanged": "Folder is unchanged",
-                "changed": "Folder {0} successfully updated",
-                "deleted": "Folder {0} successfully deleted"
-            },
-            "file": {
-                "toobig": "File is too big",
-                "uploaded": "File {0} successfully uploaded",
-                "idinvalid": "Specified file does not exist",
-                "nameinvalid": "File name is invalid",
-                "unchanged": "File is unchanged",
-                "changed": "File {0} successfully updated",
-                "deleted": "File {0} successfully deleted"
-            },
-            "files": {
-                "skipped": "Upload skipped, all files exist",
-                "toobig": "Files are too big",
-                "uploaded": "{0} files successfully uploaded, {1} files skipped, {2} files failed"
-            }
-        }
+  "test": "Test string",
+  "api": {
+    "usermissing": "No logged-in user found",
+    "error": {
+      "404": "Endpoint does not exist"
     },
-    "theme": {
-        "switch": "Switch Theme"
+    "locales": {
+      "message": {
+        "success": "Language {0} loaded successfully",
+        "fail": "Loaded fallback language"
+      }
     },
-    "page": {
-        "index": {
-            "name": "Main Page",
-            "content": {
-                "tools": {
-                    "admin": "Admin Tools",
-                    "filestorage": "Filestorage",
-                    "passwordgenerator": "Password Generator",
-                    "gallery": "Gallery"
-                },
-                "language": "Lang",
-                "theme": {
-                    "name": "Theme",
-                    "light": "Light",
-                    "dark": "Dark"
-                }
-            }
-        },
-        "login": {
-            "name": "Login",
-            "content": {
-                "username": "Username",
-                "password": "Password",
-                "remember": "Remember me",
-                "submit": "Login",
-                "back": "Return"
-            }
-        },
-        "passwordgenerator": {
-            "back": "Return",
-            "title": "LG Password Generator",
-            "passwordhere": "Your password will appear here",
-            "generate": "Generate",
-            "passwordlength": "Length of the password (5-75)",
-            "includenumbers": "Include numbers (0-9)",
-            "includeuppercase": "Include uppercase letters (A-Z)",
-            "includespecial": "Include special symbols (!@#$%^&*()-+_=[]{},./?<>)",
-            "copytoclipboard": "Copy generated password to clipboard"
-        },
-        "users": {
-            "name": "Users List"
-        },
-        "users-user": {
-            "name": "{0} User Profile"
-        }
+    "login": {
+      "loggedin": "Already logged in",
+      "invalid": "Invalid login or password",
+      "success": "Login successful"
     },
     "filestorage": {
-        "title": "File Storage",
-        "create": {
-            "message": "No filestorage found, create one",
-            "button": "Create Filestorage"
-        },
-        "file": {
-            "name": "Name",
-            "size": "Size",
-            "privacy": "Private",
-            "date": "Uploaded",
-            "title": "Download {file}",
-            "owner": "Owner",
-            "md5": "MD5",
-            "download": "Download",
-            "show": "Show {0}"
-        },
-        "search": "Search...",
-        "folder": {
-            "name": "Name",
-            "size": "Size",
-            "back": "Go Back",
-            "open": "Open {0}"
-        },
-        "action": {
-            "default": {
-                "createfolder": "Create Folder",
-                "uploadfile": "Upload File",
-                "uploadfiles": "Upload Files"
-            },
-            "folder": {
-                "open": "Open",
-                "rename": "Rename",
-                "delete": "Delete"
-            },
-            "file": {
-                "show": "Show",
-                "download": "Download",
-                "share": "Share link",
-                "rename": "Rename",
-                "move": "Move",
-                "delete": "Delete"
-            }
-        },
-        "copypath": "Copy Path",
-        "refresh": "Refresh",
-        "message": {
-            "copypath": "Path successfully copied to clipboard",
-            "fexists": "File/Folder {0} already exists",
-            "folder": {
-                "create": "Folder name:",
-                "nameinvalid": "Folder name is invalid",
-                "rename": "New folder name:",
-                "delete": "Are you sure you want to delete {0} files?"
-            },
-            "file": {
-                "nameinvalid": "File name is invalid",
-                "rename": "New file name:",
-                "toobig": "File is too big",
-                "move": "Move to folder:",
-                "link": "Copied link to clipboard",
-                "delete": "Are you sure you want to delete {0}?"
-            },
-            "files": {
-                "nameinvalid": "One or more files have invalid names",
-                "toobig": "Files are too big",
-                "exists": "Selected files already exist"
-            }
-        },
-        "available": "{0} of {1} available"
+      "exists": "Filestorage already exists",
+      "success": "Successfully created filestorage",
+      "pathmissing": "Path is not specified",
+      "pathinvalid": "Specified path does not exist",
+      "missing": "Storage does not exist, create it first",
+      "filemissing": "No files to upload",
+      "fexists": "File/Folder {0} already exists",
+      "folder": {
+        "namemissing": "Folder name is missing",
+        "nameinvalid": "Folder name is invalid",
+        "created": "Folder {0} successfully created",
+        "idmissing": "Folder ID is missing",
+        "idinvalid": "Specified folder does not exist",
+        "unchanged": "Folder is unchanged",
+        "changed": "Folder {0} successfully updated",
+        "deleted": "Folder {0} successfully deleted"
+      },
+      "file": {
+        "toobig": "File is too big",
+        "uploaded": "File {0} successfully uploaded",
+        "idinvalid": "Specified file does not exist",
+        "nameinvalid": "File name is invalid",
+        "unchanged": "File is unchanged",
+        "changed": "File {0} successfully updated",
+        "deleted": "File {0} successfully deleted"
+      },
+      "files": {
+        "skipped": "Upload skipped, all files exist",
+        "toobig": "Files are too big",
+        "uploaded": "{0} files successfully uploaded, {1} files skipped, {2} files failed"
+      }
     },
-    "user": {
-        "profile": "Profile",
-        "settings": "Settings",
-        "logout": "Logout",
-        "login": "Login"
+    "settings": {
+      "api": {
+        "changed": "Your API key was updated"
+      },
+      "name": {
+        "changed": "Your name was successfully changed",
+        "missing": "New name is missing",
+        "notchanged": "Name was not changed"
+      }
+    }
+  },
+  "theme": {
+    "switch": "Switch Theme"
+  },
+  "page": {
+    "index": {
+      "name": "Main Page",
+      "content": {
+        "tools": {
+          "admin": "Admin Tools",
+          "filestorage": "Filestorage",
+          "passwordgenerator": "Password Generator",
+          "gallery": "Gallery",
+          "settings": "Settings"
+        },
+        "language": "Lang",
+        "theme": {
+          "name": "Theme",
+          "light": "Light",
+          "dark": "Dark"
+        }
+      }
     },
-    "navigation": {
-        "home": "Home",
-        "filestorage": "File Storage",
-        "filestorageFile": "File Storage - Download a File",
-        "passwordgenerator": "Password Generator"
+    "login": {
+      "name": "Login",
+      "content": {
+        "username": "Username",
+        "password": "Password",
+        "remember": "Remember me",
+        "submit": "Login",
+        "back": "Return"
+      }
     },
-    "copyright": "LiveGobe © 2022-2024"
+    "passwordgenerator": {
+      "back": "Return",
+      "title": "LG Password Generator",
+      "passwordhere": "Your password will appear here",
+      "generate": "Generate",
+      "passwordlength": "Length of the password (5-75)",
+      "includenumbers": "Include numbers (0-9)",
+      "includeuppercase": "Include uppercase letters (A-Z)",
+      "includespecial": "Include special symbols (!@#$%^&*()-+_=[]{},./?<>)",
+      "copytoclipboard": "Copy generated password to clipboard"
+    },
+    "users": {
+      "name": "Users List"
+    },
+    "users-user": {
+      "name": "{0} User Profile"
+    },
+    "settings": {
+      "name": "User Settings",
+      "back": "Return",
+      "title": "Your User Profile Settings",
+      "displayname": {
+        "label": "Your displayed name",
+        "change": "Change displayed name",
+        "message": "Choose a new display name"
+      },
+      "username": "Your login username",
+      "apikey": "Your API key",
+      "api": {
+        "reveal": "Show key",
+        "copy": "Copy key",
+        "copymessage": "API key was copied to clipboard",
+        "regenerate": "Regenerate key",
+        "confirm": "Are you sure? (This action is irreversable)"
+      },
+      "showfilepreview": "Show files preview"
+    }
+  },
+  "filestorage": {
+    "title": "File Storage",
+    "create": {
+      "message": "No filestorage found, create one",
+      "button": "Create Filestorage"
+    },
+    "file": {
+      "name": "Name",
+      "size": "Size",
+      "privacy": "Private",
+      "date": "Uploaded",
+      "title": "Download {file}",
+      "owner": "Owner",
+      "md5": "MD5",
+      "download": "Download",
+      "show": "Show {0}"
+    },
+    "search": "Search...",
+    "folder": {
+      "name": "Name",
+      "size": "Size",
+      "back": "Go Back",
+      "open": "Open {0}"
+    },
+    "action": {
+      "default": {
+        "createfolder": "Create Folder",
+        "uploadfile": "Upload File",
+        "uploadfiles": "Upload Files"
+      },
+      "folder": {
+        "open": "Open",
+        "rename": "Rename",
+        "delete": "Delete"
+      },
+      "file": {
+        "show": "Show",
+        "download": "Download",
+        "share": "Share link",
+        "rename": "Rename",
+        "move": "Move",
+        "delete": "Delete"
+      }
+    },
+    "copypath": "Copy Path",
+    "refresh": "Refresh",
+    "message": {
+      "copypath": "Path successfully copied to clipboard",
+      "fexists": "File/Folder {0} already exists",
+      "folder": {
+        "create": "Folder name:",
+        "nameinvalid": "Folder name is invalid",
+        "rename": "New folder name:",
+        "delete": "Are you sure you want to delete {0} files?"
+      },
+      "file": {
+        "nameinvalid": "File name is invalid",
+        "rename": "New file name:",
+        "toobig": "File is too big",
+        "move": "Move to folder:",
+        "link": "Copied link to clipboard",
+        "delete": "Are you sure you want to delete {0}?"
+      },
+      "files": {
+        "nameinvalid": "One or more files have invalid names",
+        "toobig": "Files are too big",
+        "exists": "Selected files already exist"
+      }
+    },
+    "available": "{0} of {1} available"
+  },
+  "user": {
+    "profile": "Profile",
+    "settings": "Settings",
+    "logout": "Logout",
+    "login": "Login"
+  },
+  "navigation": {
+    "home": "Home",
+    "filestorage": "File Storage",
+    "filestorageFile": "File Storage - Download a File",
+    "passwordgenerator": "Password Generator"
+  },
+  "copyright": "LiveGobe © 2022-2024"
 }
