@@ -56,7 +56,8 @@
       "name": {
         "changed": "Your name was successfully changed",
         "missing": "New name is missing",
-        "notchanged": "Name was not changed"
+        "notchanged": "Name was not changed",
+        "toolong": "Name must be of length 25 or less"
       }
     }
   },

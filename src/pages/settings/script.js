@@ -46,6 +46,7 @@ $(() => {
         const newName = prompt(i18n.t("page.settings.displayname.message"), name);
 
         if (newName == name || !newName) return;
+        if (newName.length > 25) return createError(i18n.t("api.settings.name.toolong"));
         $changeName.prop("disabled", true);
 
         $.ajax({
