@@ -52,7 +52,7 @@ module.exports = function(props) {
                     </header>
                     <div id="tools">
                         {props.user && props.user.hasRole("admin") ? <a href="/admin">{props.t("page.index.content.tools.admin")}</a> : ""}
-                        <a href="/settings">{props.t("page.index.content.tools.settings")}</a>
+                        {props.user ? <a href="/settings">{props.t("page.index.content.tools.settings")}</a> : ""}
                         {props.user && props.user.allowFilestorage() ? <a href="/filestorage/browse">{props.t("page.index.content.tools.filestorage")}</a> : ""}
                         <a href="/password_generator">{props.t("page.index.content.tools.passwordgenerator")}</a>
                     </div>
