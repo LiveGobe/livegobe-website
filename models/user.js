@@ -22,13 +22,7 @@ const UserSchema = new mongoose.Schema({
     permissions: [{
         type: String,
         lowercase: true
-    }],
-    settings: {
-        showFilePreview: {
-            type: Boolean,
-            default: true
-        }
-    }
+    }]
 });
 
 UserSchema.methods.validPassword = function(password) {
