@@ -81,6 +81,11 @@ h1 {
     flex-direction: column;
 }
 
+.setting-wrapper:last-child {
+    display: flex;
+    flex-direction: row;
+}
+
 input[type="checkbox"] {
     width: 20px;
     height: 20px;
