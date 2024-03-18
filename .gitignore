@@ -106,6 +106,9 @@ public/
 # vuepress build output
 .vuepress/dist
 
+# Missing locales
+locales/*-missing.json
+
 # vuepress v2.x temp and cache directory
 .temp
 .cache
