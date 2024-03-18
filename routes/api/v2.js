@@ -5,8 +5,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 const utils = require("../../bin/utils");
 const config = require("../../config");
+const uuid = require("uuid");
 
 const FileStorage = require("../../models/filestorage");
+const User = require("../../models/user");
 
 router.route("/filestorage").get((req, res) => {
     if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
@@ -354,6 +356,44 @@ router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFile
         });
     }).catch(err => {
         res.status(500).json({ message: err.toString() });
+    });
+});
+
+router.route("/settings/name").patch((req, res) => {
+    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
+
+    let name = req.query["name"] || req.body.name;
+    if (!name) return res.status(400).json({ message: req.t("api.settings.name.missing") });
+    if (name == req.user.name) return res.status(400).json({ message: req.t("api.settings.name.notchanged") });
+
+    User.findById(req.user._id).then(user => {
+        user.name = name;
+        user.save().then(user => {
+            res.json({ message: req.t("api.settings.name.changed"), name });
+        }).catch(err => {
+            res.status(500).json({ message: err.toString() });
+        });
+    }).catch(err => {
+        res.status(500).json({ message: err.toString()});
+    });
+});
+
+router.route("/settings/apikey").get((req, res) => {
+    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
+
+    res.json({ apikey: req.user.apiKey });
+}).post((req, res) => {
+    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
+
+    User.findById(req.user._id).then(user => {
+        user.apiKey = uuid.v4();
+        user.save().then(user => {
+            res.json({ message: req.t("api.settings.api.changed") });
+        }).catch(err => {
+            res.status(500).json({ message: err.toString() });
+        });
+    }).catch(err => {
+        res.status(500).json({ message: err.toString()});
     });
 });
 
