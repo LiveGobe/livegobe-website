@@ -1,0 +1,136 @@
+body {
+    --text-color: black;
+    --border-color: black;
+    --background-color: white;
+    --message-bg-color: rgb(0, 200, 0);
+    --message-text-color: rgb(255, 255, 255);
+    --message-border-color: rgb(0, 175, 0);
+    --message-hover-bg-color: rgb(0, 175, 0);
+    --error-bg-color: rgb(200, 0, 0);
+    --error-text-color: rgb(255, 255, 255);
+    --error-border-color: rgb(175, 0, 0);
+    --error-hover-bg-color: rgb(175, 0, 0);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+body[data-theme=dark] {
+    --text-color: white;
+    --border-color: white;
+    --background-color: rgb(20, 20, 20);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.unselectable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--background-color);
+    color: var(--text-color);
+}
+
+a {
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+#wrapper {
+    position: relative;
+    border: 1px solid var(--border-color);
+    width: 800px;
+    height: 600px;
+}
+
+#title {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#back {
+    padding: 10px;
+    border-right: 1px solid var(--border-color);
+}
+
+h1 {
+    padding: 10px;
+}
+
+#body {
+    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.setting-wrapper {
+    display: flex;
+    flex-direction: column;
+}
+
+input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+
+label {
+    position: relative;
+    bottom: 5px;
+}
+
+#footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 10px;
+    border-top: 1px solid var(--border-color);
+}
+
+#messages {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.message {
+    cursor: pointer;
+    color: var(--message-text-color);
+    white-space: pre-line;
+    width: 380px;
+    height: auto;
+    margin: 10px;
+    padding: 10px;
+    background-color: var(--message-bg-color);
+    border: 1px solid var(--message-border-color);
+    border-radius: 10px;
+    overflow-wrap: break-word;
+}
+
+.message:hover {
+    background-color: var(--message-hover-bg-color);
+}
+
+.error {
+    background-color: var(--error-bg-color);
+    border: 1px solid var(--error-border-color);
+}
+
+.error:hover {
+    background-color: var(--error-hover-bg-color);
+}
