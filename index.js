@@ -81,12 +81,15 @@ async function main() {
     });
 
     // Normal routes
+    const redirect = lnk => (req, res) => { res.redirect(lnk) }
+
     app.use("/", routes.home);
     app.use("/users", routes.users);
+    app.use("/settings", routes.settings);
     app.use("/login", routes.login);
     app.use("/logout", routes.logout);
     app.use("/filestorage", routes.filestorage);
-    app.use("/passwordgenerator", (req, res) => { res.redirect("/password_generator") });
+    app.use("/passwordgenerator", redirect("/password_generator"));
     app.use("/password_generator", routes.passwordGenerator);
 
     // Test page

@@ -5,5 +5,6 @@ module.exports = {
     filestorage: require("./filestorage"),
     passwordGenerator: require("./password-generator"),
     api: require("./api"),
-    users: require("./users")
+    users: require("./users"),
+    settings: require("./settings")
 }
