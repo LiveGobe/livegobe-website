@@ -119,6 +119,8 @@ await i18n.init();
                 }
             });
 
+            function stob(val) { return val == "true"}
+
             function getFolderSize(name, path) {
                 let size = 0;
                 storage.files.forEach(file => {
@@ -394,6 +396,7 @@ await i18n.init();
             }
 
             function showPreview(file) {
+                if (!stob(localStorage.getItem("showfilepreview"))) return;
                 removePreview();
                 let $preview = $("#preview-content");
                 let extension = file.name.split(".").pop();
