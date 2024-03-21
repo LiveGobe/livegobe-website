@@ -365,6 +365,7 @@ router.route("/settings/name").patch((req, res) => {
     let name = req.query["name"] || req.body.name;
     if (!name) return res.status(400).json({ message: req.t("api.settings.name.missing") });
     if (name == req.user.name) return res.status(400).json({ message: req.t("api.settings.name.notchanged") });
+    if (typeof name != "string") return res.status(400);
     if (name.length > 25) return res.status(400).json({ message: req.t("api.settings.name.toolong") });
 
     User.findById(req.user._id).then(user => {
