@@ -31,6 +31,7 @@ module.exports = function(props) {
                                 <button type="button" id="back">{props.t("page.login.content.back")}</button>
                             </a>
                         </div>
+                        <a href="/register">{props.t("page.login.content.register")}</a>
                     </form>
                     <div id="error-message" hidden />
                 </div>
