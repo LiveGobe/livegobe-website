@@ -86,6 +86,7 @@ async function main() {
     app.use("/", routes.home);
     app.use("/users", routes.users);
     app.use("/settings", routes.settings);
+    app.use("/register", routes.register);
     app.use("/login", routes.login);
     app.use("/logout", routes.logout);
     app.use("/filestorage", routes.filestorage);
