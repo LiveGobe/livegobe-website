@@ -31,6 +31,6 @@ prompt.get(prompts.env, async function(err, env) {
     const registerKey = new RegisterKey();
     await registerKey.save();
     console.log(colors.yellow(`Registration key: `) + colors.green(registerKey.key));
-    console.log(colors.yellow(`Registration link: `) + colors.green(`${"https://" + (env == "production" ? config.domainName : `localhost:${config.port}`) + "/register?key=" + new URLSearchParams(registerKey.key)}`));
+    console.log(colors.yellow(`Registration link: `) + colors.green(`${(env == "production" ? "https" : "http") + "://" + (env == "production" ? config.domainName : `localhost:${config.port}`) + "/register?" + new URLSearchParams("key=" + registerKey.key)}`));
     mongoose.connection.close();
 });
