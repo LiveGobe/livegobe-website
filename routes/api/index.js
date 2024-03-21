@@ -2,6 +2,10 @@ const express = require("express");
 const passport = require("passport");
 const router = express.Router();
 const utils = require("../../bin/utils");
+const bcrypt = require("bcrypt");
+
+const User = require("../../models/user");
+const RegisterKey = require("../../models/registerKey");
 
 router.use((req, res, next) => {
     // If there's a session, then we're good
@@ -51,6 +55,44 @@ router.post("/login", (req, res, next) => {
             res.json({ message: req.t("api.login.success")});
         });
     })(req, res, next);
+});
+
+router.post("/register", (req, res) => {
+    let username = req.query.username || req.body.username;
+    let name = req.query.name || req.body.name;
+    let password = req.query.password || req.body.password;
+    let key = req.query.key || req.body.key;
+
+    if (!username) return res.status(400).json({ message: req.t("api.register.usernamemissing") });
+    if (username.length > 25) return res.status(400).json({ message: req.t("api.register.usernametoolong") });
+    if (!name) return res.status(400).json({ message: req.t("api.register.namemissing") });
+    if (name.length > 25) return res.status(400).json({ message: req.t("api.register.nametoolong") });
+    if (!password) return res.status(400).json({ message: req.t("api.register.passwordmissing") });
+    if (!key) return res.status(400).json({ message: req.t("api.register.keymissing") });
+
+    User.findOne({ username: username }, "username").then(user => {
+        if (user) return res.status(400).json({ message: req.t("api.register.userexist") });
+
+        RegisterKey.findOne({ key: key }).then(registerKey => {
+            if (!registerKey) return res.status(400).json({ message: req.t("api.register.keymismatch") });
+    
+            registerKey.deleteOne().then(() => {
+                const user = new User({ username, name, password: bcrypt.hashSync(password, 10) });
+    
+                user.save().then(user => {
+                    res.json({ message: req.t("api.register.success") })
+                }).catch(err => {
+                    res.status(500).json({ message: err.toString() });
+                })
+            }).catch(err => {
+                res.status(500).json({ message: err.toString() });
+            });
+        }).catch(err => {
+            res.status(500).json({ message: err.toString() });
+        })
+    }).catch(err => {
+        res.status(500).json({ message: err.toString() });
+    });
 });
 
 // Versioned routes
