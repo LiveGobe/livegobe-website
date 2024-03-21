@@ -59,6 +59,17 @@
         "notchanged": "Name was not changed",
         "toolong": "Name must be of length 25 or less"
       }
+    },
+    "register": {
+      "usernamemissing": "Username is required",
+      "usernametoolong": "Username can be length of 25 or less",
+      "namemissing": "Displayed name is required",
+      "nametoolong": "Displayed name can be length of 25 or less",
+      "passwordmissing": "Password is required",
+      "keymissing": "Registration key is required",
+      "userexist": "Selected username is already taken",
+      "keymismatch": "Registration key has expired",
+      "success": "Registration successfull"
     }
   },
   "theme": {
@@ -90,7 +101,8 @@
         "password": "Password",
         "remember": "Remember me",
         "submit": "Login",
-        "back": "Return"
+        "back": "Return",
+        "register": "Register an account"
       }
     },
     "passwordgenerator": {
@@ -129,6 +141,17 @@
         "confirm": "Are you sure? (This action is irreversable)"
       },
       "showfilepreview": "Show files preview"
+    },
+    "register": {
+      "title": "Register",
+      "name": "Displayed Name",
+      "username": "Username",
+      "password": "Password",
+      "passwordconfirm": "Confirm Password",
+      "passwordmismatch": "Password Mismatch",
+      "key": "Registration Key",
+      "submit": "Register",
+      "back": "Return"
     }
   },
   "filestorage": {
