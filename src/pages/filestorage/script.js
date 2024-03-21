@@ -1,4 +1,4 @@
-import { formatBytes, filenameValid, foldernameValid, formatTime } from "../../js/utils";
+import { formatBytes, filenameValid, foldernameValid, formatTime, stob } from "../../js/utils";
 import $ from "jquery";
 import "../../js/nav-sidebar";
 import i18n from "../../js/repack-locales";
@@ -13,10 +13,12 @@ await i18n.init();
      * @prop {Number} size filestorage current size
      * @prop {Number} maxSize filestorage max size
      * @prop {Object[]} folders folders
+     * @prop {String} folders[]._id folder id
      * @prop {String} folders[].name folder name
      * @prop {String} folders[].description folder description
      * @prop {String} folders[].path folder path
      * @prop {Object[]} files files
+     * @prop {String} files[]._id file id
      * @prop {String} files[].name file name
      * @prop {String} files[].description file description
      * @prop {String} files[].path file path
@@ -118,8 +120,6 @@ await i18n.init();
                     break;
                 }
             });
-
-            function stob(val) { return val == "true"}
 
             function getFolderSize(name, path) {
                 let size = 0;
@@ -309,6 +309,19 @@ await i18n.init();
                         removePreview();
                     });
 
+                    element.on("dragover", function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.originalEvent.dataTransfer.dropEffect = "move";
+                    });
+
+                    element.on("drop", function(e) {
+                        e.preventDefault();
+                        const id = e.originalEvent.dataTransfer.getData("application/filestorage");
+                        $selected = $("#" + id);
+                        moveFile({ path: storage.path.split("/").splice(-1).join("/") || "/" });
+                    });
+
                     $folders.append(element);
                 }
 
@@ -341,6 +354,20 @@ await i18n.init();
                         updateFiles();
                         removePreview();
                     });
+
+                    element.on("dragover", function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.originalEvent.dataTransfer.dropEffect = "move";
+                    });
+
+                    element.on("drop", function(e) {
+                        e.preventDefault();
+                        const id = e.originalEvent.dataTransfer.getData("application/filestorage");
+                        const folder = storage.folders.find(f => f._id == e.target.id);
+                        $selected = $("#" + id);
+                        moveFile({ path: folder.path + folder.name });
+                    });
                     
                     $folders.append(element);
                 });
@@ -372,7 +399,7 @@ await i18n.init();
                         fileName = fileName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                     }
 
-                    let element = $("<div>").attr("id", file._id).html(fileName).addClass(["file", "unselectable"]).attr("title", i18n.t("filestorage.file.show", { 0: file.name }));
+                    let element = $("<div>").attr("id", file._id).attr("draggable", "true").html(fileName).addClass(["file", "unselectable"]).attr("title", i18n.t("filestorage.file.show", { 0: file.name }));
                     if (storage.files[storage.files.findIndex(n => n._id == file._id)].processing) element.addClass("processing");
 
                     element.on("click", function(e) {
@@ -386,6 +413,12 @@ await i18n.init();
                         if ($(`#${file._id}`).hasClass("processing")) return;
                         window.open(`/filestorage/v/${encodeURI(storage.owner)}/${encodeURI(file._id)}`, "_blank");
                     });
+
+                    element.on("dragstart", function(e) {
+                        e.originalEvent.dataTransfer.setData("application/filestorage", e.target.id);
+                        e.originalEvent.dataTransfer.effectAllowed = "move";
+                    });
+
                     $files.append(element);
 
                 });
@@ -421,6 +454,244 @@ await i18n.init();
                     $preview.append($("<video controls>").attr("controlslist", "nodownload").attr("width", "90%").attr("src", `/filestorage/r/${storage.owner}/${file._id}`));
                     break;
                 }
+            }
+
+            function uploadFile(f) {
+                let file = $fileInput[0]?.files[0] ?? f;
+
+                if (!file) return;
+                if (!filenameValid(file.name)) {
+                    $fileInput.val("");
+                    return createError(fileNameInvalid);
+                }
+                if (storage.files.find(f => f.name == file.name && f.path == storage.path) || storage.folders.find(f => f.name == file.name && f.path == storage.path)) {
+                    $fileInput.val("");
+                    return createError(fExists.replace("_", file.name));
+                }
+                if (file.size + storage.size > storage.maxSize) {
+                    $fileInput.val("");
+                    return createError(fileSizeToobig);
+                }
+
+                let formData = new FormData();
+                formData.append("file", file);
+                formData.append("path", storage.path);
+                formData.append("private", "true");
+
+                let uploadHovered = false;
+                let aborted = false;
+                let loaded = 0, total = file.size, percent = 0;
+                let startTime = Date.now();
+                let $upload = createUploadMessage(file.name);
+                let $progressText = $upload.find("#upload-progress");
+
+                $upload.on("mouseenter", function() {
+                    uploadHovered = true;
+                    $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
+                });
+                $upload.on("mouseleave", function() {
+                    uploadHovered = false;
+                    $progressText.text(percent + "%");
+                });
+                uploadsInProgress += 1;
+
+                $.ajax({
+                    xhr: function() {
+                        let xhr = new window.XMLHttpRequest();
+                        xhr.upload.addEventListener("progress", function(e) {
+                            if (e.lengthComputable) {
+                                let elapsedTime = Date.now() - startTime;
+                                loaded = e.loaded;
+                                total = e.total;
+                                let uploadSpeed = formatBytes(loaded / elapsedTime * 1000);
+                                percent = Math.round((loaded / total) * 100);
+                                let $progressText = $upload.find("#upload-progress");
+                                let estimatedTime = (total - loaded) / loaded * elapsedTime / 1000;
+                                if (!uploadHovered) $progressText.text(percent + "%");
+                                else $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
+                                $upload.find(".upload-progress").val(percent);
+                                $upload.find("#upload-speed").text(`${uploadSpeed}/s`);
+                                $upload.find("#upload-time").text(formatTime(estimatedTime));
+                            }
+                        });
+                        $upload.on("click", function() {
+                            if (loaded >= total) return;
+                            aborted = true;
+                            xhr.abort();
+                        });
+                        return xhr;
+                    },
+                    url: "/api/v2/filestorage/file",
+                    method: "POST",
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    timeout: 0,
+                    success: function(data) {
+                        storage.files.push(data.file);
+                        storage.size += data.file.size;
+                        updateAvailableSize();
+                        updateFiles();
+                        createMessage(data.message);
+                    },
+                    error: function(xhr, status, err) {
+                        if (!aborted) createError(xhr.responseJSON?.message ?? err);
+                    },
+                    complete: function() {
+                        $upload.remove();
+                        $fileInput.val("");
+                        uploadsInProgress -= 1;
+                    }
+                });
+            }
+
+            function uploadFiles(f) {
+                let files = [];
+                for (let i = 0; i < f.length ?? $filesInput[0].files.length; i++) {
+                    files.push($filesInput[0]?.files[i] ?? f[i]);
+                }
+
+                if (!files.length) return;
+                let s = 0;
+                for (let i = 0; i < files.length; i++) {
+                    if (!filenameValid(files[i].name)) {
+                        $filesInput.val("");
+                        return createError(filesNameInvalid);
+                    }
+                    if (storage.files.find(f => f.name == files[i].name && f.path == storage.path) || storage.folders.find(f => f.name == files[i].name && f.path == storage.path)) {
+                        files.splice(i--, 1);
+                        continue;
+                    }
+                    s += files[i].size;
+                    if (s + storage.size > storage.maxSize) {
+                        $filesInput.val("");
+                        return createError(filesSizeToobig);
+                    }
+                }
+
+                if (!files.length) {
+                    $filesInput.val("");
+                    return createError(filesExists);
+                }
+
+                let formData = new FormData();
+                for (let i = 0; i < files.length; i++) {
+                    formData.append("files", files[i]);
+                }
+                formData.append("path", storage.path);
+                formData.append("private", "true");
+
+                let text = "";
+                for (let i = 0; i < files.length; i++) {
+                    text += files[i].name + ", ";
+                }
+                text = text.substring(0, text.length - 2);
+
+                let uploadHovered = false;
+                let aborted = false;
+                let loaded = 0, total = s, percent = 0;
+                let startTime = Date.now();
+                let $upload = createUploadMessage(text);
+                let $progressText = $upload.find("#upload-progress");
+
+                $upload.on("mouseenter", function() {
+                    uploadHovered = true;
+                    $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
+                });
+                $upload.on("mouseleave", function() {
+                    uploadHovered = false;
+                    $progressText.text(percent + "%");
+                });
+                uploadsInProgress += 1;
+
+                $.ajax({
+                    xhr: function() {
+                        let xhr = new window.XMLHttpRequest();
+                        xhr.upload.addEventListener("progress", function(e) {
+                            if (e.lengthComputable) {
+                                let elapsedTime = Date.now() - startTime;
+                                loaded = e.loaded;
+                                total = e.total;
+                                let uploadSpeed = formatBytes(loaded / elapsedTime * 1000);
+                                percent = Math.round((loaded / total) * 100);
+                                let estimatedTime = (total - loaded) / loaded * elapsedTime / 1000;
+                                let $progressText = $upload.find("#upload-progress");
+                                if (!uploadHovered) $progressText.text(percent + "%");
+                                else $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
+                                $upload.find(".upload-progress").val(percent);
+                                $upload.find("#upload-speed").text(`${uploadSpeed}/s`);
+                                $upload.find("#upload-time").text(formatTime(estimatedTime));
+                            }
+                        });
+                        $upload.on("click", function() {
+                            if (loaded >= total) return;
+                            aborted = true;
+                            xhr.abort();
+                        });
+                        return xhr;
+                    },
+                    url: "/api/v2/filestorage/file",
+                    method: "POST",
+                    data: formData,
+                    cache: false,
+                    contentType: false,
+                    processData: false,
+                    timeout: 0,
+                    success: function(data) {
+                        storage.files = storage.files.concat(data.files);
+                        data.files.forEach(f => storage.size += f.size);
+                        updateFiles();
+                        updateAvailableSize();
+                        createMessage(data.message);
+                    },
+                    error: function(xhr, status, err) {
+                        if (!aborted) createError(xhr.responseJSON?.message ?? err);
+                    },
+                    complete: function() {
+                        $upload.remove();
+                        $filesInput.val("");
+                        uploadsInProgress -= 1;
+                    }
+                });
+            }
+
+            function moveFile(f) {
+                let element = $selected;
+                if (element.hasClass("processing")) return;
+                let file = storage.files.find(f => f._id == element.attr("id"));
+                let path = f.path ?? decodeURI(prompt(moveFilePrompt, storage.path));
+
+                if (!path) return;
+                if (!path.startsWith("/")) path = "/" + path;
+                if (!path.endsWith("/")) path += "/";
+
+                element.addClass("processing");
+                storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
+                $.ajax({
+                    url: "/api/v2/filestorage/file",
+                    method: "PATCH",
+                    data: {
+                        file: {
+                            id: file._id,
+                            path: path
+                        }
+                    },
+                    success: function(data) {
+                        let index = storage.files.findIndex(f => f._id == file._id);
+                        storage.files[index].path = path;
+                        if ($selected?.attr("id") == file._id) deselectAll();
+                        updateFiles();
+                        createMessage(data.message);
+                        $(`#${file._id}`).removeClass("processing");
+                        storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
+                    },
+                    error: function(xhr, status, err) {
+                        $(`#${file._id}`).removeClass("processing");
+                        storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
+                        createError(xhr.responseJSON?.message ?? err);
+                    }
+                });
             }
 
             const $availableSpace = $("#info-main-content span");
@@ -542,95 +813,7 @@ await i18n.init();
             let uploadsInProgress = 0;
 
             const $fileInput = $("#file-input");
-            $fileInput.on("change", function(e) {
-                let file = $fileInput[0].files[0];
-
-                if (!file) return;
-                if (!filenameValid(file.name)) {
-                    $fileInput.val("");
-                    return createError(fileNameInvalid);
-                }
-                if (storage.files.find(f => f.name == file.name && f.path == storage.path) || storage.folders.find(f => f.name == file.name && f.path == storage.path)) {
-                    $fileInput.val("");
-                    return createError(fExists.replace("_", file.name));
-                }
-                if (file.size + storage.size > storage.maxSize) {
-                    $fileInput.val("");
-                    return createError(fileSizeToobig);
-                }
-
-                let formData = new FormData();
-                formData.append("file", file);
-                formData.append("path", storage.path);
-                formData.append("private", "true");
-
-                let uploadHovered = false;
-                let aborted = false;
-                let loaded = 0, total = file.size, percent = 0;
-                let startTime = Date.now();
-                let $upload = createUploadMessage(file.name);
-                let $progressText = $upload.find("#upload-progress");
-
-                $upload.on("mouseenter", function() {
-                    uploadHovered = true;
-                    $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
-                });
-                $upload.on("mouseleave", function() {
-                    uploadHovered = false;
-                    $progressText.text(percent + "%");
-                });
-                uploadsInProgress += 1;
-
-                $.ajax({
-                    xhr: function() {
-                        let xhr = new window.XMLHttpRequest();
-                        xhr.upload.addEventListener("progress", function(e) {
-                            if (e.lengthComputable) {
-                                let elapsedTime = Date.now() - startTime;
-                                loaded = e.loaded;
-                                total = e.total;
-                                let uploadSpeed = formatBytes(loaded / elapsedTime * 1000);
-                                percent = Math.round((loaded / total) * 100);
-                                let $progressText = $upload.find("#upload-progress");
-                                let estimatedTime = (total - loaded) / loaded * elapsedTime / 1000;
-                                if (!uploadHovered) $progressText.text(percent + "%");
-                                else $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
-                                $upload.find(".upload-progress").val(percent);
-                                $upload.find("#upload-speed").text(`${uploadSpeed}/s`);
-                                $upload.find("#upload-time").text(formatTime(estimatedTime));
-                            }
-                        });
-                        $upload.on("click", function() {
-                            if (loaded >= total) return;
-                            aborted = true;
-                            xhr.abort();
-                        });
-                        return xhr;
-                    },
-                    url: "/api/v2/filestorage/file",
-                    method: "POST",
-                    data: formData,
-                    cache: false,
-                    contentType: false,
-                    processData: false,
-                    timeout: 0,
-                    success: function(data) {
-                        storage.files.push(data.file);
-                        storage.size += data.file.size;
-                        updateAvailableSize();
-                        updateFiles();
-                        createMessage(data.message);
-                    },
-                    error: function(xhr, status, err) {
-                        if (!aborted) createError(xhr.responseJSON?.message ?? err);
-                    },
-                    complete: function() {
-                        $upload.remove();
-                        $fileInput.val("");
-                        uploadsInProgress -= 1;
-                    }
-                })
-            });
+            $fileInput.on("change", uploadFile);
 
             const $uploadFile = $("#action-upload-file");
             $uploadFile.on("click", function(e) {
@@ -639,115 +822,7 @@ await i18n.init();
             });
 
             const $filesInput = $("#files-input");
-            $filesInput.on("change", function(e) {
-                let files = [];
-                for (let i = 0; i < $filesInput[0].files.length; i++) {
-                    files.push($filesInput[0].files[i]);
-                }
-
-                if (!files.length) return;
-                let s = 0;
-                for (let i = 0; i < files.length; i++) {
-                    if (!filenameValid(files[i].name)) {
-                        $filesInput.val("");
-                        return createError(filesNameInvalid);
-                    }
-                    if (storage.files.find(f => f.name == files[i].name && f.path == storage.path) || storage.folders.find(f => f.name == files[i].name && f.path == storage.path)) {
-                        files.splice(i--, 1);
-                        continue;
-                    }
-                    s += files[i].size;
-                    if (s + storage.size > storage.maxSize) {
-                        $filesInput.val("");
-                        return createError(filesSizeToobig);
-                    }
-                }
-
-                if (!files.length) {
-                    $filesInput.val("");
-                    return createError(filesExists);
-                }
-
-                let formData = new FormData();
-                for (let i = 0; i < files.length; i++) {
-                    formData.append("files", files[i]);
-                }
-                formData.append("path", storage.path);
-                formData.append("private", "true");
-
-                let text = "";
-                for (let i = 0; i < files.length; i++) {
-                    text += files[i].name + ", ";
-                }
-                text = text.substring(0, text.length - 2);
-
-                let uploadHovered = false;
-                let aborted = false;
-                let loaded = 0, total = s, percent = 0;
-                let startTime = Date.now();
-                let $upload = createUploadMessage(text);
-                let $progressText = $upload.find("#upload-progress");
-
-                $upload.on("mouseenter", function() {
-                    uploadHovered = true;
-                    $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
-                });
-                $upload.on("mouseleave", function() {
-                    uploadHovered = false;
-                    $progressText.text(percent + "%");
-                });
-                uploadsInProgress += 1;
-
-                $.ajax({
-                    xhr: function() {
-                        let xhr = new window.XMLHttpRequest();
-                        xhr.upload.addEventListener("progress", function(e) {
-                            if (e.lengthComputable) {
-                                let elapsedTime = Date.now() - startTime;
-                                loaded = e.loaded;
-                                total = e.total;
-                                let uploadSpeed = formatBytes(loaded / elapsedTime * 1000);
-                                percent = Math.round((loaded / total) * 100);
-                                let estimatedTime = (total - loaded) / loaded * elapsedTime / 1000;
-                                let $progressText = $upload.find("#upload-progress");
-                                if (!uploadHovered) $progressText.text(percent + "%");
-                                else $progressText.text(formatBytes(loaded) + " / " + formatBytes(total));
-                                $upload.find(".upload-progress").val(percent);
-                                $upload.find("#upload-speed").text(`${uploadSpeed}/s`);
-                                $upload.find("#upload-time").text(formatTime(estimatedTime));
-                            }
-                        });
-                        $upload.on("click", function() {
-                            if (loaded >= total) return;
-                            aborted = true;
-                            xhr.abort();
-                        });
-                        return xhr;
-                    },
-                    url: "/api/v2/filestorage/file",
-                    method: "POST",
-                    data: formData,
-                    cache: false,
-                    contentType: false,
-                    processData: false,
-                    timeout: 0,
-                    success: function(data) {
-                        storage.files = storage.files.concat(data.files);
-                        data.files.forEach(f => storage.size += f.size);
-                        updateFiles();
-                        updateAvailableSize();
-                        createMessage(data.message);
-                    },
-                    error: function(xhr, status, err) {
-                        if (!aborted) createError(xhr.responseJSON?.message ?? err);
-                    },
-                    complete: function() {
-                        $upload.remove();
-                        $filesInput.val("");
-                        uploadsInProgress -= 1;
-                    }
-                })
-            });
+            $filesInput.on("change", uploadFiles);
 
             const $uploadFiles = $("#action-upload-files");
             $uploadFiles.on("click", function(e) {
@@ -927,43 +1002,7 @@ await i18n.init();
             });
 
             const $moveFile = $("#action-move-file");
-            $moveFile.on("click", function(e) {
-                let element = $selected;
-                if (element.hasClass("processing")) return;
-                let file = storage.files.find(f => f._id == element.attr("id"));
-                let path = decodeURI(prompt(moveFilePrompt, storage.path));
-
-                if (!path) return;
-                if (!path.startsWith("/")) path = "/" + path;
-                if (!path.endsWith("/")) path += "/";
-
-                element.addClass("processing");
-                storage.files[storage.files.findIndex(n => n._id == file._id)].processing = true;
-                $.ajax({
-                    url: "/api/v2/filestorage/file",
-                    method: "PATCH",
-                    data: {
-                        file: {
-                            id: file._id,
-                            path: path
-                        }
-                    },
-                    success: function(data) {
-                        let index = storage.files.findIndex(f => f._id == file._id);
-                        storage.files[index].path = path;
-                        if ($selected?.attr("id") == file._id) deselectAll();
-                        updateFiles();
-                        createMessage(data.message);
-                        $(`#${file._id}`).removeClass("processing");
-                        storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
-                    },
-                    error: function(xhr, status, err) {
-                        $(`#${file._id}`).removeClass("processing");
-                        storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
-                        createError(xhr.responseJSON?.message ?? err);
-                    }
-                });
-            });
+            $moveFile.on("click", moveFile);
 
             const $deleteFile = $("#action-delete-file");
             $deleteFile.on("click", function(e) {
@@ -1002,6 +1041,18 @@ await i18n.init();
                         createError(xhr.responseJSON?.message ?? err);
                     }
                 });
+            });
+
+            const $body = $("body");
+            $body.on("dragover", function(e) {
+                e.preventDefault();
+                e.originalEvent.dataTransfer.dropEffect = "copy";
+            });
+            $body.on("drop", function(e) {
+                e.preventDefault();
+                const files = [...e.originalEvent.dataTransfer.files];
+                if (files.length == 1) uploadFile(files[0]);
+                else if (files.length > 1) uploadFiles(files);
             });
 
             /**
