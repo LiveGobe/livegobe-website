@@ -12,7 +12,7 @@ module.exports = function(props) {
                 <meta property="og:title" content={`Register`} />
                 <meta property="og:image" content={utils.staticUrl("images/home.png")} />
                 <meta property="og:description" content={`Register an account on ${config.domainName}`} />
-                <meta property="og:url" content={`https://${config.domainName}/register${props.key ? "?=" + encodeURI(props.key) : ""}`} />
+                <meta property="og:url" content={`https://${config.domainName}/register${props.registerKey ? "?=" + encodeURI(props.key) : ""}`} />
             </Head>
             
             <body data-theme={props.theme}>
