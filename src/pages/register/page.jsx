@@ -20,24 +20,24 @@ module.exports = function(props) {
                     <form>
                         <label>
                             <span>{props.t("page.register.username")}</span>
+                            <input type="text" name="username" id="username" required />
                         </label>
-                        <input type="text" name="username" id="username" required />
                         <label>
                             <span>{props.t("page.register.name")}</span>
+                            <input type="text" name="name" id="name" required />
                         </label>
-                        <input type="text" name="name" id="name" required />
                         <label>
                             <span>{props.t("page.register.password")}</span>
+                            <input type="password" name="password" id="password" required autoComplete="new-password" />
                         </label>
-                        <input type="password" name="password" id="password" required />
                         <label>
                             <span>{props.t("page.register.passwordconfirm")}</span>
+                            <input type="password" name="passwordConfirm" id="password-confirm" required autoComplete="new-password" />
                         </label>
-                        <input type="password" name="passwordConfirm" id="password-confirm" required />
                         <label>
                             <span>{props.t("page.register.key")}</span>
+                            <input type="text" name="key" id="key" required autoComplete="off" />
                         </label>
-                        <input type="text" name="key" id="key" required />
                         <div id="register-buttons">
                             <input type="submit" id="submit" value={props.t("page.register.submit")} />
                             <a href="/">
