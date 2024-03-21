@@ -27,3 +27,5 @@ export function formatTime(s) {
     let seconds = Math.floor(s % 60);
     return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 }
+
+export function stob(val) { return val == "true"}
