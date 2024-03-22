@@ -317,9 +317,16 @@ await i18n.init();
 
                     element.on("drop", function(e) {
                         e.preventDefault();
-                        const id = e.originalEvent.dataTransfer.getData("application/filestorage");
-                        $selected = $("#" + id);
-                        moveFile({ path: storage.path.split("/").splice(-1).join("/") || "/" });
+                        let id = e.originalEvent.dataTransfer.getData("application/filestorage-file");
+                        if (id) {
+                            $selected = $("#" + id);
+                            moveFile({ path: storage.path.split("/").splice(-1).join("/") || "/" });
+                        } else {
+                            id = e.originalEvent.dataTransfer.getData("application/filestorage-folder");
+                            if (!id) return;
+                            $selected = $("#" + id);
+                            moveFolder({ path: (storage.path.split("/").slice(0, -2).join("/") + "/") || "/" })
+                        }
                     });
 
                     $folders.append(element);
@@ -333,7 +340,7 @@ await i18n.init();
                         folderName = folderName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                     }
                     
-                    let element = $("<div>").attr("id", folder._id).html(folderName).addClass(["folder", "unselectable"]).attr("title", i18n.t("filestorage.folder.open", { 0: folder.name}));
+                    let element = $("<div>").attr("id", folder._id).html(folderName).addClass(["folder", "unselectable"]).attr("draggable", "true").attr("title", i18n.t("filestorage.folder.open", { 0: folder.name}));
                     if (storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing) element.addClass("processing");
 
                     element.on("click", function(e) {
@@ -363,10 +370,23 @@ await i18n.init();
 
                     element.on("drop", function(e) {
                         e.preventDefault();
-                        const id = e.originalEvent.dataTransfer.getData("application/filestorage");
-                        const folder = storage.folders.find(f => f._id == e.target.id);
-                        $selected = $("#" + id);
-                        moveFile({ path: folder.path + folder.name });
+                        let id = e.originalEvent.dataTransfer.getData("application/filestorage-file");
+                        if (id) {
+                            const folder = storage.folders.find(f => f._id == e.target.id);
+                            $selected = $("#" + id);
+                            moveFile({ path: folder.path + folder.name });
+                        } else {
+                            id = e.originalEvent.dataTransfer.getData("application/filestorage-folder");
+                            if (!id) return;
+                            const folder = storage.folders.find(f => f._id == e.target.id);
+                            $selected = $("#" + id);
+                            moveFolder({ path: folder.path + folder.name });
+                        }
+                    });
+
+                    element.on("dragstart", function(e) {
+                        e.originalEvent.dataTransfer.setData("application/filestorage-folder", e.target.id);
+                        e.originalEvent.dataTransfer.effectAllowed = "move";
                     });
                     
                     $folders.append(element);
@@ -415,7 +435,7 @@ await i18n.init();
                     });
 
                     element.on("dragstart", function(e) {
-                        e.originalEvent.dataTransfer.setData("application/filestorage", e.target.id);
+                        e.originalEvent.dataTransfer.setData("application/filestorage-file", e.target.id);
                         e.originalEvent.dataTransfer.effectAllowed = "move";
                     });
 
@@ -689,6 +709,55 @@ await i18n.init();
                     error: function(xhr, status, err) {
                         $(`#${file._id}`).removeClass("processing");
                         storage.files[storage.files.findIndex(n => n._id == file._id)].processing = false;
+                        createError(xhr.responseJSON?.message ?? err);
+                    }
+                });
+            }
+
+            function moveFolder(f) {
+                let element = $selected;
+                if (element.hasClass("processing")) return;
+                let folder = storage.folders.find(f => f._id == element.attr("id"));
+                let name = folder.name;
+                let path = f.path ?? decodeURI(prompt(i18n.t("filestorage.message.folder.move"), storage.path));
+
+                if (!path) return;
+                if (!path.startsWith("/")) path = "/" + path;
+                if (!path.endsWith("/")) path += "/";
+                
+                element.addClass("processing");
+                storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = true;
+                $.ajax({
+                    url: "/api/v2/filestorage/folder",
+                    method: "PATCH",
+                    data: {
+                        folder: {
+                            id: folder._id,
+                            path: path
+                        }
+                    },
+                    success: function(data) {
+                        let index = storage.folders.findIndex(f => f._id == folder._id);
+                        storage.folders.forEach((folder, i) => {
+                            if (folder.path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
+                                storage.folders[i].path = folder.path.replace(storage.folders[index].path + storage.folders[index].name + "/", path + name + "/");
+                            }
+                        });
+                        storage.files.forEach((file, i) => {
+                            if (file.path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
+                                storage.files[i].path = file.path.replace(storage.folders[index].path + storage.folders[index].name + "/", path + name + "/");
+                            }
+                        });
+                        storage.folders[index].path = path;
+                        if ($selected?.attr("id") == folder._id) deselectAll();
+                        updateFolders();
+                        createMessage(data.message);
+                        $(`#${folder._id}`).removeClass("processing");
+                        storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = false;
+                    },
+                    error: function(xhr, status, err) {
+                        $(`#${folder._id}`).removeClass("processing");
+                        storage.folders[storage.folders.findIndex(n => n._id == folder._id)].processing = false;
                         createError(xhr.responseJSON?.message ?? err);
                     }
                 });
