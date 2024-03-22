@@ -568,7 +568,7 @@ await i18n.init();
 
             function uploadFiles(f) {
                 let files = [];
-                for (let i = 0; i < f.length ?? $filesInput[0].files.length; i++) {
+                for (let i = 0; i < (f.length ?? $filesInput[0].files.length); i++) {
                     files.push($filesInput[0]?.files[i] ?? f[i]);
                 }
 
