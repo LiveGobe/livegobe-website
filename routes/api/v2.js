@@ -97,19 +97,20 @@ router.route("/filestorage/folder").post((req, res) => {
             if (storage.folders.find(f => f.name == folderName && f.path == folderPath) || storage.files.find(f => f.name == folderName && f.path == folderPath)) return res.status(400).json({ message: req.t("api.filestorage.fexists", { "0": folderName }) });
 
             let mvPath = path.join(process.cwd(), config.filestorage.path, `${req.user.id}${storage.folders[index].path}`);
-            fs.renameSync(path.join(mvPath, storage.folders[index].name), path.join(mvPath, folderName));
+            fs.renameSync(path.join(mvPath, storage.folders[index].name), path.join(process.cwd(), config.filestorage.path, `${req.user.id}${folderPath}`, folderName));
             // change path for all files and folders in this folder
-            storage.folders.forEach(folder => {
+            storage.folders.forEach((folder, i) => {
                 if (folder.path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
-                    folder.path = folder.path.replace(storage.folders[index].path + storage.folders[index].name + "/", storage.folders[index].path + folderName + "/");
+                    storage.folders[i].path = folder.path.replace(storage.folders[index].path + storage.folders[index].name + "/", folderPath + folderName + "/");
                 }
             });
-            storage.files.forEach(file => {
+            storage.files.forEach((file, i) => {
                 if (file.path.startsWith(storage.folders[index].path + storage.folders[index].name + "/")) {
-                    file.path = file.path.replace(storage.folders[index].path + storage.folders[index].name + "/", storage.folders[index].path + folderName + "/");
+                    storage.files[i].path = file.path.replace(storage.folders[index].path + storage.folders[index].name + "/", folderPath + folderName + "/");
                 }
             });
             storage.folders[index].name = folderName;
+            storage.folders[index].path = folderPath;
             changed = true;
         }
 
