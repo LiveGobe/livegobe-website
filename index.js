@@ -92,6 +92,7 @@ async function main() {
     app.use("/filestorage", routes.filestorage);
     app.use("/passwordgenerator", redirect("/password_generator"));
     app.use("/password_generator", routes.passwordGenerator);
+    app.use("/admin", routes.admin);
 
     // Test page
     if (app.get("env") == "development") {

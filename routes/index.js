@@ -7,5 +7,6 @@ module.exports = {
     api: require("./api"),
     users: require("./users"),
     settings: require("./settings"),
-    register: require("./register")
+    register: require("./register"),
+    admin: require("./admin")
 }
