@@ -37,7 +37,7 @@ module.exports = function(options = {}) {
                 key.endsWith('.') && (key = key.slice(0, -1));
                 let text = key.split(".").reduce((obj, key) => obj[key], req.locales);
                 if (!text) throw new Error("No translation found");
-                return values ? text.replace(/\{([^}]+)\}/g, (m, key) => values[key] ? values[key] : m) : text;
+                return values ? text.replace(/\{([^}]+)\}/g, (m, key) => values[key] != undefined ? values[key] : m) : text;
             } catch(e) {
                 if (process.env.NODE_ENV != "production") {
                     let keys = key.split(".");
