@@ -3,6 +3,7 @@
   "api": {
     "deprecated": "Current version of API is deprecated, please move to a supporterd version",
     "usermissing": "No logged-in user found",
+    "adminonly": "You must be an admin to do this",
     "error": {
       "404": "Endpoint does not exist"
     },
@@ -71,6 +72,16 @@
       "userexist": "Selected username is already taken",
       "keymismatch": "Registration key has expired",
       "success": "Registration successfull"
+    },
+    "users": {
+      "invalidid": "User id is invalid",
+      "usernamemissing": "Username is required",
+      "permissionmissing": "Permissions array is required",
+      "permissionschanged": "Permissions for user {name} ({username}) changed successfully",
+      "filestoragenonexistent": "Filestorage doesn't exist",
+      "maxsizemissing": "Max size of filestorage is missing",
+      "usernotfound": "User not found",
+      "filestoragechanged": "Filestorage was successfully updated"
     }
   },
   "theme": {
@@ -153,6 +164,37 @@
       "key": "Registration Key",
       "submit": "Register",
       "back": "Return"
+    },
+    "admin": {
+      "pagename": "Admin Panel",
+      "return": "Return",
+      "table": {
+        "main": "Overview",
+        "user": "User",
+        "filestorage": "Filestorage"
+      },
+      "main": {
+        "userstotal": "Total registered users: {users}",
+        "usersfilestorage": "Users with Filestorage access: {users}",
+        "space": "Space used: {used}/{total}"
+      },
+      "user": {
+        "username": "username",
+        "name": "displayed name",
+        "refresh": "Search/Refresh",
+        "none": "No users where found",
+        "permissions": "Permissions: ",
+        "save": "Save Permissions",
+        "id": "ID: "
+      },
+      "filestorage": {
+        "refresh": "Lookup",
+        "ownerid": "Owner ID: ",
+        "id": "Filestorage ID: ",
+        "size": "Used space: ",
+        "maxsize": "Total space: ",
+        "save": "Save Filestorage"
+      }
     }
   },
   "filestorage": {
