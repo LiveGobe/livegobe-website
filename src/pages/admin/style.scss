@@ -1,0 +1,224 @@
+body {
+    --main-color: hsl(0, 0%, 100%);
+    --secondary-color: hsl(0, 0%, 0%);
+    --tetriary-color: hsl(0, 0%, 100%);
+    --border-color: hsl(0, 0%, 0%);
+    --hover-color: hsl(0, 0%, 30%);
+    --scrollbar-track-color: #f1f1f1;
+    --scrollbar-thumb-color: #888;
+    --scrollbar-thumb-hover-color: #555;
+    --message-bg-color: rgb(0, 200, 0);
+    --message-text-color: rgb(255, 255, 255);
+    --message-border-color: rgb(0, 175, 0);
+    --message-hover-bg-color: rgb(0, 175, 0);
+    --error-bg-color: rgb(200, 0, 0);
+    --error-text-color: rgb(255, 255, 255);
+    --error-border-color: rgb(175, 0, 0);
+    --error-hover-bg-color: rgb(175, 0, 0);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif
+}
+
+body[data-theme=dark] {
+    --main-color: hsl(0, 0%, 0%);
+    --secondary-color: hsl(0, 0%, 100%);
+    --tetriary-color: hsl(0, 0%, 15%);
+    --border-color: hsl(0, 0%, 100%);
+    --hover-color: hsl(0, 0%, 70%);
+    --scrollbar-track-color: hsl(0, 0%, 25%);
+    --scrollbar-thumb-color: hsl(0, 0%, 90%);
+    --scrollbar-thumb-hover-color: hsl(0, 0%, 70%);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--main-color);
+    color: var(--secondary-color);
+    width: 100vw;
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+div#body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+}
+
+a {
+    color: var(--text-color);
+    text-decoration: none;
+}
+
+header, footer {
+    background-color: var(--tetriary-color);
+}
+
+header {
+    min-height: 50px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+}
+
+#header-table {
+    display: flex;
+    align-items: center;
+}
+
+footer {
+    text-align: center;
+    min-height: 50px;
+    border-top: 1px solid var(--border-color);
+    line-height: 50px;
+}
+
+a:has(#back) {
+    padding: 0 20px;
+    margin-right: 20px;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    border-right: 1px solid var(--border-color);
+}
+
+#header-table div {
+    padding: 11px;
+    cursor: pointer;
+}
+
+#header-table div:hover {
+    color: var(--main-color);
+    background-color: var(--hover-color);
+}
+
+#header-table div.active {
+    color: var(--main-color);
+    background-color: var(--secondary-color);
+}
+
+#wrapper {
+    display: flex;
+    justify-content: space-between;
+    height: 90%;
+    width: 90%;
+    border: 1px solid var(--border-color);
+    background-color: var(--tetriary-color);
+    border-radius: 10px;
+    padding: 20px;
+}
+
+#space-available {
+    width: 300px;
+    display: flex;
+}
+
+#user-controls {
+    display: flex;
+}
+
+#user-controls-inputs {
+    display: flex;
+    flex-direction: column;
+}
+
+#user-stats {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+}
+
+#user-settings {
+    display: flex;
+    flex-direction: column;
+}
+
+ul#users {
+    overflow-y: scroll;
+    height: 90%;
+}
+
+#filestorage-stats {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+}
+
+#filestorage-controls {
+    display: flex;
+    flex-direction: column;
+}
+
+#filestorage-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+ul > div.selected {
+    color: var(--main-color);
+    background-color: var(--secondary-color);
+}
+
+#messages {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.message {
+    cursor: pointer;
+    color: var(--message-text-color);
+    white-space: pre-line;
+    width: 380px;
+    height: auto;
+    margin: 10px;
+    padding: 10px;
+    background-color: var(--message-bg-color);
+    border: 1px solid var(--message-border-color);
+    border-radius: 10px;
+    overflow-wrap: break-word;
+}
+
+.message:hover {
+    background-color: var(--message-hover-bg-color);
+}
+
+.error {
+    background-color: var(--error-bg-color);
+    border: 1px solid var(--error-border-color);
+}
+
+.error:hover {
+    background-color: var(--error-hover-bg-color);
+}
+
+
+
+
+// Scroll bar
+#tools::-webkit-scrollbar {
+    width: 10px;
+}
+
+#tools::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-color);
+}
+
+#tools::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-color);
+}
+
+#tools::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover-color);
+}
