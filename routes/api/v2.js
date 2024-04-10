@@ -6,6 +6,7 @@ const path = require("node:path");
 const utils = require("../../bin/utils");
 const config = require("../../config");
 const uuid = require("uuid");
+const mongoose = require("mongoose");
 
 const FileStorage = require("../../models/filestorage");
 const User = require("../../models/user");
@@ -396,7 +397,102 @@ router.route("/settings/apikey").get((req, res) => {
             res.status(500).json({ message: err.toString() });
         });
     }).catch(err => {
-        res.status(500).json({ message: err.toString()});
+        res.status(500).json({ message: err.toString() });
+    });
+});
+
+router.route("/users").get((req, res) => {
+    let id = req.query.id ?? req.body.id;
+    let username = req.query.username ?? req.body.username;
+    let name = req.query.name ?? req.body.name;
+
+    let query;
+
+    const conditions = [];
+
+    if (id) {
+        // Assuming 'id' is the MongoDB ObjectID
+        if (mongoose.Types.ObjectId.isValid(id)) {
+            conditions.push({ _id: id });
+        } else {
+            // If the ID is not valid, you might want to handle this case differently
+            return res.status(400).json({ message: req.t("api.users.invalidid") });
+        }
+    }
+
+    if (username) {
+        conditions.push({ username: new RegExp('^'+username+'$', "i") });
+    }
+
+    if (name) {
+        conditions.push({ name: new RegExp('^'+name+'$', "i") });
+    }
+
+    query = conditions.length > 0 ? { $or: conditions } : {};
+
+    User.find(query).then(users => {
+        res.json({ users });
+    }).catch(err => {
+        res.status(500).json({ message: err.toString() })
+    });
+});
+
+router.route("/users/:username/permissions").patch((req, res) => {
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
+
+    let username = req.params.username;
+    let permissions = req.query.permissions ?? req.body.permissions;
+    if (!username || typeof username != "string") return res.status(400).json({ message: req.t("api.users.usernamemissing") });
+    if (!permissions || typeof permissions != "object") return res.status(400).json({ message: req.t("api.users.permissionmissing") });
+
+    User.findOne({ username }).then(user => {
+        if (!user) return res.status(400).json({ message: req.t("api.users.usernotfound") });
+
+        user.permissions = permissions;
+        user.save().then(user => {
+            res.json({ message: req.t("api.users.permissionschanged", { username: user.username, name: user.name }), permissions: user.permissions });
+        }).catch(err => {
+            res.status(500).json({ message: err.toString() })
+        });
+    }).catch(err => {
+        res.status(500).json({ message: err.toString() })
+    });
+});
+router.route("/users/filestorage").get((req, res) => {
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
+
+    let id = req.query.id ?? req.body.id;
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: req.t("api.users.invalidid") });
+
+    FileStorage.findOne({ owner: id }).populate("owner", "id").then(storage => {
+        if (!storage) return res.status(400).json({ message: req.t("api.users.filestoragenonexistent") });
+
+        res.json({ storage });
+    }).catch(err => {
+        res.status(500).json({ message: err.toString() })
+    });
+}).patch((req, res) => {
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
+
+    let id = req.query.id ?? req.body.id;
+    let maxSize = Number(req.query.maxSize ?? req.body.maxSize);
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: req.t("api.users.invalidid") });
+    if (!maxSize || typeof maxSize != "number") return res.status(400).json({ message: req.t("api.users.maxsizemissing") });
+
+    FileStorage.findById(id).then(filestorage => {
+        if (!filestorage) return res.status(400).json({ message: req.t("api.users.filestoragenonexistent") });
+
+        filestorage.maxSize = maxSize;
+        filestorage.save().then(filestorage => {
+            res.json({ message: req.t("api.users.filestoragechanged"), storage: filestorage });
+        }).catch(err => {
+            res.status(500).json({ message: err.toString() })
+        });
+    }).catch(err => {
+        res.status(500).json({ message: err.toString() })
     });
 });
 
