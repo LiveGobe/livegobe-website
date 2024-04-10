@@ -4,6 +4,8 @@ export function even(n) {
 
 export function formatBytes(a,b=2,k=1024){let d=Math.floor(Math.log(a)/Math.log(k));return 0==a?"0 Bytes":parseFloat((a/Math.pow(k,d)).toFixed(Math.max(0,b)))+" "+["Bytes","KiB","MiB","GiB","TiB","PiB","EiB","ZiB","YiB"][d]}
 
+export function reverseFormatBytes(s){return (m => m ? parseFloat(m[1]) * Math.pow(1024, {'Bytes': 0, 'KiB': 1, 'MiB': 2, 'GiB': 3, 'TiB': 4, 'PiB': 5, 'EiB': 6, 'ZiB': 7, 'YiB': 8}[m[2]]) : NaN)(s.match(/^([\d.]+) *(Bytes|KiB|MiB|GiB|TiB|PiB|EiB|ZiB|YiB)$/));};
+
 export function filenameValid(filename, length = 260) {
     const rg1 = /[<>:"/\\,|?*\u0000-\u001F]/g;
     const rg2 = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
