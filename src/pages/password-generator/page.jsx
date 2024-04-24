@@ -1,13 +1,13 @@
 const React = require("react");
 const Head = require("../../components/head");
-const utils = require("../../../bin/utils");
+const Bundle = require ("../../components/bundle");
 
 module.exports = function(props) {
     return (
         <html lang={props.language}>
             <Head title={props.t("page.passwordgenerator.title")}>
-                <script src={utils.bundleUrl("password-generator.js")} />
-                <link rel="stylesheet" href={utils.bundleUrl("password-generator.css")} />
+                <Bundle name="password-generator.js" />
+                <Bundle name="password-generator.css" />
             </Head>
             <body data-theme={props.theme}>
                 <div id="wrapper">

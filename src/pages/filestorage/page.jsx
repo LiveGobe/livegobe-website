@@ -1,5 +1,6 @@
 const React = require('react');
 const Head = require("../../components/head");
+const Bundle = require("../../components/bundle");
 const ControlPanel = require('../../components/control-panel');
 const utils = require("../../../bin/utils");
 const config = require("../../../config");
@@ -113,7 +114,8 @@ function FilestorageBrowse(props) {
         <html lang={props.language}>
             <head>
                 <Head title={props.t("filestorage.title")}>
-                    <link rel="stylesheet" href={utils.bundleUrl("filestorage.css")} />
+                    <Bundle name="filestorage.js" />
+                    <Bundle name="filestorage.css" />
                     <link rel="alternate" href={`https://${config.domainName}/filestorage/browse`} hrefLang="x-default" />
                     <meta property="og:title" content="Filestorage" />
                     <meta property="og:image" content={utils.staticUrl("images/home.png")} />
@@ -124,7 +126,6 @@ function FilestorageBrowse(props) {
             <body data-theme={props.theme}>
                 <ControlPanel {...props} page="filestorage" />
                 <Filestorage {...props} />
-                <script src={utils.bundleUrl("filestorage.js")} />
             </body>
         </html>
     );

@@ -1,12 +1,12 @@
 const React = require("react");
 const Head = require("../../components/head");
-const utils = require("../../../bin/utils");
+const Bundle = require("../../components/bundle");
 
 module.exports = function(props) {
     return (
         <html lang={props.language}>
             <Head title={props.t("page.users-user.name", { "0": props.pageUser.name } )}>
-                <link rel="stylesheet" href={utils.bundleUrl("users-user.css")} />
+                <Bundle name="users-user.css" />
             </Head>
             <body>
                 <div id="wrapper">

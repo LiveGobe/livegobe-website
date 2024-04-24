@@ -1,6 +1,6 @@
 const React = require("react");
 const Head = require("../../components/head");
-const utils = require("../../../bin/utils");
+const Bundle = require("../../components/bundle");
 
 function UserElement(props) {
     return (
@@ -35,7 +35,7 @@ module.exports = function(props) {
     return (
         <html lang={props.language}>
             <Head title={props.t("page.users.name")}>
-                <link rel="stylesheet" href={utils.bundleUrl("users.css")} />
+                <Bundle name="users.css" />
             </Head>
             <body>
                 <div id="wrapper">

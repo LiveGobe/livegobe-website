@@ -1,13 +1,14 @@
 const React = require("react");
 const Head = require("../../components/head");
+const Bundle = require("../../components/bundle");
 const utils = require("../../../bin/utils");
 
 module.exports = function(props) {
     return (
         <html lang={props.language}>
             <Head title={props.t("page.admin.pagename")}>
-                <script src={utils.bundleUrl("admin.js")} />
-                <link rel="stylesheet" href={utils.bundleUrl("admin.css")} />
+                <Bundle name="admin.js" />
+                <Bundle name="admin.css" />
             </Head>
             <body data-theme={props.theme}>
                 <header>

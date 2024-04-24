@@ -1,6 +1,6 @@
 const React = require("react");
 const Head = require("../../components/head");
-const utils = require("../../../bin/utils");
+const Bundle = require("../../components/bundle");
 
 function UserButton(props) {
     if (!props.user) return (
@@ -25,8 +25,8 @@ module.exports = function(props) {
     return (
         <html lang={props.language}>
             <Head title={props.t("page.index.name")}>
-                <script src={utils.bundleUrl("index.js")} />
-                <link rel="stylesheet" href={utils.bundleUrl("index.css")} />
+                <Bundle name="index.js" />
+                <Bundle name="index.css" />
             </Head>
             <body data-theme={props.theme}>
                 <div id="user-card">

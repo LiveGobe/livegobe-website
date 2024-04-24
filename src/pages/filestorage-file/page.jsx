@@ -1,5 +1,6 @@
 const React = require('react');
 const Head = require('../../components/head');
+const Bundle = require("../../components/bundle");
 const ControlPanel = require('../../components/control-panel');
 const utils = require('../../../bin/utils');
 const config = require("../../../config");
@@ -9,7 +10,8 @@ function FilePage(props) {
         <html lang={props.language}>
             <head>
                 <Head title={props.t("filestorage.file.title", { file: props.file.name })}>
-                    <link rel="stylesheet" href={utils.bundleUrl("filestorage-file.css")} />
+                    <Bundle name="filestorage-file.js" />
+                    <Bundle name="filestorage-file.css" />
                     <meta property="og:title" content={`Download ${props.file.name}`} />
                     <meta property="og:image" content={utils.staticUrl("images/home.png")} />
                     <meta property="og:description" content="Download a file from filestorage" />
@@ -26,7 +28,6 @@ function FilePage(props) {
                         <button type="button">{props.t("filestorage.file.download")}</button>
                     </a>
                 </div>
-                <script src={utils.bundleUrl("filestorage-file.js")} />
             </body>
         </html>
     )

@@ -1,5 +1,6 @@
 const React = require("react");
 const Head = require("../../components/head");
+const Bundle = require("../../components/bundle");
 const utils = require("../../../bin/utils");
 const config = require("../../../config");
 
@@ -7,8 +8,8 @@ module.exports = function(props) {
     return (
         <html lang={props.language}>
             <Head title={props.t("page.register.title")}>
-                <script src={utils.bundleUrl("register.js")} />
-                <link rel="stylesheet" href={utils.bundleUrl("register.css")} />
+                <Bundle name="register.js" />
+                <Bundle name="register.css" />
                 <meta property="og:title" content={`Register`} />
                 <meta property="og:image" content={utils.staticUrl("images/home.png")} />
                 <meta property="og:description" content={`Register an account on ${config.domainName}`} />
