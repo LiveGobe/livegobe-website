@@ -5,7 +5,7 @@ import i18n from "../../js/repack-locales";
 
 await i18n.init();
 
-!function() {
+$(() => {
     const createButton = $("#create-storage");
     /**
      * @typedef {Object} Storage
@@ -1152,4 +1152,4 @@ await i18n.init();
             }
         })
     }
-}();
+});

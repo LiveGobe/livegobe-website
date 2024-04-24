@@ -1,6 +1,6 @@
 import $ from "jquery";
 
-!function() {
+$(() => {
     const sidebar = $("#navigation-sidebar");
 
     $("#close-navigation").on("click", function(e) {
@@ -26,4 +26,4 @@ import $ from "jquery";
         }
         document.cookie = "theme=" + $body.attr("data-theme") + "; path=/";
     });
-}();
+});
