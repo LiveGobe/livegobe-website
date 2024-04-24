@@ -459,6 +459,7 @@ router.route("/users/:username/permissions").patch((req, res) => {
         res.status(500).json({ message: err.toString() })
     });
 });
+
 router.route("/users/filestorage").get((req, res) => {
     if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
     if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
