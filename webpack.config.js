@@ -9,6 +9,7 @@ const { renderToStaticMarkup } = require("react-dom/server");
 const config = require("./config");
 const Webpack = require("webpack");
 const env = process.env.NODE_ENV == "production" ? "production" : "development";
+const package = require("./package.json");
 
 function renderFile(page) {
     let staticDir = path.resolve(__dirname, config.public.pagesFolder);
@@ -65,7 +66,7 @@ module.exports = {
     entry: entries,
     output: {
         path: path.resolve(__dirname, config.public.bundlesFolder),
-        filename: "[name].js",
+        filename: `[name]-${package.version}.js`,
         clean: true
     },
     devtool: env == "production" ? undefined : "eval-source-map",
@@ -93,7 +94,7 @@ module.exports = {
     },
     plugins: [
         new miniCssExtractPlugin({
-            filename: "[name].css"
+            filename: `[name]-${package.version}.css`
         }),
         new Webpack.DefinePlugin({
             config: JSON.stringify(config)
