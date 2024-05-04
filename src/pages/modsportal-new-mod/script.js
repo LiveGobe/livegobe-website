@@ -1,6 +1,7 @@
 import $ from "jquery";
 import i18n from "../../js/repack-locales";
 import { createError } from "../../js/utils";
+import { parse } from "marked";
 
 await i18n.init();
 
@@ -18,7 +19,7 @@ $(() => {
     const $preview = $("#preview");
     const $submit = $("input[type=submit]");
 
-    function updatePreview() {
+    async function updatePreview() {
         $preview.empty();
         const $topBlock = $("<div>").attr("id", "mod-header");
         const $infoBlock = $("<div>").attr("id", "mod-info");
@@ -31,7 +32,7 @@ $(() => {
         $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.tags"))).append(": ").append($modTags.val().split(" ").join(", ")));
         $topBlock.append($infoBlock)
         if ($imageUpload.val()) $topBlock.append($("<img>").attr("id", "img-icon").attr("src", URL.createObjectURL($imageUpload.prop("files")[0])));
-        const $description = $("<div>").attr("id", "mod-description").append($modDescription.val());
+        const $description = $("<div>").attr("id", "mod-description").append(await parse($modDescription.val()));
         const $downloadsTable = $("<div>").attr("id", "downloads-table");
         const $downloadBlock = $("<div>").addClass("download");
         const $downloadInfo = $("<div>").addClass("download-info").append($(`<div>${i18n.t("page.modsportal.version")}: ${$modVersion.val()}</div>`).addClass("download-version"));
@@ -83,7 +84,6 @@ $(() => {
             contentType: false,
             processData: false,
             success: function(data) {
-                console.log(data);
                 window.open(`/mods_portal/browse/${$gameSelect.val()}/${data.mod._id}`, "_self");
             },
             error: function(xhr, status, err) {

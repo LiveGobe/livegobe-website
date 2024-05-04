@@ -1,6 +1,7 @@
 import $ from "jquery";
 import i18n from "../../js/repack-locales";
 import { createError, createMessage, staticUrl } from "../../js/utils";
+import { parse } from "marked";
 
 await i18n.init();
 
@@ -132,7 +133,7 @@ $(() => {
             }
         }
 
-        function updateModPage() {
+        async function updateModPage() {
             const gameName = URLParts.at(2);
             if (!gameName) return;
 
