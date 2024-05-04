@@ -7,7 +7,7 @@ module.exports = {
             fontSrc: ["*"],
             formAction: ["'self'", "example.com", "*.example.com"],
             frameAncestors: ["'self'", "example.com", "*.example.com"],
-            imgSrc: ["*"],
+            imgSrc: ["*", "blob:"],
             objectSrc: ["'none'"],
             scriptSrc: ["*", "'unsafe-eval'", "'unsafe-inline'"],
             scriptSrcAttr: ["'none'"],
