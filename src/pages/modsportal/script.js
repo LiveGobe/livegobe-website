@@ -172,7 +172,7 @@ $(() => {
                 $downloadBlock.append($downloadInfo);
                 const $downloadButtons = $("<div>").addClass("download-buttons");
                 const $shareButton = $("<button>").attr("type", "button").text(i18n.t("generic.share")).on("click", e => {
-                    navigator.clipboard.writeText(window.location.href);
+                    navigator.clipboard.writeText(staticUrl(encodeURI(`files/mods/${game.name}/${mod._id}/${version.version}/${mod.modId}`)));
                     createMessage(i18n.t("page.modsportal.shared"));
                 });
                 const $downloadButton = $("<a>").attr("target", "_blank").attr("href", encodeURI(`/mods_portal/d/${game.name}/${mod._id}/${version.version}`)).append($("<button>").attr("type", "button").text(i18n.t("generic.download")));
