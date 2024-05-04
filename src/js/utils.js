@@ -1,3 +1,5 @@
+import $ from "jquery";
+
 export function even(n) {
 	return n % 2 === 0;
 }
@@ -31,3 +33,29 @@ export function formatTime(s) {
 }
 
 export function stob(val) { return val == "true"}
+
+export function createMessage(message) {
+    let ms = $("#messages").find(".message");
+    if (ms.length == 6) ms.last().trigger("click");
+    let m = $("<div>").addClass(["message", "unselectable" ]).text(message);
+    let timeout = setTimeout(() => {
+        m.animate({ opacity: 0 }, 1000, () => { m.trigger("click") });
+    }, 10000);
+    m.on("click", function(e) {
+        clearTimeout(timeout);
+        e.stopPropagation();
+        m.remove();
+    });
+    $("#messages").prepend(m);
+}
+
+export function createError(message) {
+    let ms = $("#messages").find(".message");
+    if (ms.length == 6) ms[5].remove();
+    let m = $("<div>").addClass(["message", "error", "unselectable"]).text(message);
+    m.on("click", function(e) {
+        e.stopPropagation();
+        m.remove();
+    });
+    $("#messages").prepend(m);
+}
