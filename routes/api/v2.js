@@ -7,6 +7,8 @@ const config = require("../../config");
 const uuid = require("uuid");
 const mongoose = require("mongoose");
 const sharp = require("sharp");
+const marked = require("marked");
+const sanitize = require("isomorphic-dompurify").sanitize;
 const fileUpload = require("express-fileupload");
 
 const FileStorage = require("../../models/filestorage");
@@ -514,6 +516,7 @@ router.route("/modsportal/games").get((req, res) => {
     if (!name) return res.status(400).json({ message: req.t("api.modsportal.namemissing") });
     if (!image) return res.status(400).json({ message: req.t("api.modsportal.gameimagemissing") });
 
+    name = sanitize(name);
     ModsPortalGame.findOne({ name }).then(async game => {
         if (game) return res.status(400).json({ message: req.t("api.modsportal.gameexists") });
 
@@ -551,6 +554,7 @@ router.route("/modsportal/games/:gameName/mods").post(fileUpload({ defParamChars
     if (!fileName) return res.status(400).json({ message: req.t("api.modsportal.modidmissing") });
     if (!utils.filenameValid(fileName)) return res.status(400).json({ message: req.t("api.modsportal.modidinvalid") });
     if (!modVersion) return res.status(400).json({ message: req.t("api.modsportal.modversionmissing") });
+    if (!utils.versionValid(modVersion)) return res.status(400).json({ message: req.t("api.modsportal.versioninvalid") });
     if (!modTags) return res.status(400).json({ message: req.t("api.modsportal.modtagsmissing") });
     if (!fileFile) return res.status(400).json({ message: req.t("api.modsportal.modfilemissing") });
 
@@ -560,15 +564,15 @@ router.route("/modsportal/games/:gameName/mods").post(fileUpload({ defParamChars
 
         const newID = new mongoose.Types.ObjectId();
         const newMod = {
-            _id: newID,
-            name: modName,
-            modId: fileName,
-            author: modAuthor,
-            description: modDescription,
-            tags: modTags,
+            _id: sanitize(newID),
+            name: sanitize(modName),
+            modId: sanitize(fileName),
+            author: sanitize(modAuthor),
+            description: sanitize(await marked.parse(modDescription)),
+            tags: sanitize(modTags).split(" "),
             versions: [{
-                version: modVersion,
-                gameVersion,
+                version: sanitize(modVersion),
+                gameVersion: sanitize(gameVersion),
                 uploadedAt: new Date()
             }],
             iconLink: imageFile ? utils.staticUrl(`images/modcards/${newID}/${imageFile.name}`) : ""
@@ -600,6 +604,7 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
     let modVersion = req.query.modVersion ?? req.body.modVersion;
     let gameVersion = req.query.gameVersion ?? req.body.gameVersion;
     if (!modVersion) return res.status(400).json({ message: req.t("api.modsportal.modversionmissing") });
+    if (!utils.versionValid(modVersion)) return res.status(400).json({ message: req.t("api.modsportal.versioninvalid") });
     if (!fileFile) return res.status(400).json({ message: req.t("api.modsportal.modfilemissing") });
 
     ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(async game => {
@@ -609,8 +614,8 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
         if (mod.versions.find(v => v.version == modVersion)) return res.status(400).json({ message: req.t("api.modsportal.versionexists") });
 
         const newVersion = {
-            version: modVersion,
-            gameVersion,
+            version: sanitize(modVersion),
+            gameVersion: sanitize(gameVersion),
             uploadedAt: new Date()
         }
 
