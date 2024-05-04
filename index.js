@@ -93,6 +93,8 @@ async function main() {
     app.use("/passwordgenerator", redirect("/password_generator"));
     app.use("/password_generator", routes.passwordGenerator);
     app.use("/admin", routes.admin);
+    app.use("/modsportal", redirect("/mods_portal"));
+    app.use("/mods_portal", routes.modsportal);
 
     // Test page
     if (app.get("env") == "development") {
