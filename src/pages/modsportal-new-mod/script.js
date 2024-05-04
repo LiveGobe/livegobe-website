@@ -30,7 +30,7 @@ $(() => {
         $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.lastupload"))).append(": ").append(new Date().toLocaleString()));
         $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.tags"))).append(": ").append($modTags.val().split(" ").join(", ")));
         $topBlock.append($infoBlock)
-        if ($imageUpload.val()) $topBlock.append($("<img>").attr("src", URL.createObjectURL($imageUpload.prop("files")[0])));
+        if ($imageUpload.val()) $topBlock.append($("<img>").attr("id", "img-icon").attr("src", URL.createObjectURL($imageUpload.prop("files")[0])));
         const $description = $("<div>").attr("id", "mod-description").append($modDescription.val());
         const $downloadsTable = $("<div>").attr("id", "downloads-table");
         const $downloadBlock = $("<div>").addClass("download");
