@@ -156,7 +156,7 @@ $(() => {
             $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.lastupload"))).append(": ").append(new Date(mod.versions.at(-1).uploadedAt).toLocaleString()));
             $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.tags"))).append(": ").append(mod.tags.join(", ")));
             $topBlock.append($infoBlock)
-            if (mod.iconLink) $topBlock.append($("<img>").attr("src", mod.iconLink));
+            if (mod.iconLink) $topBlock.append($("<img>").attr("id", "icon-img").attr("src", mod.iconLink));
             const $description = $("<div>").attr("id", "mod-description").append(mod.description);
             const $downloadsTable = $("<div>").attr("id", "downloads-table");
             const sortedMods = mod.versions.toSorted((v1, v2) => {
