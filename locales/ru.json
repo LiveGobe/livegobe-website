@@ -81,6 +81,27 @@
       "maxsizemissing": "Отсутствует максимальный размер хранилища",
       "usernotfound": "Пользователь не найден",
       "filestoragechanged": "Файловое хранилище обновлено"
+    },
+    "modsportal": {
+      "gamenamemissing": "Отсутствует название игры",
+      "gameimagemissing": "Отсутствует изображение игры",
+      "gameexists": "Игра с текущим именем уже существует",
+      "gamecreated": "Игра была создана",
+      "modnamemissing": "Отсутствует название мода",
+      "modauthormissing": "Отсутствует автор(ы) мода",
+      "moddescriptionmissing": "Отсутствует описание мода",
+      "modidmissing": "Отсутствует название файла",
+      "modversionmissing": "Отсутствует первая версия мода",
+      "modtagsmissing": "Отсутствует тэги мода",
+      "modfilemissing": "Отсутствует файл для загрузки",
+      "modimagemissing": "Отсутствует изображение для загрузки",
+      "gamenotexists": "Игра не существует",
+      "modidinvalid": "Неверное имя файла",
+      "modcreated": "Мод был создан",
+      "modexists": "Мод уже существует",
+      "modnotexists": "Мод не существует",
+      "modupdated": "Мод был обновлён",
+      "versionexists": "Текущая версия моду уже существует"
     }
   },
   "theme": {
@@ -193,6 +214,43 @@
         "maxsize": "Всего места: ",
         "save": "Сохранить Хранилище"
       }
+    },
+    "modsportal": {
+      "pagename": "LG Реестр Модов",
+      "newgamepagename": "Создать Новую Игру",
+      "newmodpagename": "Загрузить Новый Мод",
+      "return": "Назад к модам",
+      "choosegame": "Выберите игру",
+      "nogamefound": "Игры не найдены",
+      "nomodsfound": "Моды не найдены, вернитесь позже...",
+      "nomodfound": "Мод не был найден",
+      "title": "Название",
+      "author": "Автор",
+      "modid": "ID",
+      "latestversion": "Последняя версия",
+      "gameversion": "Версия игры",
+      "lastupload": "Последнее обновление",
+      "uploaddate": "Дата загрузки",
+      "tags": "Тэги",
+      "shared": "Ссылка скопирована в буфер обмена",
+      "version": "Версия",
+      "addgame": "Добавить Игру",
+      "updatemod": "Обновить Мод",
+      "createmod": "Загрузить Мод",
+      "gamename": "Название Игры",
+      "imageupload": "Изображение (Рекомендуемое соотношение 6/9)",
+      "gameselect": "Выберите Игру",
+      "modname": "Название Мода",
+      "moddescription": "Описание Мода",
+      "modidupload": "ID (Название Файла)",
+      "modauthor": "Автор(ы) Мода",
+      "modversion": "Первая Версия Мода",
+      "gameversionupload": "Версия Игры (Если Нужно)",
+      "modtags": "Теги",
+      "modfile": "Файл",
+      "modimageupload": "Изображение (Рекомендуемое соотношение 1/1)",
+      "modversionupdate": "Версия Мода",
+      "creategame": "Создать"
     }
   },
   "filestorage": {
@@ -278,5 +336,15 @@
     "filestorageFile": "Файловое Хранилище - Скачать Файл",
     "passwordgenerator": "Генератор Паролей"
   },
-  "copyright": "LiveGobe © 2022-2024"
+  "copyright": "LiveGobe © 2022-2024",
+  "generic": {
+    "return": "На Главную Страницу",
+    "loading": "Загрузка...",
+    "by": "от",
+    "back": "Назад",
+    "download": "Скачать",
+    "share": "Поделиться",
+    "refresh": "Обновить",
+    "upload": "Загрузить"
+  }
 }
