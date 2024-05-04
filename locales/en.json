@@ -103,7 +103,8 @@
       "modexists": "Mod already exists",
       "modnotexists": "Mod doesn't exist",
       "modupdated": "Mod was updated",
-      "versionexists": "Current version is already available"
+      "versionexists": "Current version is already available",
+      "versioninvalid": "Version name is invalid"
     }
   },
   "theme": {
