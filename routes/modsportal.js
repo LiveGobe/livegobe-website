@@ -27,7 +27,7 @@ router.get("/d/:gameName/:modId/:modVersion", (req, res) => {
         const version = mod.versions.find(ver => ver.version == req.params.modVersion);
         if (!version) return res.sendStatus(404);
 
-        res.download(path.join(process.cwd(), utils.staticUrl(`files/mods/${req.params.gameName}/${req.params.modId}/${req.params.modVersion}/${mod.modId}`)));
+        res.download(path.join(utils.staticUrl(`files/mods/${req.params.gameName}/${req.params.modId}/${req.params.modVersion}/${mod.modId}`)));
     }).catch(err => {
         res.status(500).serve("500", { message: err });
     });
