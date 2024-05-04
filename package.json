@@ -1,6 +1,6 @@
 {
   "name": "lg-website",
-  "version": "2.0.4",
+  "version": "2.1.0",
   "description": "My website rewritten",
   "main": "index.js",
   "scripts": {
@@ -23,8 +23,10 @@
     "express-react-views": "^0.11.0",
     "express-session": "^1.18.0",
     "helmet": "^6.2.0",
+    "isomorphic-dompurify": "^2.9.0",
     "jquery": "^3.7.1",
     "jquery.hotkeys": "^0.1.0",
+    "marked": "^12.0.2",
     "mongoose": "^8.3.0",
     "passport": "^0.7.0",
     "passport-custom": "^1.1.1",
