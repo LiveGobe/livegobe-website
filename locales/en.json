@@ -255,7 +255,10 @@
       "modfile": "Mod File",
       "modimageupload": "Upload Image (Recommended Aspect Ration 1/1)",
       "modversionupdate": "Mod Version",
-      "creategame": "Create"
+      "creategame": "Create",
+      "filtergames": "Filter Games",
+      "filtermods": "Filter Mods",
+      "filterversions": "Filter Versions"
     }
   },
   "filestorage": {

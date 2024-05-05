@@ -254,7 +254,10 @@
       "modfile": "Файл",
       "modimageupload": "Изображение (Рекомендуемое соотношение 1/1)",
       "modversionupdate": "Версия Мода",
-      "creategame": "Создать"
+      "creategame": "Создать",
+      "filtergames": "Поиск Игр",
+      "filtermods": "Поиск Модов",
+      "filterversions": "Поис Версий"
     }
   },
   "filestorage": {
