@@ -96,8 +96,21 @@ a:has(#back) {
     padding: 11px;
 }
 
+div:has(#search-filter) {
+    width: 50%;
+
+    & #search-filter {
+        width: 100%;
+    }
+}
+
 .bold {
     font-weight: bold;
+}
+
+span.highlighted {
+    background-color: yellow;
+    color: black;
 }
 
 #wrapper {

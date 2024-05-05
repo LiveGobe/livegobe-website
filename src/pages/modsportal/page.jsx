@@ -26,6 +26,9 @@ module.exports = function(props) {
                         </div>
                     </div>
                     <div>
+                        <input type="search" name="search-filter" id="search-filter" placeholder={props.t("page.modsportal.filtergames")} />
+                    </div>
+                    <div>
                         <a id="control-button" href="/mods_portal/game/new">{props.t("page.modsportal.addgame")}</a>
                     </div>
                 </header>

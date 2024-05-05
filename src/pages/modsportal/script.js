@@ -38,6 +38,8 @@ $(() => {
                 const $anchor = $(`<a>\<==</a>`).attr("href", encodeURI(`/mods_portal/browse`)).on("click", e => {
                     e.preventDefault();
                     window.history.replaceState(null, null, `/mods_portal/browse`);
+                    $filter.attr("placeholder", i18n.t("page.modsportal.filtergames"));
+                    $filter.val("");
                     updateURL();
                     updateHeader();
                     updateGamesList();
@@ -47,6 +49,8 @@ $(() => {
                 const $anchor2 = $(`<a><div>${URLParts.at(2)}</div></a>`).attr("href", encodeURI(`/mods_portal/browse/${game.name}`)).on("click", e => {
                     e.preventDefault();
                     window.history.replaceState(null, null, `/mods_portal/browse/${game.name}`);
+                    $filter.attr("placeholder", i18n.t("page.modsportal.filtermods"));
+                    $filter.val("");
                     updateURL();
                     updateHeader();
                     updateModsList();
@@ -58,6 +62,8 @@ $(() => {
                 const $anchor = $(`<a>\<==</a>`).attr("href", encodeURI(`/mods_portal/browse`)).on("click", e => {
                     e.preventDefault();
                     window.history.replaceState(null, null, `/mods_portal/browse`);
+                    $filter.attr("placeholder", i18n.t("page.modsportal.filtergames"));
+                    $filter.val("");
                     updateURL();
                     updateHeader();
                     updateGamesList();
@@ -70,14 +76,35 @@ $(() => {
 
         function updateGamesList() {
             $gamesList.empty();
-            games.forEach(game => {
+
+            let filteredGames = [];
+            let filter = $filter.val();
+            let filters = filter.split(" ").filter(n => n);
+            if (filters.length) {
+                for (let i = 0; i < filters.length; i++) {
+                    const fGames = games.filter(e => { return e.name.toLowerCase().includes(filters[i].toLowerCase()) });
+                    fGames.forEach((g) => {
+                        if (!filteredGames.includes(g)) filteredGames.push(g);
+                    })
+                }
+                filteredGames.sort((a, b) => { return a.name.localeCompare(b.name) });
+            }
+            else filteredGames = games;
+
+            filteredGames.forEach(game => {
                 const $gameElement = $("<div>").addClass("game-card");
                 const $cardImage = $("<img>").attr("src", game.imageLink ?? staticUrl("images/gamecards/empty.png"))
-                const $cardText = $("<div>").text(game.name);
+                let gameName = game.name;
+                for (let i = 0; i < filters.length; i++) {
+                    gameName = gameName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
+                }
+                const $cardText = $("<div>").append(gameName);
                 $gameElement.append($cardImage).append($cardText);
                 const $anchor = $("<a>").attr("href", encodeURI(`/mods_portal/browse/${game.name}`)).append($gameElement).on("click", e => {
                     e.preventDefault();
                     window.history.replaceState(null, null, `/mods_portal/browse/${game.name}`);
+                    $filter.attr("placeholder", i18n.t("page.modsportal.filtermods"));
+                    $filter.val("");
                     updateURL();
                     updateHeader();
                     updateModsList();
@@ -96,19 +123,48 @@ $(() => {
             const game = games.find(g => g.name == gameName);
             if (!game) return createError(i18n.t("page.modsportal.nogamefound"));
 
-            game.mods.forEach(mod => {
+            game.mods.sort((m1, m2) => m1.name.localeCompare(m2.name));
+
+            let filteredMods = [];
+            let filter = $filter.val();
+            let filters = filter.split(" ").filter(n => n);
+            if (filters.length) {
+                for (let i = 0; i < filters.length; i++) {
+                    const fMods = game.mods.filter(e => {
+                        return e.name.toLowerCase().includes(filters[i].toLowerCase()) || e.description.toLowerCase().includes(filters[i].toLowerCase()) || e.author.toLowerCase().includes(filters[i].toLowerCase());
+                    });
+                    fMods.forEach((g) => {
+                        if (!filteredMods.includes(g)) filteredMods.push(g);
+                    })
+                }
+                filteredMods.sort((a, b) => { return a.name.localeCompare(b.name) });
+            }
+            else filteredMods = game.mods;
+
+            filteredMods.forEach(mod => {
+                let modName = mod.name;
+                let modDescription = mod.description.slice(0, mod.description.indexOf("\n")).replace(/(<\/?(?:span)[^>]*>)|<[^>]+>/ig, '$1');
+                let modAuthor = mod.author;
+                for (let i = 0; i < filters.length; i++) {
+                    modName = modName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
+                    modDescription = modDescription.replace(/(<\/?(?:span)[^>]*>)|<[^>]+>/ig, '$1').replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
+                    modAuthor = modAuthor.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
+                }
+
                 const $modElement = $("<div>").addClass("mod-card");
                 if (mod.iconLink) {
                     const $modIcon = $("<img>").attr("src", mod.iconLink);
                     $modElement.append($modIcon);
                 }
-                const $modTitle = $("<div>").addClass("bold").text(`${mod.name} ${i18n.t("generic.by")} ${mod.author}`);
-                const $modDescription = $("<div>").text(mod.description);
+                const $modTitle = $("<div>").addClass("bold").append(`${modName} ${i18n.t("generic.by")} ${modAuthor}`);
+                const $modDescription = $("<div>").append(modDescription);
                 const $modInfo = $("<div>").addClass("info").append($modTitle).append($modDescription);
                 $modElement.append($modInfo);
                 const $anchor = $("<a>").attr("href", encodeURI(`/mods_portal/browse/${game.name}/${mod._id}`)).append($modElement).on("click", e => {
                     e.preventDefault();
                     window.history.replaceState(null, null, `/mods_portal/browse/${game.name}/${mod._id}`);
+                    $filter.attr("placeholder", i18n.t("page.modsportal.filterversions"));
+                    $filter.val("");
                     updateURL();
                     updateHeader();
                     updateModPage();
@@ -147,6 +203,21 @@ $(() => {
             const mod = game.mods.find(m => m._id == modId);
             if (!mod) return createError(i18n.t("page.modsportal.nomodfound"));
 
+            let filteredVersions = [];
+            let filter = $filter.val();
+            let filters = filter.split(" ").filter(n => n);
+            if (filters.length) {
+                for (let i = 0; i < filters.length; i++) {
+                    const fMods = mod.versions.filter(e => {
+                        return e.version.toLowerCase().includes(filters[i].toLowerCase()) || e.gameVersion?.toLowerCase()?.includes(filters[i].toLowerCase());
+                    });
+                    fMods.forEach((g) => {
+                        if (!filteredVersions.includes(g)) filteredVersions.push(g);
+                    })
+                }
+            }
+            else filteredVersions = mod.versions;
+
             const $topBlock = $("<div>").attr("id", "mod-header");
             const $infoBlock = $("<div>").attr("id", "mod-info");
             $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.title"))).append(": ").append(mod.name));
@@ -160,15 +231,22 @@ $(() => {
             if (mod.iconLink) $topBlock.append($("<img>").attr("id", "icon-img").attr("src", mod.iconLink));
             const $description = $("<div>").attr("id", "mod-description").append(mod.description);
             const $downloadsTable = $("<div>").attr("id", "downloads-table");
-            const sortedMods = mod.versions.toSorted((v1, v2) => {
+            const sortedMods = filteredVersions.toSorted((v1, v2) => {
                 let v1split = v1.version.split(".").map(m => Number(m));
                 let v2split = v2.version.split(".").map(m => Number(m));
                 return ((v2split[0] - v1split[0]) * 100 + (v2split[1] - v1split[1]) * 10 + (v2split[2] - v1split[2]));
             });
             sortedMods.forEach(version => {
+                let versionName = version.version;
+                let gameVersion = version.gameVersion;
+                for (let i = 0; i < filters.length; i++) {
+                    versionName = versionName?.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
+                    gameVersion = gameVersion?.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
+                }
+
                 const $downloadBlock = $("<div>").addClass("download");
-                const $downloadInfo = $("<div>").addClass("download-info").append($(`<div>${i18n.t("page.modsportal.version")}: ${version.version}</div>`).addClass("download-version"));
-                if (version.gameVersion) $downloadInfo.append($(`<div>${i18n.t("page.modsportal.gameversion")}: ${version.gameVersion}</div>`).addClass("download-game-version"));
+                const $downloadInfo = $("<div>").addClass("download-info").append($(`<div>${i18n.t("page.modsportal.version")}: ${versionName}</div>`).addClass("download-version"));
+                if (gameVersion) $downloadInfo.append($(`<div>${i18n.t("page.modsportal.gameversion")}: ${gameVersion}</div>`).addClass("download-game-version"));
                 $downloadInfo.append($(`<div>${i18n.t("page.modsportal.uploaddate")}: ${new Date(version.uploadedAt).toLocaleString()}</div>`).addClass("download-mod-version"));
                 $downloadBlock.append($downloadInfo);
                 const $downloadButtons = $("<div>").addClass("download-buttons");
@@ -184,13 +262,23 @@ $(() => {
         }
 
         function updateControlButton() {
+            $filter.val("");
             if (URLParts.at(3)) {
+                $filter.attr("placeholder", i18n.t("page.modsportal.filterversions"));
                 $controlButton.attr("href", encodeURI(`/mods_portal/mod/update/${URLParts.at(3)}`)).text(i18n.t("page.modsportal.updatemod"));
             } else if (URLParts.at(2)) {
+                $filter.attr("placeholder", i18n.t("page.modsportal.filtermods"));
                 $controlButton.attr("href", encodeURI(`/mods_portal/mod/new?game=${URLParts.at(2)}`)).text(i18n.t("page.modsportal.createmod"));
             } else {
                 $controlButton.attr("href", encodeURI(`/mods_portal/game/new`)).text(i18n.t("page.modsportal.addgame"));
             }
+        }
+
+        function stripHtml(html)
+        {
+            let tmp = document.createElement("DIV");
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || "";
         }
 
         function showPage(page) {
@@ -212,7 +300,14 @@ $(() => {
         const $modsList = $("#mods-list");
         const $modPage = $("#mod-page");
 
+        const $filter = $("#search-filter");
         const $controlButton = $("#control-button");
+
+        $filter.on("input", e => {
+            updateGamesList();
+            updateModsList();
+            updateModPage();
+        });
 
         updateURL();
         updateHeader();
