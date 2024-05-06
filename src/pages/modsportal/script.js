@@ -131,7 +131,7 @@ $(() => {
             if (filters.length) {
                 for (let i = 0; i < filters.length; i++) {
                     const fMods = game.mods.filter(e => {
-                        return e.name.toLowerCase().includes(filters[i].toLowerCase()) || e.description.toLowerCase().includes(filters[i].toLowerCase()) || e.author.toLowerCase().includes(filters[i].toLowerCase());
+                        return e.name.toLowerCase().includes(filters[i].toLowerCase()) || e.description.toLowerCase().includes(filters[i].toLowerCase()) || e.author.toLowerCase().includes(filters[i].toLowerCase()) || e.tags.join(", ").toLowerCase().includes(filters[i].toLowerCase());
                     });
                     fMods.forEach((g) => {
                         if (!filteredMods.includes(g)) filteredMods.push(g);
@@ -145,21 +145,28 @@ $(() => {
                 let modName = mod.name;
                 let modDescription = mod.description.slice(0, mod.description.indexOf("\n")).replace(/(<\/?(?:span)[^>]*>)|<[^>]+>/ig, '$1');
                 let modAuthor = mod.author;
+                let modTags = mod.tags.join(", ");
+                console.log(modTags);
                 for (let i = 0; i < filters.length; i++) {
                     modName = modName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                     modDescription = modDescription.replace(/(<\/?(?:span)[^>]*>)|<[^>]+>/ig, '$1').replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                     modAuthor = modAuthor.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
+                    modTags = modTags.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                 }
 
+                console.log(modTags);
+
                 const $modElement = $("<div>").addClass("mod-card");
+                const $modMain = $("<div>").addClass("mod-card-main");
                 if (mod.iconLink) {
                     const $modIcon = $("<img>").attr("src", mod.iconLink);
-                    $modElement.append($modIcon);
+                    $modMain.append($modIcon);
                 }
                 const $modTitle = $("<div>").addClass("bold").append(`${modName} ${i18n.t("generic.by")} ${modAuthor}`);
                 const $modDescription = $("<div>").append(modDescription);
-                const $modInfo = $("<div>").addClass("info").append($modTitle).append($modDescription);
-                $modElement.append($modInfo);
+                const $modInfo = $("<div>").addClass("info").append().append($modTitle).append($modDescription);
+                $modMain.append($modInfo);
+                $modElement.append($modMain).append($("<div>").addClass("mod-card-tags").append(i18n.t("page.modsportal.tags") + ": ").append(modTags));
                 const $anchor = $("<a>").attr("href", encodeURI(`/mods_portal/browse/${game.name}/${mod._id}`)).append($modElement).on("click", e => {
                     e.preventDefault();
                     window.history.replaceState(null, null, `/mods_portal/browse/${game.name}/${mod._id}`);
