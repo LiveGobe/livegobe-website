@@ -43,6 +43,7 @@ div#body {
     display: flex;
     align-items: center;
     justify-content: space-around;
+    overflow: hidden;
 }
 
 a {
@@ -143,6 +144,8 @@ form {
         justify-content: space-between;
 
         & #preview {
+            position: sticky;
+            top: 0;
             width: 50%;
             border: 1px solid var(--border-color);
             padding: 5px;
@@ -255,6 +258,10 @@ form {
                 overflow-wrap: break-word;
                 max-width: 150px;
             }
+        }
+
+        & textarea {
+            height: 10rem;
         }
     }
 }
