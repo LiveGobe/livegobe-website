@@ -202,7 +202,19 @@ span.highlighted {
 
     & .mod-card {
         display: flex;
-        width: 100%;
+        flex-direction: column;
+        
+        & .mod-card-main {
+            display: flex;
+            width: 100%;
+        }
+
+        & .mod-card-tags {
+            margin-top: 10px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
 
         & img {
             width: 80px;
