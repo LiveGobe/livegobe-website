@@ -568,7 +568,7 @@ router.route("/modsportal/games/:gameName/mods").post(fileUpload({ defParamChars
             name: sanitize(modName),
             modId: sanitize(fileName),
             author: sanitize(modAuthor),
-            description: sanitize(await marked.parse(modDescription)),
+            description: sanitize(modDescription),
             tags: sanitize(modTags).split(" "),
             versions: [{
                 version: sanitize(modVersion),
@@ -606,7 +606,7 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
     if (!modVersion) return res.status(400).json({ message: req.t("api.modsportal.modversionmissing") });
     if (!utils.versionValid(modVersion)) return res.status(400).json({ message: req.t("api.modsportal.versioninvalid") });
     if (!fileFile) return res.status(400).json({ message: req.t("api.modsportal.modfilemissing") });
-
+    
     ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
         if (!game) return res.status(400).json({ message: req.t("api.modsportal.gamenotexists") });
         const mod = game.mods.find(mod => mod.id == req.params.modId);
@@ -631,11 +631,73 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
     }).catch(err => {
         res.status(500).json({ message: err.toString() })
     });
+}).patch(fileUpload({ defParamCharset: "utf-8" }), (req, res) => {
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
+    if (!req.user.allowModsEdit()) return res.status(403).json({ message: req.t("api.nopermission")});
+
+    let imageFile = req.files?.image;
+    let modName = req.query.name ?? req.body.name;
+    let modAuthor = req.query.author ?? req.body.author;
+    let modDescription = req.query.description ?? req.body.description;
+    let modTags = req.query.tags ?? req.body.tags;
+    if (!modName) return res.status(400).json({ message: req.t("api.modsportal.modnamemissing") });
+    if (!modAuthor) return res.status(400).json({ message: req.t("api.modsportal.modauthormissing") });
+    if (!modDescription) return res.status(400).json({ message: req.t("api.modsportal.moddescriptionmissing") });
+    if (!modTags) return res.status(400).json({ message: req.t("api.modsportal.modtagsmissing") });
+
+    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(async game => {
+        if (!game) return res.status(400).json({ message: req.t("api.modsportal.gamenotexists") });
+        const mod = game.mods.find(mod => mod.id == req.params.modId);
+
+        const oldImageName = mod.iconLink.split("/").at(-1);
+
+        mod.name = sanitize(modName) ?? mod.name;
+        mod.author = sanitize(modAuthor) ?? mod.author;
+        mod.description = sanitize(modDescription) ?? mod.description;
+        mod.tags = sanitize(modTags)?.split(" ") ?? mod.tags;
+        mod.iconLink = imageFile ? utils.staticUrl(`images/modcards/${mod.id}/${imageFile.name}`) : mod.iconLink;
+        let resizedImage;
+        if (imageFile) resizedImage = await sharp(imageFile.data).resize(160, 160, { fit: "fill" }).toBuffer();
+
+        game.save().then(savedGame => {
+            if (imageFile) {
+                fs.rmSync(path.join(process.cwd(), `public/images/modcards/${mod.id}`, oldImageName), { recursive: true, force: true });
+                fs.mkdirSync(path.join(process.cwd(), `public/images/modcards/${mod.id}`), { recursive: true });
+                fs.writeFileSync(path.join(process.cwd(), `public/images/modcards/${mod.id}`, imageFile.name), resizedImage);
+            }
+            res.json({ message: req.t("api.modsportal.modupdated"), mod });
+        }).catch(err => {
+            res.status(500).json({ message: err.toString() })
+        });
+    }).catch(err => {
+        res.status(500).json({ message: err.toString() })
+    });
+}).delete((req, res) => {
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
+    if (!req.user.allowModsEdit()) return res.status(403).json({ message: req.t("api.nopermission")});
+
+    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
+        if (!game) return res.status(400).json({ message: req.t("api.modsportal.gamenotexists") });
+        const modIndex = game.mods.findIndex(m => m.id == req.params.modId);
+        if (modIndex == -1) return res.status(400).json({ message: req.t("api.modsportal.modnotexists") });
+
+        const modObject = game.mods[modIndex];
+        game.mods.splice(modIndex, 1);
+        game.save().then(savedGame => {
+            fs.rmSync(path.join(process.cwd(), `public/files/mods/${savedGame.name}/${modObject._id}`), { recursive: true, force: true });
+            fs.rmSync(path.join(process.cwd(), `public/images/modcards/${modObject._id}`), { recursive: true, force: true });
+            res.json({ message: req.t("api.modsportal.moddeleted") });
+        }).catch(err => {
+            res.status(500).json({ message: err.toString() })
+        });
+    }).catch(err => {
+        res.status(500).json({ message: err.toString() })
+    });
 });
 
 router.route("/modsportal/mods/:modId/:modVersion").delete((req, res) => {
     if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.allowModsDelete()) return res.status(403).json({ message: req.t("api.nopermission")});
+    if (!req.user.allowModsEdit()) return res.status(403).json({ message: req.t("api.nopermission")});
 
     ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
         if (!game) return res.status(400).json({ message: req.t("api.modsportal.gamenotexists") });
