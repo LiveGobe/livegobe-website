@@ -179,21 +179,23 @@ $(() => {
                 if (permission.includes("admin") || permission.includes("mods_edit")) {
                     const $buttons = $("<div>");
                     $buttons.append($("<a>").attr("href", `/mods_portal/mod/edit/${mod._id}`).append($("<button>").attr("type", "button").text(i18n.t("generic.edit"))));
-                    const $deleteButton = $("<button>").attr("type", "button").text(i18n.t("generic.delete")).on("click", e => {
-                        if (confirm(i18n.t("page.modsportal.deletemodconfirm", { mod: mod.name }))) {
-                            $.ajax({
-                                url: `/api/v2/modsportal/mods/${mod._id}`,
-                                method: "DELETE",
-                                success: function(data) {
-                                    window.location.reload();
-                                },
-                                error: function(xhr, status, err) {
-                                    createError(xhr.responseJSON?.message ?? err);
-                                }
-                            });
-                        }
-                    });
-                    $buttons.append($deleteButton);
+                    if (permission.includes("admin")) {
+                        const $deleteButton = $("<button>").attr("type", "button").text(i18n.t("generic.delete")).on("click", e => {
+                            if (confirm(i18n.t("page.modsportal.deletemodconfirm", { mod: mod.name }))) {
+                                $.ajax({
+                                    url: `/api/v2/modsportal/mods/${mod._id}`,
+                                    method: "DELETE",
+                                    success: function(data) {
+                                        window.location.reload();
+                                    },
+                                    error: function(xhr, status, err) {
+                                        createError(xhr.responseJSON?.message ?? err);
+                                    }
+                                });
+                            }
+                        });
+                        $buttons.append($deleteButton);
+                    }
                     $modsList.append($buttons);
                 }
             });
