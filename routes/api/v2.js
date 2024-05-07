@@ -674,7 +674,7 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
     });
 }).delete((req, res) => {
     if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.allowModsEdit()) return res.status(403).json({ message: req.t("api.nopermission")});
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
 
     ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
         if (!game) return res.status(400).json({ message: req.t("api.modsportal.gamenotexists") });
