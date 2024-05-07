@@ -107,7 +107,8 @@
       "versioninvalid": "Неверное название версии мода",
       "modversionnotexists": "Версия мода не существует",
       "modversiondeleted": "Версия мода успешно удалена",
-      "modonlyversion": "Нельзя удалить единственную версию мода"
+      "modonlyversion": "Нельзя удалить единственную версию мода",
+      "moddeleted": "Мод удалён успешно"
     }
   },
   "theme": {
@@ -261,7 +262,9 @@
       "filtergames": "Поиск Игр",
       "filtermods": "Поиск Модов",
       "filterversions": "Поиск Версий",
-      "deleteversionconfirm": "Вы уверены что хотите удалить версию мода {version}?"
+      "deleteversionconfirm": "Вы уверены что хотите удалить версию мода {version}?",
+      "editmodpagename": "Редактировать Мод",
+      "deletemodconfirm": "Вы уверены что хотите удалить мод {mod} и все его версии?"
     }
   },
   "filestorage": {
@@ -357,6 +360,8 @@
     "share": "Поделиться",
     "refresh": "Обновить",
     "upload": "Загрузить",
-    "delete": "Удалить"
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "submit": "Подтвердить"
   }
 }

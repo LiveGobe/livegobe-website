@@ -107,7 +107,8 @@
       "versioninvalid": "Version name is invalid",
       "modversionnotexists": "Mod version doesn't exist",
       "modversiondeleted": "Mod version deleted successfully",
-      "modonlyversion": "Can't delete the only version of mod"
+      "modonlyversion": "Can't delete the only version of mod",
+      "moddeleted": "Mod deleted successfully"
     }
   },
   "theme": {
@@ -262,7 +263,9 @@
       "filtergames": "Filter Games",
       "filtermods": "Filter Mods",
       "filterversions": "Filter Versions",
-      "deleteversionconfirm": "Are you sure you want to delete mod version {version}?"
+      "deleteversionconfirm": "Are you sure you want to delete mod version {version}?",
+      "editmodpagename": "Edit Existing Mod",
+      "deletemodconfirm": "Are you sure you want to delete mod {mod} and all it's versions?"
     }
   },
   "filestorage": {
@@ -358,6 +361,8 @@
     "share": "Share",
     "refresh": "Refresh",
     "upload": "Upload",
-    "delete": "Delete"
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit"
   }
 }
