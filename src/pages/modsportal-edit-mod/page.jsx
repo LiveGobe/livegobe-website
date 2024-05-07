@@ -41,7 +41,7 @@ module.exports = function(props) {
                                     </label>
                                     <label htmlFor="mod-description">
                                         {props.t("page.modsportal.moddescription") + ":"}
-                                        <textarea name="mod-description" id="mod-description" defaultValue={props.game.mods[0].name} />
+                                        <textarea name="mod-description" id="mod-description" defaultValue={props.game.mods[0].description} />
                                     </label>
                                     <input type="hidden" name="mod-id" id="mod-id" value={props.game.mods[0].modId} />
                                     <input type="hidden" name="mod-version" id="mod-version" value={props.game.mods[0].versions[0].version} />
