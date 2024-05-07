@@ -41,4 +41,8 @@ UserSchema.methods.allowModsUpload = function() {
     return this.hasRole("admin") || this.hasRole("mods");
 }
 
+UserSchema.methods.allowModsDelete = function() {
+    return this.hasRole("admin") || this.hasRole("mods");
+}
+
 module.exports = User = mongoose.model('User', UserSchema);
