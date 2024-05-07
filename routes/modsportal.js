@@ -7,11 +7,7 @@ const ModsPortalGame = require("../models/modsportalGame");
 
 function browsePortal(req, res) {
     const link = req.originalUrl;
-    let permission = "";
-    if (req.user) {
-        if (req.user.hasRole("admin")) permission = "admin";
-        else if (req.user.allowModsUpload()) permission = "mod";
-    }
+    const permission = req.user?.permissions?.join(" ");
     res.serve("modsportal", { link, permission });
 }
 
@@ -53,12 +49,22 @@ router.get("/mod/new", (req, res) => {
 });
 
 router.get("/mod/update/:modId", (req, res) => {
-    if (!req.user) return res.redirect("/login?redirect=/mods_portal/mod/new");
+    if (!req.user) return res.redirect(`/login?redirect=/mods_portal/mod/update/${req.params.modId}`);
 
     ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}, { name: true, mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
         if (!game) return res.redirect("/mods_portal/browse");
 
         res.serve("modsportal-update-mod", { game });
+    });
+});
+
+router.get("/mod/edit/:modId", (req, res) => {
+    if (!req.user) return res.redirect(`/login?redirect=/mods_portal/mod/edit/${req.params.modId}`);
+
+    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}, { name: true, mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
+        if (!game) return res.redirect("/mods_portal/browse");
+
+        res.serve("modsportal-edit-mod", { game });
     });
 });
 
