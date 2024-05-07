@@ -41,6 +41,7 @@ module.exports = function(props) {
                 </div>
                 <footer>{props.t("copyright")}</footer>
                 <div id="messages" />
+                <input type="hidden" name="permission" id="permission" value={props.permission} />
             </body>
         </html>
     )

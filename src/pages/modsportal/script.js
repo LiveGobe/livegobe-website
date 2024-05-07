@@ -146,15 +146,12 @@ $(() => {
                 let modDescription = mod.description.slice(0, mod.description.indexOf("\n")).replace(/(<\/?(?:span)[^>]*>)|<[^>]+>/ig, '$1');
                 let modAuthor = mod.author;
                 let modTags = mod.tags.join(", ");
-                console.log(modTags);
                 for (let i = 0; i < filters.length; i++) {
                     modName = modName.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                     modDescription = modDescription.replace(/(<\/?(?:span)[^>]*>)|<[^>]+>/ig, '$1').replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                     modAuthor = modAuthor.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                     modTags = modTags.replace(new RegExp(`(${filters[i].replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')})(?![^<]*>|[^<>]*<\/)`, "gi"), `<span class="highlighted">$1</span>`);
                 }
-
-                console.log(modTags);
 
                 const $modElement = $("<div>").addClass("mod-card");
                 const $modMain = $("<div>").addClass("mod-card-main");
@@ -261,7 +258,22 @@ $(() => {
                     navigator.clipboard.writeText(staticUrl(encodeURI(`files/mods/${game.name}/${mod._id}/${version.version}/${mod.modId}`)));
                     createMessage(i18n.t("page.modsportal.shared"));
                 });
+                const $deleteButton = $("<button>").attr("type", "button").text(i18n.t("generic.delete")).on("click", e => {
+                    if (confirm(i18n.t("page.modsportal.deleteversionconfirm", { version: version.version }))) {
+                        $.ajax({
+                            url: `/api/v2/modsportal/mods/${mod._id}/${stripHtml(version.version)}`,
+                            method: "DELETE",
+                            success: function(data) {
+                                window.location.reload();
+                            },
+                            error: function(xhr, status, err) {
+                                createError(xhr.responseJSON?.message ?? err);
+                            }
+                        });
+                    }
+                });
                 const $downloadButton = $("<a>").attr("target", "_blank").attr("href", encodeURI(`/mods_portal/d/${game.name}/${mod._id}/${version.version}`)).append($("<button>").attr("type", "button").text(i18n.t("generic.download")));
+                if ($permission.val() != "") $downloadButtons.append($deleteButton);
                 $downloadButtons.append($shareButton).append($downloadButton);
                 $downloadsTable.append($downloadBlock.append($downloadButtons));
             });
@@ -309,6 +321,8 @@ $(() => {
 
         const $filter = $("#search-filter");
         const $controlButton = $("#control-button");
+
+        const $permission = $("#permission");
 
         $filter.on("input", e => {
             updateGamesList();

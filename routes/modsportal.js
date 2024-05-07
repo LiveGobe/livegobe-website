@@ -7,7 +7,12 @@ const ModsPortalGame = require("../models/modsportalGame");
 
 function browsePortal(req, res) {
     const link = req.originalUrl;
-    res.serve("modsportal", { link });
+    let permission = "";
+    if (req.user) {
+        if (req.user.hasRole("admin")) permission = "admin";
+        else if (req.user.allowModsUpload()) permission = "mod";
+    }
+    res.serve("modsportal", { link, permission });
 }
 
 router.get('/', (req, res) => {
