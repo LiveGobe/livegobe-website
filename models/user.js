@@ -38,11 +38,11 @@ UserSchema.methods.allowFilestorage = function() {
 }
 
 UserSchema.methods.allowModsUpload = function() {
-    return this.hasRole("admin") || this.hasRole("mods");
+    return this.hasRole("admin") || this.hasRole("mods_upload");
 }
 
-UserSchema.methods.allowModsDelete = function() {
-    return this.hasRole("admin") || this.hasRole("mods");
+UserSchema.methods.allowModsEdit = function() {
+    return this.hasRole("admin") || this.hasRole("mods_edit");
 }
 
 module.exports = User = mongoose.model('User', UserSchema);
