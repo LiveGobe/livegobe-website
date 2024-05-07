@@ -1,0 +1,85 @@
+import $ from "jquery";
+import i18n from "../../js/repack-locales";
+import { createError } from "../../js/utils";
+import { parse } from "marked";
+
+await i18n.init();
+
+$(() => {
+    const $gameSelect = $("#game-select");
+    const $modName = $("#mod-name");
+    const $modAuthor = $("#mod-author");
+    const $modDescription = $("#mod-description");
+    const $modId = $("#mod-id");
+    const $modID = $("#mod-ID");
+    const $modVersion = $("#mod-version");
+    const $gameVersion = $("#game-version");
+    const $modTags = $("#mod-tags");
+    const $imageUpload = $("#image-upload");
+    const $modImage = $("#mod-image");
+    const $fileUpload = $("#file-upload");
+    const $preview = $("#preview");
+    const $submit = $("input[type=submit]");
+
+    async function updatePreview() {
+        $preview.empty();
+        const $topBlock = $("<div>").attr("id", "mod-header");
+        const $infoBlock = $("<div>").attr("id", "mod-info");
+        $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.title"))).append(": ").append($modName.val()));
+        $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.author"))).append(": ").append($modAuthor.val()));
+        $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.modid"))).append(": ").append($modId.val()));
+        $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.latestversion"))).append(": ").append($modVersion.val()));
+        if ($gameVersion.val()) $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.gameversion"))).append(": ").append($gameVersion.val()));
+        $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.lastupload"))).append(": ").append(new Date().toLocaleString()));
+        $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.tags"))).append(": ").append($modTags.val().split(" ").join(", ")));
+        $topBlock.append($infoBlock)
+        if ($imageUpload.val()) $topBlock.append($("<img>").attr("id", "img-icon").attr("src", URL.createObjectURL($imageUpload.prop("files")[0])));
+        else if ($modImage.val()) $topBlock.append($("<img>").attr("id", "img-icon").attr("src", $modImage.val()));
+        const $description = $("<div>").attr("id", "mod-description").append(await parse($modDescription.val()));
+        const $downloadsTable = $("<div>").attr("id", "downloads-table");
+        const $downloadBlock = $("<div>").addClass("download");
+        const $downloadInfo = $("<div>").addClass("download-info").append($(`<div>${i18n.t("page.modsportal.version")}: ${$modVersion.val()}</div>`).addClass("download-version"));
+        if ($gameVersion.val()) $downloadInfo.append($(`<div>${i18n.t("page.modsportal.gameversion")}: ${$gameVersion.val()}</div>`).addClass("download-game-version"));
+        $downloadInfo.append($(`<div>${i18n.t("page.modsportal.uploaddate")}: ${new Date().toLocaleString()}</div>`).addClass("download-mod-version"));
+        $downloadBlock.append($downloadInfo);
+        const $downloadButtons = $("<div>").addClass("download-buttons");
+        const $shareButton = $("<button>").attr("type", "button").text(i18n.t("generic.share"));
+        const $downloadButton = $("<a>").attr("target", "_blank").on("click", e => e.preventDefault()).append($("<button>").attr("type", "button").text(i18n.t("generic.download")));
+        $downloadButtons.append($shareButton).append($downloadButton);
+        $downloadsTable.append($downloadBlock.append($downloadButtons));
+        $preview.append($topBlock).append($description).append($downloadsTable);
+    }
+
+    $modName.on("input", e => updatePreview());
+    $modAuthor.on("input", e => updatePreview());
+    $modDescription.on("input", e => updatePreview());
+    $modTags.on("input", e => updatePreview());
+    $imageUpload.on("change", e => updatePreview());
+
+    updatePreview();
+
+    $submit.on("click", e => {
+        e.preventDefault();
+
+        const formData = new FormData();
+        formData.append("image", $imageUpload.prop("files")[0]);
+        formData.append("name", $modName.val());
+        formData.append("author", $modAuthor.val());
+        formData.append("description", $modDescription.val());
+        formData.append("tags", $modTags.val());
+
+        $.ajax({
+            url: `/api/v2/modsportal/mods/${$modID.val()}`,
+            method: "PATCH",
+            data: formData,
+            contentType: false,
+            processData: false,
+            success: function(data) {
+                window.open(`/mods_portal/browse/${$gameSelect.val()}/${data.mod._id}`, "_self");
+            },
+            error: function(xhr, status, err) {
+                createError(xhr.responseJSON?.message ?? err);
+            }
+        });
+    });
+});
