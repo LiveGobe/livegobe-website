@@ -179,7 +179,7 @@ span.highlighted {
     width: 100%;
     gap: 10px;
 
-    & a {
+    & > a {
         padding: 5px;
         border: 1px solid var(--border-color);
         width: 100%;

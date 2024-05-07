@@ -176,6 +176,26 @@ $(() => {
                     showPage($modPage);
                 });
                 $modsList.append($anchor);
+                if (permission.includes("admin") || permission.includes("mods_edit")) {
+                    const $buttons = $("<div>");
+                    $buttons.append($("<a>").attr("href", `/mods_portal/mod/edit/${mod._id}`).append($("<button>").attr("type", "button").text(i18n.t("generic.edit"))));
+                    const $deleteButton = $("<button>").attr("type", "button").text(i18n.t("generic.delete")).on("click", e => {
+                        if (confirm(i18n.t("page.modsportal.deletemodconfirm", { mod: mod.name }))) {
+                            $.ajax({
+                                url: `/api/v2/modsportal/mods/${mod._id}`,
+                                method: "DELETE",
+                                success: function(data) {
+                                    window.location.reload();
+                                },
+                                error: function(xhr, status, err) {
+                                    createError(xhr.responseJSON?.message ?? err);
+                                }
+                            });
+                        }
+                    });
+                    $buttons.append($deleteButton);
+                    $modsList.append($buttons);
+                }
             });
 
             if ($modsList.is(":empty")) {
@@ -233,7 +253,7 @@ $(() => {
             $infoBlock.append($("<div>").append($("<span>").addClass("bold").append(i18n.t("page.modsportal.tags"))).append(": ").append(mod.tags.join(", ")));
             $topBlock.append($infoBlock)
             if (mod.iconLink) $topBlock.append($("<img>").attr("id", "icon-img").attr("src", mod.iconLink));
-            const $description = $("<div>").attr("id", "mod-description").append(mod.description);
+            const $description = $("<div>").attr("id", "mod-description").append(await parse(mod.description));
             const $downloadsTable = $("<div>").attr("id", "downloads-table");
             const sortedMods = filteredVersions.toSorted((v1, v2) => {
                 let v1split = v1.version.split(".").map(m => Number(m));
@@ -273,7 +293,7 @@ $(() => {
                     }
                 });
                 const $downloadButton = $("<a>").attr("target", "_blank").attr("href", encodeURI(`/mods_portal/d/${game.name}/${mod._id}/${version.version}`)).append($("<button>").attr("type", "button").text(i18n.t("generic.download")));
-                if ($permission.val() != "") $downloadButtons.append($deleteButton);
+                if (permission.includes("admin") || permission.includes("mods_edit")) $downloadButtons.append($deleteButton);
                 $downloadButtons.append($shareButton).append($downloadButton);
                 $downloadsTable.append($downloadBlock.append($downloadButtons));
             });
@@ -322,7 +342,7 @@ $(() => {
         const $filter = $("#search-filter");
         const $controlButton = $("#control-button");
 
-        const $permission = $("#permission");
+        const permission = $("#permission").val().split(" ");
 
         $filter.on("input", e => {
             updateGamesList();
