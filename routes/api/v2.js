@@ -564,15 +564,15 @@ router.route("/modsportal/games/:gameName/mods").post(fileUpload({ defParamChars
 
         const newID = new mongoose.Types.ObjectId();
         const newMod = {
-            _id: sanitize(newID),
-            name: sanitize(modName),
-            modId: sanitize(fileName),
-            author: sanitize(modAuthor),
-            description: sanitize(modDescription),
-            tags: sanitize(modTags).split(" "),
+            _id: newID,
+            name: sanitize(modName.replace(/\n\s*/g, "")),
+            modId: sanitize(fileName.replace(/\n\s*/g, "")),
+            author: sanitize(modAuthor.replace(/\n\s*/g, "")),
+            description: sanitize(modDescription.replace(/\n\s*/g, "\n\n")),
+            tags: sanitize(modTags.replace(/\n\s*/g, "")).split(" "),
             versions: [{
-                version: sanitize(modVersion),
-                gameVersion: sanitize(gameVersion),
+                version: sanitize(modVersion.replace(/\n\s*/g, "")),
+                gameVersion: sanitize(gameVersion.replace(/\n\s*/g, "")),
                 uploadedAt: new Date()
             }],
             iconLink: imageFile ? utils.staticUrl(`images/modcards/${newID}/${imageFile.name}`) : ""
@@ -626,10 +626,10 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
             fs.writeFileSync(path.join(process.cwd(), `public/files/mods/${savedGame.name}/${savedMod.id}/${savedMod.versions.at(-1).version}`, savedMod.modId), fileFile.data);
             res.json({ message: req.t("api.modsportal.modupdated"), mod: savedMod });
         }).catch(err => {
-            res.status(500).json({ message: err.toString() })
+            res.status(500).json({ message: err.toString() });
         });
     }).catch(err => {
-        res.status(500).json({ message: err.toString() })
+        res.status(500).json({ message: err.toString() });
     });
 }).patch(fileUpload({ defParamCharset: "utf-8" }), (req, res) => {
     if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
@@ -651,10 +651,10 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
 
         const oldImageName = mod.iconLink.split("/").at(-1);
 
-        mod.name = sanitize(modName) ?? mod.name;
-        mod.author = sanitize(modAuthor) ?? mod.author;
-        mod.description = sanitize(modDescription) ?? mod.description;
-        mod.tags = sanitize(modTags)?.split(" ") ?? mod.tags;
+        mod.name = sanitize(modName.replace(/\n\s*/g, "")) ?? mod.name;
+        mod.author = sanitize(modAuthor.replace(/\n\s*/g, "")) ?? mod.author;
+        mod.description = sanitize(modDescription.replace(/\n\s*/g, "\n\n")) ?? mod.description;
+        mod.tags = sanitize(modTags.replace(/\n\s*/g, ""))?.split(" ") ?? mod.tags;
         mod.iconLink = imageFile ? utils.staticUrl(`images/modcards/${mod.id}/${imageFile.name}`) : mod.iconLink;
         let resizedImage;
         if (imageFile) resizedImage = await sharp(imageFile.data).resize(160, 160, { fit: "fill" }).toBuffer();
@@ -667,10 +667,10 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
             }
             res.json({ message: req.t("api.modsportal.modupdated"), mod });
         }).catch(err => {
-            res.status(500).json({ message: err.toString() })
+            res.status(500).json({ message: err.toString() });
         });
     }).catch(err => {
-        res.status(500).json({ message: err.toString() })
+        res.status(500).json({ message: err.toString() });
     });
 }).delete((req, res) => {
     if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
@@ -688,10 +688,10 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
             fs.rmSync(path.join(process.cwd(), `public/images/modcards/${modObject._id}`), { recursive: true, force: true });
             res.json({ message: req.t("api.modsportal.moddeleted") });
         }).catch(err => {
-            res.status(500).json({ message: err.toString() })
+            res.status(500).json({ message: err.toString() });
         });
     }).catch(err => {
-        res.status(500).json({ message: err.toString() })
+        res.status(500).json({ message: err.toString() });
     });
 });
 
@@ -713,10 +713,10 @@ router.route("/modsportal/mods/:modId/:modVersion").delete((req, res) => {
             fs.rmSync(path.join(process.cwd(), `public/files/mods/${savedGame.name}/${savedMod.id}/${req.params.modVersion}`), { recursive: true, force: true });
             res.json({ message: req.t("api.modsportal.modversiondeleted") });
         }).catch(err => {
-            res.status(500).json({ message: err.toString() })
+            res.status(500).json({ message: err.toString() });
         });
     }).catch(err => {
-        res.status(500).json({ message: err.toString() })
+        res.status(500).json({ message: err.toString() });
     });
 });
 
