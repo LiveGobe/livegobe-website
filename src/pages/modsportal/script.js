@@ -37,7 +37,7 @@ $(() => {
                 const mod = game.mods.find(m => m._id == URLParts.at(3));
                 const $anchor = $(`<a>\<==</a>`).attr("href", encodeURI(`/mods_portal/browse`)).on("click", e => {
                     e.preventDefault();
-                    window.history.pushState(null, null, `/mods_portal/browse`);
+                    window.history.replaceState(null, null, `/mods_portal/browse`);
                     $filter.attr("placeholder", i18n.t("page.modsportal.filtergames"));
                     $filter.val("");
                     updateURL();
@@ -48,7 +48,7 @@ $(() => {
                 });
                 const $anchor2 = $(`<a><div>${URLParts.at(2)}</div></a>`).attr("href", encodeURI(`/mods_portal/browse/${game.name}`)).on("click", e => {
                     e.preventDefault();
-                    window.history.pushState(null, null, `/mods_portal/browse/${game.name}`);
+                    window.history.replaceState(null, null, `/mods_portal/browse/${game.name}`);
                     $filter.attr("placeholder", i18n.t("page.modsportal.filtermods"));
                     $filter.val("");
                     updateURL();
@@ -61,7 +61,7 @@ $(() => {
             } else if (URLParts.at(2)) {
                 const $anchor = $(`<a>\<==</a>`).attr("href", encodeURI(`/mods_portal/browse`)).on("click", e => {
                     e.preventDefault();
-                    window.history.pushState(null, null, `/mods_portal/browse`);
+                    window.history.replaceState(null, null, `/mods_portal/browse`);
                     $filter.attr("placeholder", i18n.t("page.modsportal.filtergames"));
                     $filter.val("");
                     updateURL();
@@ -102,7 +102,7 @@ $(() => {
                 $gameElement.append($cardImage).append($cardText);
                 const $anchor = $("<a>").attr("href", encodeURI(`/mods_portal/browse/${game.name}`)).append($gameElement).on("click", e => {
                     e.preventDefault();
-                    window.history.pushState(null, null, `/mods_portal/browse/${game.name}`);
+                    window.history.replaceState(null, null, `/mods_portal/browse/${game.name}`);
                     $filter.attr("placeholder", i18n.t("page.modsportal.filtermods"));
                     $filter.val("");
                     updateURL();
@@ -166,7 +166,7 @@ $(() => {
                 $modElement.append($modMain).append($("<div>").addClass("mod-card-tags").append(i18n.t("page.modsportal.tags") + ": ").append(modTags));
                 const $anchor = $("<a>").attr("href", encodeURI(`/mods_portal/browse/${game.name}/${mod._id}`)).append($modElement).on("click", e => {
                     e.preventDefault();
-                    window.history.pushState(null, null, `/mods_portal/browse/${game.name}/${mod._id}`);
+                    window.history.replaceState(null, null, `/mods_portal/browse/${game.name}/${mod._id}`);
                     $filter.attr("placeholder", i18n.t("page.modsportal.filterversions"));
                     $filter.val("");
                     updateURL();
@@ -203,7 +203,7 @@ $(() => {
             if ($modsList.is(":empty")) {
                 const $anchor = $("<a>").attr("href", encodeURI(`/mods_portal/browse/${game.name}`)).on("click", e => {
                     e.preventDefault();
-                    window.history.pushState(null, null, `/mods_portal/browse/${game.name}`);
+                    window.history.replaceState(null, null, `/mods_portal/browse/${game.name}`);
                     updateURL();
                     updateHeader();
                     updateGamesList();
