@@ -4,6 +4,7 @@
     "deprecated": "Current version of API is deprecated, please move to a supporterd version",
     "usermissing": "No logged-in user found",
     "adminonly": "You must be an admin to do this",
+    "nopermission": "You don't have access to this feature",
     "error": {
       "404": "Endpoint does not exist"
     },
@@ -82,6 +83,32 @@
       "maxsizemissing": "Max size of filestorage is missing",
       "usernotfound": "User not found",
       "filestoragechanged": "Filestorage was successfully updated"
+    },
+    "modsportal": {
+      "gamenamemissing": "Game name is missing",
+      "gameimagemissing": "Game image is missing",
+      "gameexists": "Game with the same name already exists",
+      "gamecreated": "Game was successfully created",
+      "modnamemissing": "Mod name is missing",
+      "modauthormissing": "Mod author is missing",
+      "moddescriptionmissing": "Mod description is missing",
+      "modidmissing": "Mod file name is missing",
+      "modversionmissing": "Mod initial version is missing",
+      "modtagsmissing": "Mod tags are missing",
+      "modfilemissing": "File is missing",
+      "modimagemissing": "Image is missing",
+      "gamenotexists": "Game doesn't exist",
+      "modidinvalid": "Invalid file name",
+      "modcreated": "Mod successfully created",
+      "modexists": "Mod already exists",
+      "modnotexists": "Mod doesn't exist",
+      "modupdated": "Mod was updated",
+      "versionexists": "Current version is already available",
+      "versioninvalid": "Version name is invalid",
+      "modversionnotexists": "Mod version doesn't exist",
+      "modversiondeleted": "Mod version deleted successfully",
+      "modonlyversion": "Can't delete the only version of mod",
+      "moddeleted": "Mod deleted successfully"
     }
   },
   "theme": {
@@ -96,7 +123,8 @@
           "filestorage": "Filestorage",
           "passwordgenerator": "Password Generator",
           "gallery": "Gallery",
-          "settings": "Settings"
+          "settings": "Settings",
+          "modsportal": "Mods Portal"
         },
         "language": "Lang",
         "theme": {
@@ -195,6 +223,49 @@
         "maxsize": "Total space: ",
         "save": "Save Filestorage"
       }
+    },
+    "modsportal": {
+      "pagename": "LG Mods Portal",
+      "newgamepagename": "Create New Game",
+      "newmodpagename": "Create New Mod",
+      "return": "Go back to mods",
+      "choosegame": "Choose A Game",
+      "nogamefound": "No game was found",
+      "nomodsfound": "No mods were found, come back later...",
+      "nomodfound": "No mod was found",
+      "title": "Mod name",
+      "author": "Author",
+      "modid": "Mod ID",
+      "latestversion": "Latest mod version",
+      "gameversion": "Supported game version",
+      "lastupload": "Latest upload",
+      "uploaddate": "Uploaded",
+      "tags": "Tags",
+      "shared": "Successfully copied link to clipboard",
+      "version": "Version",
+      "addgame": "Add New Game",
+      "updatemod": "Update This Mod",
+      "createmod": "Upload New Mod",
+      "gamename": "Game Name",
+      "imageupload": "Upload Image (Recommended Aspect Ration 6/9)",
+      "gameselect": "Select Game",
+      "modname": "Mod Name",
+      "moddescription": "Mod Description",
+      "modidupload": "Mod ID (File Name)",
+      "modauthor": "Mod Author",
+      "modversion": "Initial Mod Version",
+      "gameversionupload": "Supported Game Version (If Needed)",
+      "modtags": "Mod Tags",
+      "modfile": "Mod File",
+      "modimageupload": "Upload Image (Recommended Aspect Ration 1/1)",
+      "modversionupdate": "Mod Version",
+      "creategame": "Create",
+      "filtergames": "Filter Games",
+      "filtermods": "Filter Mods",
+      "filterversions": "Filter Versions",
+      "deleteversionconfirm": "Are you sure you want to delete mod version {version}?",
+      "editmodpagename": "Edit Existing Mod",
+      "deletemodconfirm": "Are you sure you want to delete mod {mod} and all it's versions?"
     }
   },
   "filestorage": {
@@ -280,5 +351,18 @@
     "filestorageFile": "File Storage - Download a File",
     "passwordgenerator": "Password Generator"
   },
-  "copyright": "LiveGobe © 2022-2024"
+  "copyright": "LiveGobe © 2022-2024",
+  "generic": {
+    "return": "Back to Main Page",
+    "loading": "Loading...",
+    "by": "by",
+    "back": "Return",
+    "download": "Download",
+    "share": "Share",
+    "refresh": "Refresh",
+    "upload": "Upload",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit"
+  }
 }

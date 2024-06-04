@@ -37,4 +37,12 @@ UserSchema.methods.allowFilestorage = function() {
     return this.hasRole("admin") || this.hasRole("filestorage");
 }
 
+UserSchema.methods.allowModsUpload = function() {
+    return this.hasRole("admin") || this.hasRole("mods_upload");
+}
+
+UserSchema.methods.allowModsEdit = function() {
+    return this.hasRole("admin") || this.hasRole("mods_edit");
+}
+
 module.exports = User = mongoose.model('User', UserSchema);

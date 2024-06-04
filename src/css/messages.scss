@@ -1,0 +1,45 @@
+body {
+    --message-bg-color: rgb(0, 200, 0);
+    --message-text-color: rgb(255, 255, 255);
+    --message-border-color: rgb(0, 175, 0);
+    --message-hover-bg-color: rgb(0, 175, 0);
+    --error-bg-color: rgb(200, 0, 0);
+    --error-text-color: rgb(255, 255, 255);
+    --error-border-color: rgb(175, 0, 0);
+    --error-hover-bg-color: rgb(175, 0, 0);
+}
+
+#messages {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.message {
+    cursor: pointer;
+    color: var(--message-text-color);
+    white-space: pre-line;
+    width: 380px;
+    height: auto;
+    margin: 10px;
+    padding: 10px;
+    background-color: var(--message-bg-color);
+    border: 1px solid var(--message-border-color);
+    border-radius: 10px;
+    overflow-wrap: break-word;
+}
+
+.message:hover {
+    background-color: var(--message-hover-bg-color);
+}
+
+.error {
+    background-color: var(--error-bg-color);
+    border: 1px solid var(--error-border-color);
+}
+
+.error:hover {
+    background-color: var(--error-hover-bg-color);
+}

@@ -8,5 +8,6 @@ module.exports = {
     users: require("./users"),
     settings: require("./settings"),
     register: require("./register"),
-    admin: require("./admin")
+    admin: require("./admin"),
+    modsportal: require("./modsportal")
 }

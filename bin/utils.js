@@ -14,6 +14,12 @@ function foldernameValid(foldername, length = 260) {
     return !rg1.test(foldername) && !rg2.test(foldername) && foldername.length > 0 && foldername.length <= length;
 }
 
+function versionValid(version, length = 260) {
+    const rg1 = /[\<>:"/\\,|?*\u0000-\u001F]/g;
+    const rg2 = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
+    return !rg1.test(version) && !rg2.test(version) && !version.endsWith(".") && !version.startsWith(".") && version.length > 0 && version.length <= length;
+}
+
 function staticUrl(url) {
     if (process.env.NODE_ENV == "production") return `${config.public.staticLinkProd}${url}`
 	else return `${config.public.staticLinkDev}${url}`;
@@ -48,5 +54,6 @@ module.exports = {
     foldernameValid,
     staticUrl,
     bundleUrl,
-    sanitizeFilename
+    sanitizeFilename,
+    versionValid
 }
