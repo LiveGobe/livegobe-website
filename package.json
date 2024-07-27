@@ -23,7 +23,7 @@
     "express-react-views": "^0.11.0",
     "express-session": "^1.18.0",
     "helmet": "^6.2.0",
-    "isomorphic-dompurify": "^2.9.0",
+    "isomorphic-dompurify": "^2.10.0",
     "jquery": "^3.7.1",
     "jquery.hotkeys": "^0.1.0",
     "mongoose": "^8.3.4",
@@ -33,7 +33,7 @@
     "passport-local": "^1.0.0",
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
-    "sharp": "^0.33.3",
+    "sharp": "^0.33.4",
     "socket.io": "^4.7.5",
     "socket.io-client": "^4.7.5",
     "uuid": "^9.0.1"
