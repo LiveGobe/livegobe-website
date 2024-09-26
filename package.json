@@ -19,7 +19,7 @@
     "cookie": "^0.6.0",
     "cookie-parser": "^1.4.6",
     "express": "^4.21.0",
-    "express-fileupload": "^1.5.0",
+    "express-fileupload": "^1.5.1",
     "express-react-views": "^0.11.0",
     "express-session": "^1.18.0",
     "helmet": "^6.2.0",
