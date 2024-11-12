@@ -16,7 +16,7 @@
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "connect-mongo": "^4.6.0",
-    "cookie": "^0.7.0",
+    "cookie": "^0.7.2",
     "cookie-parser": "^1.4.7",
     "express": "^4.21.1",
     "express-fileupload": "^1.5.1",
@@ -35,7 +35,7 @@
     "react-dom": "^16.14.0",
     "sharp": "^0.33.5",
     "socket.io": "^4.8.0",
-    "socket.io-client": "^4.7.5",
+    "socket.io-client": "^4.8.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {
