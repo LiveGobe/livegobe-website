@@ -52,6 +52,10 @@ const StorageSchema = new mongoose.Schema({
             required: true,
             default: true
         },
+        downloads: {
+            type: Number,
+            default: 0
+        },
         md5: {
             type: String,
             required: true

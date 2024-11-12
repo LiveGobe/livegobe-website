@@ -24,6 +24,7 @@ function FilePage(props) {
                     <h1>{`${props.file.name} - ${utils.formatBytes(props.file.size)}`}</h1>
                     <div id="owner">{`${props.t("filestorage.file.owner")}: `}<a href={`/users/${props.owner.username}`} target="_blank">{props.owner.name}</a></div>
                     <div id="md5">{`${props.t("filestorage.file.md5")}: ${props.file.md5}`}</div>
+                    {props.file.private ? "" : <div id="downloads">{`${props.t("generic.downloads")}: ${props.file.downloads}`}</div>}
                     <a href={`/filestorage/d/${props.owner.id}/${props.file.id}`} target="_blank">
                         <button type="button">{props.t("filestorage.file.download")}</button>
                     </a>

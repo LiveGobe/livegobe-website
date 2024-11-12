@@ -26,6 +26,7 @@ $(() => {
      * @prop {Number} files[].size file size
      * @prop {Boolean} files[].private is file private or not
      * @prop {String} files[].md5 file md5 hash
+     * @prop {Number} files[].downloads file downloads counter
      */
 
     /** @type {Storage} */
@@ -268,6 +269,7 @@ $(() => {
                 $infoFilePrivacy.text(infoFilePrivacy).append($togglePrivate);
                 $infoFileDate.text(`${infoFileDate} ${new Date(file.date).toLocaleString()}`);
                 $infoFileMd5.text(`${infoFileMd5} ${file.md5}`);
+                $infoFileDownloads.text(`${infoFileDownloads} ${file.downloads}`);
             }
 
             function updateFolders() {
@@ -791,6 +793,8 @@ $(() => {
             const infoFileDate = $infoFileDate.text() + ": ";
             const $infoFileMd5 = $("#info-file-md5");
             const infoFileMd5 = $infoFileMd5.text() + ": ";
+            const $infoFileDownloads = $("#info-file-downloads");
+            const infoFileDownloads = $infoFileDownloads.text() + ": ";
 
             const $messages = $("#filestorage-messages");
             const $uploads = $("#filestorage-uploads");

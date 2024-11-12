@@ -363,6 +363,8 @@
     "upload": "Upload",
     "delete": "Delete",
     "edit": "Edit",
-    "submit": "Submit"
+    "submit": "Submit",
+    "sourcecode": "Source Code",
+    "downloads": "Downloads"
   }
 }

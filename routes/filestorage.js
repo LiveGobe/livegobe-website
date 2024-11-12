@@ -46,6 +46,11 @@ router.get("/d/:userId/:fileId", (req, res) => {
         if (!file || (file.private && storage.owner.id != req.user?.id)) return res.sendStatus(404);
 
         res.download(path.join(__dirname, "..", config.filestorage.path, `${storage.owner.id}${file.path}${file.name}`), file.name);
+
+        if (!file.private && storage.owner.id != req.user?.id) {
+            file.downloads += 1
+            storage.save()
+        }
     }).catch(err => {
         res.status(500).serve("500", { message: err });
     });

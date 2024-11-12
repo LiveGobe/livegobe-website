@@ -49,6 +49,7 @@ function Filestorage(props) {
                         <div id="info-file-privacy">{props.t("filestorage.file.privacy")}</div>
                         <div id="info-file-date">{props.t("filestorage.file.date")}</div>
                         <div id="info-file-md5">{props.t("filestorage.file.md5")}</div>
+                        <div id="info-file-downloads">{props.t("generic.downloads")}</div>
                     </div>
                 </div>
             </div>
