@@ -23,7 +23,7 @@
     "express-react-views": "^0.11.0",
     "express-session": "^1.18.1",
     "helmet": "^6.2.0",
-    "isomorphic-dompurify": "^2.15.0",
+    "isomorphic-dompurify": "^2.16.0",
     "jquery": "^3.7.1",
     "jquery.hotkeys": "^0.1.0",
     "mongoose": "^8.6.1",
