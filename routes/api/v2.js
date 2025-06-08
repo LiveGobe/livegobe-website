@@ -10,6 +10,7 @@ const sharp = require("sharp");
 const marked = require("marked");
 const sanitize = require("isomorphic-dompurify").sanitize;
 const fileUpload = require("express-fileupload");
+const axios = require("axios");
 
 const FileStorage = require("../../models/filestorage");
 const User = require("../../models/user");
@@ -717,6 +718,17 @@ router.route("/modsportal/mods/:modId/:modVersion").delete((req, res) => {
         });
     }).catch(err => {
         res.status(500).json({ message: err.toString() });
+    });
+});
+
+router.get("/albion/market_data", (req, res) => {
+    // Fetch market data from localhost:1000/api/market_data
+    const marketDataUrl = "http://localhost:1000/api/market_data";
+    axios.get(marketDataUrl).then(response => {
+        res.json(response.data);
+    }).catch(error => {
+        console.error("Error fetching market data:", error);
+        res.status(500).json({ message: "Failed to fetch market data" });
     });
 });
 

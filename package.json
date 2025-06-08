@@ -14,6 +14,7 @@
   "license": "ISC",
   "dependencies": {
     "accept-language-parser": "^1.5.0",
+    "axios": "^1.9.0",
     "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "connect-mongo": "^4.6.0",
@@ -27,8 +28,8 @@
     "isomorphic-dompurify": "^2.15.0",
     "jquery": "^3.7.1",
     "jquery.hotkeys": "^0.1.0",
-    "mongoose": "^8.9.5",
     "marked": "^12.0.2",
+    "mongoose": "^8.9.5",
     "passport": "^0.7.0",
     "passport-custom": "^1.1.1",
     "passport-local": "^1.0.0",
