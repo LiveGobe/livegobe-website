@@ -95,6 +95,8 @@ async function main() {
     app.use("/admin", routes.admin);
     app.use("/modsportal", redirect("/mods_portal"));
     app.use("/mods_portal", routes.modsportal);
+    app.use("/albiontools", redirect("/albion_tools"));
+    app.use("/albion_tools", routes.albion);
 
     // Test page
     if (app.get("env") == "development") {

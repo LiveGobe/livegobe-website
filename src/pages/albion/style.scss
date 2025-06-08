@@ -1,0 +1,185 @@
+// Theme Variables
+$light-bg: #f9f9f9;
+$light-text: #111;
+$dark-bg: #111;
+$dark-text: #f0f0f0;
+$primary-color: #0077ff;
+$primary-hover: #005ec2;
+$accent-color: #ffce00;
+$accent-hover: #e6ba00;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  padding: 20px;
+  background-color: $light-bg;
+  color: $light-text;
+
+  h1, h2, h3 {
+    margin-bottom: 10px;
+    color: #333;
+  }
+
+  p {
+    margin-bottom: 20px;
+    color: #555;
+  }
+
+  nav {
+    margin-bottom: 20px;
+    text-align: center;
+
+    span {
+      display: inline-block;
+      margin: 0 10px;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 5px;
+      background-color: #e0e0e0;
+      color: #000;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: #ccc;
+      }
+    }
+  }
+
+  #calc-body {
+    .tab {
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+  }
+
+  select,
+  input {
+    margin-right: 10px;
+    margin-bottom: 10px;
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    background: #fff;
+    color: #000;
+  }
+
+  button {
+    padding: 6px 12px;
+    border: none;
+    background-color: $primary-color;
+    color: #fff;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: $primary-hover;
+    }
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+
+    thead {
+      background-color: #eee;
+
+      th {
+        padding: 10px;
+        color: $light-text;
+        border-bottom: 2px solid #ccc;
+      }
+    }
+
+    tbody {
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+      }
+    }
+  }
+
+  footer {
+    margin-top: 40px;
+    text-align: center;
+    color: #999;
+    font-size: 0.9rem;
+  }
+
+  // DARK THEME
+  &[data-theme='dark'] {
+    background-color: $dark-bg;
+    color: $dark-text;
+
+    h1, h2, h3 {
+      color: $accent-color;
+    }
+
+    p {
+      color: #ccc;
+    }
+
+    nav {
+      span {
+        background-color: #222;
+        color: #fff;
+
+        &:hover {
+          background-color: #444;
+        }
+      }
+    }
+
+    #calc-body {
+      .tab {
+        background-color: #1a1a1a;
+        box-shadow: 0 0 10px rgba(255, 206, 0, 0.1);
+      }
+    }
+
+    select,
+    input {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+    }
+
+    button {
+      background-color: $accent-color;
+      color: #000;
+
+      &:hover {
+        background-color: $accent-hover;
+      }
+    }
+
+    table {
+      thead {
+        background-color: #222;
+
+        th {
+          color: $accent-color;
+          border-bottom: 2px solid #444;
+        }
+      }
+
+      tbody {
+        td {
+          border-bottom: 1px solid #333;
+        }
+      }
+    }
+
+    footer {
+      color: #666;
+    }
+  }
+}

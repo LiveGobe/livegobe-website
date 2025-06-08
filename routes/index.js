@@ -9,5 +9,6 @@ module.exports = {
     settings: require("./settings"),
     register: require("./register"),
     admin: require("./admin"),
-    modsportal: require("./modsportal")
+    modsportal: require("./modsportal"),
+    albion: require("./albion")
 }

@@ -56,6 +56,7 @@ module.exports = function(props) {
                         {props.user && props.user.allowFilestorage() ? <a href="/filestorage/browse">{props.t("page.index.content.tools.filestorage")}</a> : ""}
                         <a href="/password_generator">{props.t("page.index.content.tools.passwordgenerator")}</a>
                         <a href="/mods_portal/browse">{props.t("page.index.content.tools.modsportal")}</a>
+                        <a href="/albion_tools">{props.t("page.index.content.tools.albion")}</a>
                     </div>
                     <footer>
                         <span id="copyright">{props.t("copyright")}</span>

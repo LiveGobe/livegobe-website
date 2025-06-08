@@ -124,7 +124,8 @@
           "passwordgenerator": "Password Generator",
           "gallery": "Gallery",
           "settings": "Settings",
-          "modsportal": "Mods Portal"
+          "modsportal": "Mods Portal",
+          "albion": "Albion Online Tools"
         },
         "language": "Lang",
         "theme": {
@@ -266,6 +267,41 @@
       "deleteversionconfirm": "Are you sure you want to delete mod version {version}?",
       "editmodpagename": "Edit Existing Mod",
       "deletemodconfirm": "Are you sure you want to delete mod {mod} and all it's versions?"
+    },
+    "albion": {
+      "pagename": "Albion Online Tools",
+      "refining": {
+        "title": "Refining Calculator",
+        "description": "Calculate the profit from refining resources",
+        "ore": "Ore",
+        "wood": "Wood",
+        "hide": "Hide",
+        "fibre": "Fibre",
+        "stone": "Stone",
+        "martlock": "Martlock",
+        "thetford": "Thetford",
+        "fortsterling": "Fort Sterling",
+        "lymhurst": "Lymhurst",
+        "bridgewatch": "Bridgewatch",
+        "caerleon": "Caerleon",
+        "brecilien": "Brecilien",
+        "update": "Update Prices",
+        "usage-fee": "Usage Fee",
+        "return-rate": "Return Rate",
+        "item": "Item",
+        "amount": "Amount",
+        "buycost": "Buy Cost",
+        "sellcost": "Sell Cost",
+        "profit": "Profit"
+      },
+      "crafting": {
+        "title": "Crafting Calculator",
+        "description": "Calculate the profit from crafting items in Albion Online"
+      },
+      "consumables": {
+        "title": "Consumables Calculator",
+        "description": "Calculate the profit from crafting consumables in Albion Online"
+      }
     }
   },
   "filestorage": {
@@ -351,7 +387,7 @@
     "filestorageFile": "File Storage - Download a File",
     "passwordgenerator": "Password Generator"
   },
-  "copyright": "LiveGobe © 2022-2024",
+  "copyright": "LiveGobe © 2022-2025",
   "generic": {
     "return": "Back to Main Page",
     "loading": "Loading...",

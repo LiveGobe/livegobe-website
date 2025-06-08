@@ -124,7 +124,8 @@
           "passwordgenerator": "Генератор Паролей",
           "gallery": "Галерея",
           "settings": "Настройки",
-          "modsportal": "Реестр Модов"
+          "modsportal": "Реестр Модов",
+          "albion": "Инструменты Albion Online"
         },
         "language": "Язык",
         "theme": {
@@ -265,6 +266,41 @@
       "deleteversionconfirm": "Вы уверены что хотите удалить версию мода {version}?",
       "editmodpagename": "Редактировать Мод",
       "deletemodconfirm": "Вы уверены что хотите удалить мод {mod} и все его версии?"
+    },
+    "albion": {
+      "pagename": "Инструменты Albion Online",
+      "refining": {
+        "title": "Переработка Ресурсов",
+        "description": "Переработайте ресурсы",
+        "ore": "Руда",
+        "wood": "Дерево",
+        "hide": "Шкура",
+        "fibre": "Волокно",
+        "stone": "Камень",
+        "martlock": "Мартлок",
+        "thetford": "Тетфорд",
+        "fortsterling": "Форт-Стирлинг",
+        "lymhurst": "Лимхерст",
+        "bridgewatch": "Бриджвотч",
+        "caerleon": "Каэрлеон",
+        "brecilien": "Бресилиен",
+        "update": "Обновить цены",
+        "usage-fee": "Плата за использование",
+        "return-rate": "Коэффициент возврата",
+        "item": "Предмет",
+        "amount": "Количество",
+        "buycost": "Цена покупки",
+        "sellcost": "Цена продажи",
+        "profit": "Прибыль"
+      },
+      "crafting": {
+        "title": "Создание Предметов",
+        "description": "Создайте предметы из ресурсов"
+      },
+      "consumables": {
+        "title": "Потребляемые Предметы",
+        "description": "Создайте потребляемые предметы"
+      }
     }
   },
   "filestorage": {
@@ -350,7 +386,7 @@
     "filestorageFile": "Файловое Хранилище - Скачать Файл",
     "passwordgenerator": "Генератор Паролей"
   },
-  "copyright": "LiveGobe © 2022-2024",
+  "copyright": "LiveGobe © 2022-2025",
   "generic": {
     "return": "На Главную Страницу",
     "loading": "Загрузка...",
