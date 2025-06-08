@@ -723,7 +723,7 @@ router.route("/modsportal/mods/:modId/:modVersion").delete((req, res) => {
 
 router.get("/albion/market_data", (req, res) => {
     // Fetch market data from localhost:1000/api/market_data
-    const marketDataUrl = "http://localhost:1000/api/market_data";
+    const marketDataUrl = "http://localhost:1000/api/market-data";
     axios.get(marketDataUrl).then(response => {
         res.json(response.data);
     }).catch(error => {

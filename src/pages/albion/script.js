@@ -22,7 +22,7 @@ $(() => {
     $("nav span").first().addClass("active");
     // Get initial data of the market prices
     $.ajax({
-        url: `/api/v2/albion/market-data`,
+        url: `/api/v2/albion/market_data`,
         method: "GET",
         dataType: "json",
         success: function(data) {
@@ -79,7 +79,7 @@ $(() => {
 
         $("#update-market-data").on("click", function() {
             $.ajax({
-                url: `/api/v2/albion/market-data`,
+                url: `/api/v2/albion/market_data`,
                 method: "GET",
                 dataType: "json",
                 success: function(data) {
