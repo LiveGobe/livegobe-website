@@ -1,11 +1,10 @@
 {
   "name": "lg-website",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "My website rewritten",
   "main": "index.js",
   "scripts": {
-    "test": "set NODE_ENV=development&&node ./",
-    "test-old": "set NODE_ENV=development&&nodemon ./ -e js,json --ignore public/ --ignore filestorage/ --ignore misc/ --ignore src/",
+    "test": "set NODE_ENV=development&&nodemon ./ -e js,json --ignore public/ --ignore filestorage/ --ignore misc/ --ignore src/",
     "build:dev": "set NODE_ENV=development&&webpack --progress",
     "build:prod": "set NODE_ENV=production&&webpack --progress",
     "watch": "set NODE_ENV=development&&webpack --watch --progress"
