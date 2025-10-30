@@ -107,7 +107,21 @@ $(() => {
 
                     break;
                 case "hunter":
+                    craftingType = "shoes";
+                    craftingItem = "mercenary";
 
+                    $("#crafting-type").html(`
+                        <option value="shoes">${i18n.t("page.albion.crafting.shoes")}</option>
+                        <option value="armor">${i18n.t("page.albion.crafting.armor")}</option>
+                        <option value="helmet">${i18n.t("page.albion.crafting.helmet")}</option>
+                        <option value="bow">${i18n.t("page.albion.crafting.bow")}</option>
+                        <option value="dagger">${i18n.t("page.albion.crafting.dagger")}</option>
+                        <option value="spear">${i18n.t("page.albion.crafting.spear")}</option>
+                        <option value="quarterstaff">${i18n.t("page.albion.crafting.quarterstaff")}</option>
+                        <option value="shapeshifter">${i18n.t("page.albion.crafting.shapeshifter")}</option>
+                        <option value="nature_staff">${i18n.t("page.albion.crafting.nature_staff")}</option>
+                        <option value="torch">${i18n.t("page.albion.crafting.torch")}</option>
+                    `);
                     break;
             }
             $("#crafting-type").val(craftingType).trigger("change");
@@ -137,7 +151,17 @@ $(() => {
                     } else if (craftingClass === "mage") {
                         
                     } else if (craftingClass === "hunter") {
-                        
+                        craftingItem = "mercenary";
+                        $("#crafting-item").html(`
+                            <option value="mercenary">${i18n.t("page.albion.crafting.itemNames.mercenary")}</option>
+                            <option value="hunter">${i18n.t("page.albion.crafting.itemNames.hunter")}</option>
+                            <option value="assassin">${i18n.t("page.albion.crafting.itemNames.assassin")}</option>
+                            <option value="stalker">${i18n.t("page.albion.crafting.itemNames.stalker")}</option>
+                            <option value="hellion">${i18n.t("page.albion.crafting.itemNames.hellion")}</option>
+                            <option value="specter">${i18n.t("page.albion.crafting.itemNames.specter")}</option>
+                            <option value="mistwalker">${i18n.t("page.albion.crafting.itemNames.mistwalker")}</option>
+                            <option value="avalon">${i18n.t("page.albion.crafting.itemNames.avalon")}</option>
+                        `);
                     }
                     break;
                 case "sword":
@@ -227,6 +251,24 @@ $(() => {
                         <option value="astral_aegis">${i18n.t("page.albion.crafting.itemNames.astral_aegis")}</option>
                     `);
                     break;
+                case "bow":
+                    craftingItem = "bow";
+                    $("#crafting-item").html(`
+                        <option value="bow">${i18n.t("page.albion.crafting.itemNames.bow")}</option>
+                        <option value="warbow">${i18n.t("page.albion.crafting.itemNames.warbow")}</option>
+                        <option value="longbow">${i18n.t("page.albion.crafting.itemNames.longbow")}</option>
+                        <option value="whispering">${i18n.t("page.albion.crafting.itemNames.whispering")}</option>
+                        <option value="wailing">${i18n.t("page.albion.crafting.itemNames.wailing")}</option>
+                        <option value="badon">${i18n.t("page.albion.crafting.itemNames.badon")}</option>
+                        <option value="mistpiercer">${i18n.t("page.albion.crafting.itemNames.mistpiercer")}</option>
+                        <option value="skystrider">${i18n.t("page.albion.crafting.itemNames.skystrider")}</option>
+                    `);
+                    break;
+                case "dagger":
+                    craftingItem = "dagger";
+                    $("#crafting-item").html(`
+                        <option value="dagger">${i18n.t("page.albion.crafting.itemNames.dagger")}</option>
+                    `);
             }
             $("#crafting-item").val(craftingItem).trigger("change");
             $("#crafting-content-table-body").empty();

@@ -80,6 +80,8 @@ module.exports = function(props) {
                             </select>
                             <select name="crafting-class" id="crafting-class">
                                 <option value="warrior">{props.t("page.albion.crafting.warrior")}</option>
+                                <option value="hunter">{props.t("page.albion.crafting.hunter")}</option>
+                                <option value="mage">{props.t("page.albion.crafting.mage")}</option>
                             </select>
                             {/* different classes have different types, which should be shown dynamically */}
                             <select name="crafting-type" id="crafting-type">

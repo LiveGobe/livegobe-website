@@ -6078,4 +6078,1362 @@ export default {
     ),
     // Hunter Class
     // Leather Shoes Recipes
+    // Mercenary Shoes Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [128, 256, 512, 1024, 2048];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_SHOES_LEATHER_SET1@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Mercenary Shoes`,
+                    class: "hunter",
+                    type: "shoes",
+                    item: "mercenary",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Hunter Shoes Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [128, 256, 512, 1024, 2048];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_SHOES_LEATHER_SET2@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Hunter Shoes`,
+                    class: "hunter",
+                    type: "shoes",
+                    item: "hunter",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Assassin Shoes Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [128, 256, 512, 1024, 2048];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_SHOES_LEATHER_SET3@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Assassin Shoes`,
+                    class: "hunter",
+                    type: "shoes",
+                    item: "assassin",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Stalker Shoes Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [160, 288, 544, 1056, 2080];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_SHOES_LEATHER_MORGANA@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Stalker Shoes`,
+                    class: "hunter",
+                    type: "shoes",
+                    item: "stalker",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_SHOES_LEATHER_MORGANA@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Hellion Shoes Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [224, 352, 608, 1120, 2144];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_SHOES_LEATHER_HELL@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Hellion Shoes`,
+                    class: "hunter",
+                    type: "shoes",
+                    item: "hellion",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_SHOES_LEATHER_HELL@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Specter Shoes Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [352, 480, 736, 1248, 2272];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_SHOES_LEATHER_UNDEAD@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Specter Shoes`,
+                    class: "hunter",
+                    type: "shoes",
+                    item: "specter",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_SHOES_LEATHER_UNDEAD@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Mistwalker Shoes Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [352, 480, 736, 1248, 2272];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_SHOES_LEATHER_FEY@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Mistwalker Shoes`,
+                    class: "hunter",
+                    type: "shoes",
+                    item: "mistwalker",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_SHOES_LEATHER_FEY@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Shoes of Tenacity Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [608, 736, 992, 1504, 2528];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_SHOES_LEATHER_AVALON@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Shoes of Tenacity`,
+                    class: "hunter",
+                    type: "shoes",
+                    item: "avalon",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_SHOES_LEATHER_AVALON@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // ---------------------
+    // Mercenary Jacket Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [256, 512, 1024, 2048, 4096];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_ARMOR_LEATHER_SET1@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Mercenary Jacket`,
+                    class: "hunter",
+                    type: "armor",
+                    item: "mercenary",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Hunter Jacket Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [256, 512, 1024, 2048, 4096];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_ARMOR_LEATHER_SET2@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Hunter Jacket`,
+                    class: "hunter",
+                    type: "armor",
+                    item: "hunter",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Assassin Jacket Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [256, 512, 1024, 2048, 4096];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_ARMOR_LEATHER_SET3@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Assassin Jacket`,
+                    class: "hunter",
+                    type: "armor",
+                    item: "assassin",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Stalker Jacket Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [320, 576, 1088, 2112, 4160];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_ARMOR_LEATHER_MORGANA@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Stalker Jacket`,
+                    class: "hunter",
+                    type: "armor",
+                    item: "stalker",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_ARMOR_LEATHER_MORGANA@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Hellion Jacket Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [448, 704, 1216, 2240, 4288];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_ARMOR_LEATHER_HELL@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Hellion Jacket`,
+                    class: "hunter",
+                    type: "armor",
+                    item: "hellion",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_ARMOR_LEATHER_HELL@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Specter Jacket Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [704, 960, 1472, 2496, 4544];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_ARMOR_LEATHER_UNDEAD@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Specter Jacket`,
+                    class: "hunter",
+                    type: "armor",
+                    item: "specter",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_ARMOR_LEATHER_UNDEAD@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Mistwalker Jacket Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [704, 960, 1472, 2496, 4544];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_ARMOR_LEATHER_FEY@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Mistwalker Jacket`,
+                    class: "hunter",
+                    type: "armor",
+                    item: "mistwalker",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_ARMOR_LEATHER_FEY@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Jacket of Tenacity Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [1216, 1472, 1984, 3008, 5056];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_ARMOR_LEATHER_AVALON@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Jacket of Tenacity`,
+                    class: "hunter",
+                    type: "armor",
+                    item: "avalon",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_ARMOR_LEATHER_AVALON@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // ---------------------
+    // Mercenary Hood Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [128, 256, 512, 1024, 2048];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_HEAD_LEATHER_SET1@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Mercenary Hood`,
+                    class: "hunter",
+                    type: "helmet",
+                    item: "mercenary",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Hunter Hood Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [128, 256, 512, 1024, 2048];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_HEAD_LEATHER_SET2@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Hunter Hood`,
+                    class: "hunter",
+                    type: "helmet",
+                    item: "hunter",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Assassin Hood Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [128, 256, 512, 1024, 2048];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_HEAD_LEATHER_SET3@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Assassin Hood`,
+                    class: "hunter",
+                    type: "helmet",
+                    item: "assassin",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Stalker Hood Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [160, 288, 544, 1056, 2080];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_HEAD_LEATHER_MORGANA@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Stalker Hood`,
+                    class: "hunter",
+                    type: "helmet",
+                    item: "stalker",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_HEAD_LEATHER_MORGANA@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Hellion Hood Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [224, 352, 608, 1120, 2144];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_HEAD_LEATHER_HELL@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Hellion Hood`,
+                    class: "hunter",
+                    type: "helmet",
+                    item: "hellion",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_HEAD_LEATHER_HELL@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Specter Hood Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [352, 480, 736, 1248, 2272];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_HEAD_LEATHER_UNDEAD@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Specter Hood`,
+                    class: "hunter",
+                    type: "helmet",
+                    item: "specter",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_HEAD_LEATHER_UNDEAD@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Mistwalker Hood Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [352, 480, 736, 1248, 2272];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_HEAD_LEATHER_FEY@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Mistwalker Hood`,
+                    class: "hunter",
+                    type: "helmet",
+                    item: "mistwalker",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_HEAD_LEATHER_FEY@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Hood of Tenacity Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [608, 736, 992, 1504, 2528];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_HEAD_LEATHER_AVALON@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Hood of Tenacity`,
+                    class: "hunter",
+                    type: "helmet",
+                    item: "avalon",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 8,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_HEAD_LEATHER_AVALON@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // ---------------------
+    // Bow Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [512, 1024, 2048, 4096, 8192];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_BOW@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Bow`,
+                    class: "hunter",
+                    type: "bow",
+                    item: "bow",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_PLANKS@${enchantment}`]: {
+                            amount: 32,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Warbow Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [512, 1024, 2048, 4096, 8192];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_WARBOW@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Warbow`,
+                    class: "hunter",
+                    type: "bow",
+                    item: "warbow",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_PLANKS@${enchantment}`]: {
+                            amount: 32,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Longbow Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [512, 1024, 2048, 4096, 8192];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_LONGBOW@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Longbow`,
+                    class: "hunter",
+                    type: "bow",
+                    item: "longbow",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_PLANKS@${enchantment}`]: {
+                            amount: 32,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Whispering Bow Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [640, 1152, 2176, 4224, 8320];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_LONGBOW_UNDEAD@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Whispering Bow`,
+                    class: "hunter",
+                    type: "bow",
+                    item: "whispering",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_PLANKS@${enchantment}`]: {
+                            amount: 32,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_2H_LONGBOW_UNDEAD@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Wailing Bow Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [896, 1408, 2432, 4480, 8576];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_BOW_HELL@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Wailing Bow`,
+                    class: "hunter",
+                    type: "bow",
+                    item: "wailing",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_PLANKS@${enchantment}`]: {
+                            amount: 32,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_2H_BOW_HELL@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Bow of Badon Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [1408, 1920, 2944, 4992, 9088];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_BOW_KEEPER@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Bow of Badon`,
+                    class: "hunter",
+                    type: "bow",
+                    item: "badon",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_PLANKS@${enchantment}`]: {
+                            amount: 32,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_2H_BOW_KEEPER@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Mistpiercer Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [1408, 1920, 2944, 4992, 9088];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_BOW_AVALON@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Mistpiercer`,
+                    class: "hunter",
+                    type: "bow",
+                    item: "mistpiercer",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_PLANKS@${enchantment}`]: {
+                            amount: 32,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_2H_BOW_AVALON@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Skystrider Bow Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [2432, 2944, 3968, 6016, 10112];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_BOW_CRYSTAL@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Skystrider Bow`,
+                    class: "hunter",
+                    type: "bow",
+                    item: "skystrider",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_PLANKS@${enchantment}`]: {
+                            amount: 32,
+                            return: true
+                        },
+                        [`T${tier}_ARTEFACT_2H_BOW_CRYSTAL@0`]: {
+                            amount: 1,
+                            return: false
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // ---------------------
+    // Dagger Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [384, 768, 1536, 3072, 6144];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_1H_DAGGER@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Dagger`,
+                    class: "hunter",
+                    type: "dagger",
+                    item: "dagger",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_METALBAR@${enchantment}`]: {
+                            amount: 12,
+                            return: true
+                        },
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 12,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Dagger Pair Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [512, 1024, 2048, 4096, 8192];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_DAGGERPAIR@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Dagger Pair`,
+                    class: "hunter",
+                    type: "dagger",
+                    item: "dagger_pair",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_METALBAR@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        },
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 16,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Claws Recipes
+    ...Object.fromEntries(
+        [4, 5, 6, 7, 8].flatMap(tier =>
+            [0, 1, 2, 3, 4].map(enchantment => {
+                const namePrefixes = {
+                    4: "Adept's",
+                    5: "Expert's",
+                    6: "Master's",
+                    7: "Grandmaster's",
+                    8: "Elder's"
+                };
+
+                const baseValueByEnchantment = [512, 1024, 2048, 4096, 8192];
+                const getValue = (tier, enchantment) =>
+                    baseValueByEnchantment[enchantment] * (2 ** (tier - 4));
+
+                const key = `T${tier}_2H_CLAWPAIR@${enchantment}`;
+                return [key, {
+                    name: `${namePrefixes[tier]} Claws`,
+                    class: "hunter",
+                    type: "dagger",
+                    item: "claws",
+                    value: getValue(tier, enchantment),
+                    tier: tier,
+                    enchantment: enchantment,
+                    crafting: {
+                        [`T${tier}_METALBAR@${enchantment}`]: {
+                            amount: 12,
+                            return: true
+                        },
+                        [`T${tier}_LEATHER@${enchantment}`]: {
+                            amount: 20,
+                            return: true
+                        }
+                    },
+                    outputs: 1
+                }];
+            })
+        )
+    ),
+    // Bloodletter Recipes
+    // TODO: Finish recipes
 }
