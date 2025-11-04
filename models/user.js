@@ -33,6 +33,12 @@ UserSchema.methods.hasRole = function(perm) {
     return this.permissions.includes(perm.toLowerCase());
 }
 
+UserSchema.methods.hasWikiRole = function(namespace, role) {
+  if (!namespace || !role) return false;
+  const perm = `wiki:${namespace}:${role}`.toLowerCase();
+  return this.permissions.includes(perm) || this.hasRole('admin'); // global admin override
+}
+
 UserSchema.methods.allowFilestorage = function() {
     return this.hasRole("admin") || this.hasRole("filestorage");
 }

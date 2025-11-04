@@ -97,6 +97,8 @@ async function main() {
     app.use("/mods_portal", routes.modsportal);
     app.use("/albiontools", redirect("/albion_tools"));
     app.use("/albion_tools", routes.albion);
+    app.use("/wiki", redirect("/wikis"));
+    app.use("/wikis", routes.wiki);
 
     // Test page
     if (app.get("env") == "development") {

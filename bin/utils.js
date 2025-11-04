@@ -48,6 +48,10 @@ function sanitizeFilename(input, replacement = "") {
     return sanitized;
 }
 
+function getSupportedNamespaces() {
+    return ["Main", "Help", "User", "File", "Category", "Template", "Module"];
+}
+
 module.exports = {
     formatBytes,
     filenameValid,
@@ -55,5 +59,6 @@ module.exports = {
     staticUrl,
     bundleUrl,
     sanitizeFilename,
-    versionValid
+    versionValid,
+    getSupportedNamespaces
 }

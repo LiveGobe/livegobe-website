@@ -4,7 +4,7 @@
   "description": "My website rewritten",
   "main": "index.js",
   "scripts": {
-    "test": "set NODE_ENV=development&&nodemon ./ -e js,json --ignore public/ --ignore filestorage/ --ignore misc/ --ignore src/",
+    "test": "set NODE_ENV=development&&nodemon ./ -e js,json --ignore public/ --ignore filestorage/ --ignore misc/ --ignore src/ --ignore locales/*-missing.json",
     "build:dev": "set NODE_ENV=development&&webpack --progress",
     "build:prod": "set NODE_ENV=production&&webpack --progress",
     "watch": "set NODE_ENV=development&&webpack --watch --progress"
@@ -37,7 +37,8 @@
     "sharp": "^0.33.5",
     "socket.io": "^4.8.0",
     "socket.io-client": "^4.8.0",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "slugify": "^1.6.6"
   },
   "devDependencies": {
     "@babel/core": "^7.18.13",

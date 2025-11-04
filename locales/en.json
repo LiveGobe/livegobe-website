@@ -6,7 +6,8 @@
     "adminonly": "You must be an admin to do this",
     "nopermission": "You don't have access to this feature",
     "error": {
-      "404": "Endpoint does not exist"
+      "404": "Endpoint does not exist",
+      "500": "Internal server error"
     },
     "locales": {
       "message": {
@@ -18,6 +19,26 @@
       "loggedin": "Already logged in",
       "invalid": "Invalid login or password",
       "success": "Login successful"
+    },
+    "wikis": {
+      "name_required": "Wiki name is required",
+      "title_required": "Wiki title is required",
+      "content_required": "Page content is required",
+      "invalid_name": "Wiki name is invalid. Allowed: lowercase letters, numbers and hyphens.",
+      "invalid_language": "Wiki language is invalid.",
+      "exists": "Wiki with this name already exists",
+      "not_found": "Wiki not found",
+      "special_not_found": "Special page '{page}' not found",
+      "page_protected": "This page is protected and cannot be edited",
+      "page_created": "Page created successfully",
+      "page_updated": "Page updated successfully",
+      "page_deleted": "Page deleted successfully",
+      "page_not_found": "Page not found",
+      "created": "Wiki created",
+      "create_failed": "Failed to create wiki",
+      "no_change_detected": "No changes detected",
+      "page_rendered": "Page rendered successfully",
+      "page_purged": "Page cache purged successfully"
     },
     "filestorage": {
       "exists": "Filestorage already exists",
@@ -409,6 +430,44 @@
         "title": "Consumables Calculator",
         "description": "Calculate the profit from crafting consumables in Albion Online"
       }
+    },
+    "wikis": {
+      "name": "List of available Wikis",
+      "empty": "No wikis available",
+      "create": {
+        "title": "Create a new Wiki",
+        "name_label": "Wiki Name",
+        "name_placeholder": "Awesome Wiki",
+        "desc_label": "Short Description",
+        "desc_placeholder": "A wiki dedicated to Awesome things",
+        "lang_label": "Wiki Language",
+        "button": "Create a new wiki",
+        "name_required": "Wiki name is required",
+        "failed": "Failed to create wiki"
+      },
+      "lastUpdated": "Updated on: {0}"
+    },
+    "wiki": {
+      "not_found": "Wiki not found",
+      "title": "{0}: {1}",
+      "page": {
+        "draft_saved": "Draft saved",
+        "draft_restored": "Draft restored",
+        "draft_deleted": "Draft deleted",
+        "preview": "Preview",
+        "edit": "Edit",
+        "save": "Save",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "delete_confirm": "Are you sure you want to delete this page?",
+        "edit_summary": "Edit summary",
+        "minor_edit": "This is a minor edit",
+        "autosave_enabled": "Autosave is enabled",
+        "autosave_disabled": "Autosave is disabled",
+        "last_modified": "Last modified {0}",
+        "by_user": "by {0}",
+        "loading": "Loading..."
+      }
     }
   },
   "filestorage": {
@@ -509,5 +568,105 @@
     "submit": "Submit",
     "sourcecode": "Source Code",
     "downloads": "Downloads"
+  },
+  "common": {
+    "cancel": "Cancel",
+    "create": "Create"
+  },
+  "wiki": {
+    "protected": {
+      "none": " ",
+      "edit": " Protected (Edit)",
+      "move": " Protected (Move)",
+      "full": " Protected",
+      "tooltip": "This page is protected"
+    },
+    "nav": {
+      "mainPage": "Main Page",
+      "allPages": "All Pages",
+      "settings": "Wiki Settings",
+      "recentChanges": "Recent Changes"
+    },
+    "sidebar": {
+      "navigation": "Navigation",
+      "mainPage": "Main Page",
+      "allPages": "All Pages",
+      "settings": "Wiki Settings",
+      "recentChanges": "Recent Changes",
+      "tools": "Wiki Tools",
+      "help": "Help"
+    },
+    "actions": {
+      "view": "View",
+      "edit": "Edit",
+      "history": "History",
+      "create": "Create",
+      "delete": "Delete",
+      "more": "More",
+      "purge": "Purge"
+    },
+    "footer": {
+      "text": "Powered by LiveGobe Wiki System"
+    },
+    "edit": {
+      "summary": "Summary",
+      "minor": "Minor Edit",
+      "create": "Create",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "save": "Save",
+      "draft_saved": "Draft saved",
+      "draft_exists": "A saved draft exists for this page. Do you want to restore it?",
+      "restore": "Restore Draft",
+      "discard": "Discard Draft"
+    },
+    "page": {
+      "doesNotExist": "Page does not exist",
+      "createThis": "Create it here",
+      "draft_saved": "Draft saved",
+      "draft_restored": "Draft restored",
+      "draft_deleted": "Draft deleted",
+      "preview": "Preview",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "delete_confirm": "Are you sure you want to delete this page?",
+      "edit_summary": "Edit summary",
+      "minor_edit": "This is a minor edit",
+      "autosave_enabled": "Autosave is enabled",
+      "autosave_disabled": "Autosave is disabled",
+      "last_modified": "Last modified {0}",
+      "by_user": "by {0}",
+      "loading": "Loading...",
+      "lastModified": "Last Edited by {user} on {date}",
+      "categories": "This page categories",
+      "redirected": "This page is a redirect to -",
+      "redirectedFrom": "Redirected from"
+    },
+    "delete": {
+      "confirm": "Are you sure you want to delete {page}?",
+      "confirm_prompt": "This action cannot be undone. Delete {page}?"
+    },
+    "history": {
+      "date": "Date",
+      "author": "Author",
+      "comment": "Comment",
+      "actions": "Actions",
+      "view": "View",
+      "noComment": " ",
+      "diff": "Diff",
+      "minor": "Minor Edit",
+      "current": "Current"
+    },
+    "revision": {
+      "oldRevisionTitle": "Viewing old revision of {page}",
+      "oldRevisionNotice": "You are viewing an old revision of this page from {date}.",
+      "viewLatest": "View latest version"
+    },
+    "purge": {
+      "confirm": "Are you sure you want to purge the cache for {page}?",
+      "confirm_all": "Are you sure you want to purge Ala pages?"
+    }
   }
 }

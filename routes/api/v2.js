@@ -11,10 +11,13 @@ const marked = require("marked");
 const sanitize = require("isomorphic-dompurify").sanitize;
 const fileUpload = require("express-fileupload");
 const axios = require("axios");
+const slugify = require('slugify');
 
 const FileStorage = require("../../models/filestorage");
 const User = require("../../models/user");
 const ModsPortalGame = require("../../models/modsportalGame");
+const Wiki = require("../../models/wiki");
+const WikiPage = require("../../models/wikiPage");
 
 router.route("/filestorage").get((req, res) => {
     if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
@@ -730,6 +733,406 @@ router.get("/albion/market_data", (req, res) => {
         console.error("Error fetching market data:", error);
         res.status(500).json({ message: "Failed to fetch market data" });
     });
+});
+
+// Wiki API
+router.route("/wikis").get((req, res) => {
+    // TODO: Implement GET /wiki
+    res.status(501).json({ message: "Not implemented" });
+}).post((req, res) => {
+    // Create a new wiki
+    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing") });
+
+    // Only admins or users with wiki_creator role can create wikis
+    if (!req.user.hasRole?.("admin") && !req.user.hasRole?.("wiki_creator")) return res.status(403).json({ message: req.t("api.nopermission") });
+
+
+    // rawName is the user-supplied display name (e.g. "Awesome Wiki").
+    // We'll derive a slug from it and store slug in `wiki.name`, and store the original as `wiki.title`.
+    let rawName = req.query.name || req.body.name;
+    let description = req.query.description || req.body.description || "";
+    let language = req.query.language || req.body.language || "en";
+
+    if (!rawName) return res.status(400).json({ message: req.t("api.wikis.name_required") });
+
+    // Derive title and slug using slugify for transliteration and wider language support
+    let title;
+    let slug;
+    try {
+        // Keep original display title
+        title = String(rawName).trim();
+        // Use slugify to transliterate and produce a URL-safe slug
+        slug = slugify(title, { lower: true, strict: true });
+    } catch (e) {
+        return res.status(400).json({ message: req.t("api.wikis.name_required") });
+    }
+
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) return res.status(400).json({ message: req.t("api.wikis.invalid_name") });
+
+    // Validate language — accept any language that has a locale file, otherwise fall back to 'en'
+    try {
+        language = utils.sanitizeFilename(String(language || 'en'));
+    } catch (e) {
+        language = 'en';
+    }
+
+    if (!fs.existsSync(path.join(process.cwd(), 'locales', `${language}.json`))) {
+        language = 'en';
+    }
+
+    Wiki.exists({ name: slug }).then(exists => {
+        if (exists) return res.status(400).json({ message: req.t("api.wikis.exists") });
+
+        const wiki = new Wiki({ name: slug, title, description, language });
+
+        wiki.save().then(saved => {
+            // Return created wiki object
+            res.status(201).json({ message: req.t("api.wikis.created"), wiki: saved });
+        }).catch(err => {
+            console.error("Error creating wiki:", err);
+            res.status(500).json({ message: req.t("api.wikis.create_failed") });
+        });
+    }).catch(err => {
+        console.error("Error checking wiki existence:", err);
+        res.status(500).json({ message: req.t("api.error.500") });
+    });
+});
+
+// Purge page cache (for admins or editors)
+router.post("/wikis/:wikiName/pages/:pageTitle*/purge", async (req, res) => {
+  try {
+    const wikiName = req.params.wikiName;
+    let pageTitle = req.params.pageTitle || "Main_Page";
+    const subPath = req.params[0] || "";
+
+    // parse namespace
+    let namespace = "Main";
+    if (pageTitle.includes(":")) {
+      [namespace, pageTitle] = pageTitle.split(":", 2);
+      if (!utils.getSupportedNamespaces().includes(namespace)) {
+        pageTitle = `${namespace}:${pageTitle}`;
+        namespace = "Main";
+      }
+    }
+
+    // Find wiki
+    const wiki = await Wiki.findOne({ name: wikiName });
+    if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+
+    // Must be logged in
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+
+    // Must have edit permission or be admin
+    if (!wiki.canEdit(req.user) && !req.user.hasRole?.("admin")) {
+      return res.status(403).json({ message: req.t("api.nopermission") });
+    }
+
+    // Build full path including subpages
+    const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
+    const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath });
+    if (!page) return res.status(404).json({ message: req.t("api.wikis.page_not_found", { page: fullPath }) });
+
+    // Trigger purge
+    await page.purgeCache();
+
+    return res.json({ message: req.t("api.wikis.page_purged", { page: fullPath }) });
+  } catch (err) {
+    console.error("API: error purging wiki page:", err);
+    res.status(500).json({ message: err.toString() });
+  }
+});
+
+// Page endpoints (get, create/update)
+router.route("/wikis/:wikiName/pages/:pageTitle*")
+    .get(async (req, res) => {
+        try {
+            const wikiName = req.params.wikiName;
+            let pageTitle = req.params.pageTitle || "Main_Page";
+            const subPath = req.params[0] || "";
+
+            // parse namespace
+            let namespace = "Main";
+            if (pageTitle.includes(":")) {
+                [namespace, pageTitle] = pageTitle.split(":", 2);
+                if (!utils.getSupportedNamespaces().includes(namespace)) {
+                    pageTitle = `${namespace}:${pageTitle}`;
+                    namespace = "Main";
+                }
+            }
+
+            // Find wiki
+            const wiki = await Wiki.findOne({ name: wikiName });
+            if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+
+            // Special pages
+            if (namespace === "Special") {
+                const special = pageTitle.toLowerCase();
+                if (special === "allpages") {
+                    const ns = req.query.namespace || "Main";
+                    const page = parseInt(req.query.page) || 1;
+                    const limit = 50;
+                    const pages = await WikiPage.listPages(wiki._id, ns, limit, (page - 1) * limit);
+                    const total = await WikiPage.countDocuments({ wiki: wiki._id, namespace: ns });
+                    return res.json({ wiki: { name: wiki.name, title: wiki.title }, namespace: ns, pages, pagination: { current: page, total: Math.ceil(total / limit) } });
+                }
+                if (special === "recentchanges") {
+                    const days = parseInt(req.query.days) || 7;
+                    const page = parseInt(req.query.page) || 1;
+                    const limit = 50;
+                    const since = new Date();
+                    since.setDate(since.getDate() - days);
+                    const changes = await WikiPage.find({ wiki: wiki._id, lastModifiedAt: { $gte: since } })
+                        .sort({ lastModifiedAt: -1 })
+                        .skip((page - 1) * limit)
+                        .limit(limit)
+                        .populate("lastModifiedBy", "username");
+                    const total = await WikiPage.countDocuments({ wiki: wiki._id, lastModifiedAt: { $gte: since } });
+                    return res.json({ wiki: { name: wiki.name, title: wiki.title }, days, changes, pagination: { current: page, total: Math.ceil(total / limit) } });
+                }
+
+                return res.status(404).json({ message: req.t("api.wikis.special_not_found", { page: pageTitle }) });
+            }
+
+            // Check access
+            if (!wiki.canAccess(req.user)) return res.status(403).json({ message: req.t("api.nopermission") });
+
+            const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
+            const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath }).populate("lastModifiedBy", "username");
+
+            if (!page) {
+                return res.json({ exists: false, title: fullPath, namespace, path: fullPath });
+            }
+
+            // include revisions only for editors when requested
+            let revisions = undefined;
+            const includeRevisions = req.query.includeRevisions === "1" || req.query.includeRevisions === "true";
+            if (includeRevisions && wiki.canEdit(req.user)) {
+                revisions = page.revisions.map(r => ({ id: r._id, author: r.author, timestamp: r.timestamp, comment: r.comment, minor: r.minor }));
+            }
+
+            return res.json({
+                exists: true,
+                page: {
+                    title: page.title || page.path,
+                    namespace: page.namespace,
+                    path: page.path,
+                    content: page.content,
+                    html: page.html,
+                    lastModifiedAt: page.lastModifiedAt,
+                    lastModifiedBy: page.lastModifiedBy,
+                    categories: page.categories,
+                    protected: page.protected,
+                    revisions
+                }
+            });
+        } catch (err) {
+            console.error("API: error fetching wiki page:", err);
+            res.status(500).json({ message: err.toString() });
+        }
+    })
+    .post(async (req, res) => {
+        try {
+            const wikiName = req.params.wikiName;
+            let pageTitle = req.params.pageTitle || "Main_Page";
+            const subPath = req.params[0] || "";
+            const { content, summary = "", minor = false } = req.body;
+
+            // Require content for new pages/edits
+            if (!content) {
+                return res.status(400).json({ message: req.t("api.wikis.content_required") });
+            }
+
+            // Parse namespace and path
+            let namespace = "Main";
+            if (pageTitle.includes(":")) {
+                [namespace, pageTitle] = pageTitle.split(":", 2);
+                if (!utils.getSupportedNamespaces().includes(namespace)) {
+                    pageTitle = `${namespace}:${pageTitle}`;
+                    namespace = "Main";
+                }
+            }
+
+            // Build full path including subpages
+            const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
+
+            // Find wiki and check permissions
+            const wiki = await Wiki.findOne({ name: wikiName });
+            if (!wiki) {
+                return res.status(404).json({ message: req.t("api.wikis.not_found") });
+            }
+
+            // Must be logged in to edit
+            if (!req.user) {
+                return res.status(401).json({ message: req.t("api.usermissing") });
+            }
+
+            // Must have edit permission
+            if (!wiki.canEdit(req.user)) {
+                return res.status(403).json({ message: req.t("api.nopermission") });
+            }
+
+            // Try to find existing page
+            let page = await WikiPage.findOne({
+                wiki: wiki._id,
+                namespace,
+                path: fullPath
+            });
+
+            if (page) {
+                // Check if page is protected
+                if (page.protected !== "none" && !wiki.isAdmin(req.user)) {
+                    return res.status(403).json({ 
+                        message: req.t("api.wikis.page_protected"),
+                        protection: page.protected
+                    });
+                }
+
+                // ✅ Skip saving if content hasn't changed
+                if (page.content === content) {
+                    return res.status(400).json({
+                        message: req.t("api.wikis.no_change_detected"),
+                        page: {
+                            title: page.title || page.path,
+                            namespace: page.namespace,
+                            path: page.path,
+                            content: page.content,
+                            html: page.html,
+                            lastModifiedAt: page.lastModifiedAt,
+                            lastModifiedBy: await User.findById(page.lastModifiedBy).select("username"),
+                            categories: page.categories,
+                            protected: page.protected,
+                            revision: page.revisions[page.revisions.length - 1]._id
+                        }
+                    });
+                }
+
+                // Update existing page
+                page.addRevision(content, req.user._id, summary, minor);
+            } else {
+                // Create new page
+                page = await WikiPage.createPage(
+                    wiki._id,
+                    pageTitle.replace(/_/g, " "),
+                    namespace,
+                    fullPath,
+                    content,
+                    req.user._id,
+                    summary
+                );
+            }
+
+            await page.save();
+
+            // Return the updated/created page
+            return res.json({
+                message: page ? req.t("api.wikis.page_updated") : req.t("api.wikis.page_created"),
+                page: {
+                    title: page.title || page.path,
+                    namespace: page.namespace,
+                    path: page.path,
+                    content: page.content,
+                    html: page.html,
+                    lastModifiedAt: page.lastModifiedAt,
+                    lastModifiedBy: await User.findById(page.lastModifiedBy).select("username"),
+                    categories: page.categories,
+                    protected: page.protected,
+                    revision: page.revisions[page.revisions.length - 1]._id
+                }
+            });
+        } catch (err) {
+            console.error("API: error creating/updating wiki page:", err);
+            res.status(500).json({ message: err.toString() });
+        }
+    })
+    .delete(async (req, res) => {
+        try {
+            const wikiName = req.params.wikiName;
+            let pageTitle = req.params.pageTitle || "Main_Page";
+            const subPath = req.params[0] || "";
+
+            // parse namespace
+            let namespace = "Main";
+            if (pageTitle.includes(":")) {
+                [namespace, pageTitle] = pageTitle.split(":", 2);
+                if (!utils.getSupportedNamespaces().includes(namespace)) {
+                    pageTitle = `${namespace}:${pageTitle}`;
+                    namespace = "Main";
+                }
+            }
+
+            // Do not allow deletion of special pages
+            if (namespace === "Special") {
+                return res.status(400).json({ message: req.t("api.wikis.special_not_found", { page: pageTitle }) });
+            }
+
+            // Find wiki
+            const wiki = await Wiki.findOne({ name: wikiName });
+            if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+
+            // Must be logged in
+            if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+
+            // Only global admins or wiki admins can delete pages
+            if (!req.user.hasRole?.("admin") && !wiki.isAdmin(req.user)) {
+                return res.status(403).json({ message: req.t("api.adminonly") });
+            }
+
+            const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
+            const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath });
+            if (!page) return res.status(404).json({ message: req.t("api.wikis.page_not_found", { page: fullPath }) });
+
+            await page.deleteOne();
+
+            return res.json({ message: req.t("api.wikis.page_deleted") });
+        } catch (err) {
+            console.error("API: error deleting wiki page:", err);
+            res.status(500).json({ message: err.toString() });
+        }
+    });
+
+// Render page content (for preview)
+router.post("/wikis/:wikiName/render", async (req, res) => {
+	try {
+		const wikiName = req.params.wikiName;
+		const { content, namespace, path } = req.body;
+
+		if (!content) {
+			return res.status(400).json({ message: req.t("api.wikis.content_required") });
+		}
+
+		// Find wiki
+		const wiki = await Wiki.findOne({ name: wikiName });
+		if (!wiki) {
+			return res.status(404).json({ message: req.t("api.wikis.not_found") });
+		}
+
+		// Check permission (canView or canEdit)
+		if (!wiki.canAccess(req.user)) {
+			return res.status(403).json({ message: req.t("api.nopermission") });
+		}
+
+		const WikiPage = mongoose.model("WikiPage");
+
+		// Create a temporary instance to reuse render logic
+		const tempPage = new WikiPage({
+			wiki: wiki._id,
+			namespace: namespace || "Main",
+			path: path || "Preview_Page",
+			content
+		});
+
+		// Render content (simple LGWL -> HTML)
+		await tempPage.renderContent();
+
+		return res.json({
+			message: req.t("api.wikis.page_rendered"),
+			html: tempPage.html,
+			categories: tempPage.categories || []
+		});
+	} catch (err) {
+		console.error("API: error rendering wiki preview:", err);
+		res.status(500).json({ message: err.toString() });
+	}
 });
 
 module.exports = router;

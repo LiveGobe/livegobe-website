@@ -1,0 +1,332 @@
+/* --- Wikis Landing Page (Standalone) --- */
+
+body[data-theme="light"] {
+  --bg: #f8f9fa;
+  --card-bg: #fff;
+  --text-primary: #212529;
+  --text-muted: #6c757d;
+  --link: #0d6efd;
+  --border: #dee2e6;
+  --btn-primary-bg: #0d6efd;
+  --btn-primary-hover: #0b5ed7;
+  --btn-secondary-bg: #6c757d;
+  --btn-secondary-hover: #5c636a;
+}
+
+body[data-theme="dark"] {
+  --bg: #121212;
+  --card-bg: #1e1e1e;
+  --text-primary: #e9ecef;
+  --text-muted: #adb5bd;
+  --link: #0d6efd;
+  --border: #343a40;
+  --btn-primary-bg: #0d6efd;
+  --btn-primary-hover: #0b5ed7;
+  --btn-secondary-bg: #6c757d;
+  --btn-secondary-hover: #5c636a;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background-color: var(--bg);
+  color: var(--text-primary);
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+/* Header */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+
+  h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .btn-create-wiki {
+    background-color: var(--btn-primary-bg);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: 0.2s;
+
+    &:hover {
+      background-color: var(--btn-primary-hover);
+    }
+  }
+}
+
+/* Wiki list grid */
+.wiki-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* Wiki card */
+.wiki-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .wiki-title {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.25rem;
+
+    a {
+      color: var(--link);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .wiki-description {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .wiki-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+}
+
+/* Empty state */
+.alert-info {
+  text-align: center;
+  padding: 1rem;
+  background-color: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+/* Modal overlay & content */
+.wiki-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+
+  &.hidden {
+    display: none;
+  }
+
+  #create-wiki-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.45);
+  }
+
+  .wiki-modal-content {
+    position: relative;
+    background-color: var(--card-bg);
+    border-radius: 0.5rem;
+    padding: 2rem;
+    width: 100%;
+    max-width: 500px;
+    z-index: 1;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+    }
+
+    .form-label {
+      font-weight: 500;
+    }
+
+    .form-control,
+    .form-select,
+    textarea {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.25rem;
+      margin-bottom: 1rem;
+      border-radius: 0.375rem;
+      border: 1px solid var(--border);
+      background-color: var(--bg);
+      color: var(--text-primary);
+    }
+
+    .btn-group {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+
+      button {
+        border-radius: 0.375rem;
+        border: none;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        font-weight: 500;
+        transition: 0.2s;
+
+        &.btn-cancel {
+          background-color: var(--btn-secondary-bg);
+          color: #fff;
+
+          &:hover {
+            background-color: var(--btn-secondary-hover);
+          }
+        }
+
+        &.btn-create {
+          background-color: var(--btn-primary-bg);
+          color: #fff;
+
+          &:hover {
+            background-color: var(--btn-primary-hover);
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .wiki-list {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-modal-content {
+    padding: 1rem;
+  }
+}
+
+/* --- Create Wiki Button --- */
+#create-wiki {
+  background-color: var(--btn-primary-bg);
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: 0.2s;
+
+  &:hover {
+    background-color: var(--btn-primary-hover);
+  }
+}
+
+/* --- Modal --- */
+#wiki-modal, #create-wiki-block {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+
+  &.hidden {
+    display: none;
+  }
+
+  #create-wiki-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.45);
+  }
+
+  #create-wiki-form, .wiki-modal-content {
+    position: relative;
+    background-color: var(--card-bg);
+    border-radius: 0.5rem;
+    padding: 2rem;
+    width: 100%;
+    max-width: 500px;
+    z-index: 1;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+    }
+
+    .form-label {
+      font-weight: 500;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .form-control, .form-select, textarea {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      border-radius: 0.375rem;
+      border: 1px solid var(--border);
+      background-color: var(--bg);
+      color: var(--text-primary);
+    }
+
+    .btn-cancel, .btn-create {
+      border-radius: 0.375rem;
+      border: none;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: 0.2s;
+    }
+
+    .btn-cancel {
+      background-color: var(--btn-secondary-bg);
+      color: #fff;
+
+      &:hover {
+        background-color: var(--btn-secondary-hover);
+      }
+    }
+
+    .btn-create {
+      background-color: var(--btn-primary-bg);
+      color: #fff;
+
+      &:hover {
+        background-color: var(--btn-primary-hover);
+      }
+    }
+
+    .d-flex {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+  }
+}
+
+/* --- Responsive adjustments --- */
+@media (max-width: 576px) {
+  #create-wiki-form, .wiki-modal-content {
+    padding: 1rem;
+  }
+}
