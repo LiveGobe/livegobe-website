@@ -77,6 +77,12 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
   const normalized = (moduleName || "").trim().replace(/\s+/g, "_");
   if (!normalized) return `<span class="lgml-error">LGML: missing module name</span>`;
 
+  // Track recursion depth
+  const depth = options._depth || 0;
+  if (depth > 5) {
+    return `<span class="lgml-error">LGML: nested module limit exceeded</span>`;
+  }
+
   let modulePage;
   try {
     modulePage = await options.getPage("Module", normalized);
@@ -89,15 +95,7 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     return `<span class="lgml-error">LGML: Module "${normalized}" not found</span>`;
   }
 
-  const code = modulePage.content;
-
-  // --- 1️⃣ Pre-validation ---
-  const FORBIDDEN = /\b(require|process|child_process|fs|net|http|https|os|Buffer|global|import)\b/;
-  if (FORBIDDEN.test(code)) {
-    return `<span class="lgml-error">LGML: forbidden API usage in Module:${normalized}</span>`;
-  }
-
-  // --- 2️⃣ Parse arguments ---
+  // --- Parse arguments ---
   const namedArgs = {};
   const positionalArgs = [];
   for (const arg of args) {
@@ -112,63 +110,89 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
   }
 
-  // --- 3️⃣ Build secure sandbox ---
-  const sandbox = Object.freeze({
+  // --- Sandbox setup ---
+  const sandbox = {
     module: { exports: {} },
     exports: {},
-    console: { log: (...msg) => console.log(`[LGML:${normalized}]`, ...msg) },
-    Math, JSON, String, Number, Boolean, Array, Object, Date, RegExp,
-    __resolveLink: function (target) {
+    Math,
+    Date,
+    JSON,
+    String,
+    Number,
+    Boolean,
+    Array,
+    Object,
+
+    // Safe "require" for LGML modules
+    require: async function (name) {
+      try {
+        const mod = String(name || "").trim().replace(/\s+/g, "_");
+        if (!mod) throw new Error("Empty module name");
+        if (mod === normalized) throw new Error(`Recursive require: Module:${mod}`);
+
+        const subOptions = { ...options, _depth: depth + 1 };
+        const subResult = await executeWikiModule(subOptions, mod, "__default__");
+        return subResult?.__exports__ || {};
+      } catch (err) {
+        console.error(`[LGML] require("${name}") failed in ${normalized}:`, err);
+        return {};
+      }
+    },
+
+    __resolveLink(target) {
       try {
         const wikiName = options.wikiName || "";
-        const href = resolveLink(target, { wikiName, currentNamespace: options.currentNamespace });
-        return href;
+        return resolveLink(target, { wikiName, currentNamespace: options.currentNamespace });
       } catch {
         return "#";
       }
     }
-  });
+  };
 
-  const context = vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
-
-  // --- 4️⃣ Execute securely ---
-  let exported;
   try {
-    const script = new vm.Script(code, {
+    vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
+
+    const script = new vm.Script(modulePage.content, {
       filename: `Module:${normalized}`,
       displayErrors: false,
       timeout: 1000
     });
 
-    script.runInContext(context, { timeout: 1000 });
+    script.runInContext(sandbox, { timeout: 1000 });
 
-    exported = sandbox.module.exports && Object.keys(sandbox.module.exports).length
+    const exported = sandbox.module.exports && Object.keys(sandbox.module.exports).length
       ? sandbox.module.exports
       : sandbox.exports || {};
+
+    // Internal mode (used by require)
+    if (functionName === "__default__") {
+      return { __exports__: exported };
+    }
+
+    const fn = exported[functionName];
+    if (!fn || typeof fn !== "function") {
+      return `<span class="lgml-error">LGML: function "${functionName}" not found in Module:${normalized}</span>`;
+    }
+
+    let result;
+    try {
+      if (positionalArgs.length === 0 && Object.keys(namedArgs).length > 0) {
+        result = await fn(namedArgs);
+      } else {
+        result = await fn.apply(null, positionalArgs.length ? positionalArgs : [namedArgs]);
+      }
+    } catch (fnErr) {
+      console.error(`[LGML] Error running ${normalized}.${functionName}:`, fnErr);
+      return `<span class="lgml-error">LGML: error in ${normalized}.${functionName}</span>`;
+    }
+
+    if (result == null) return "";
+    if (typeof result === "string") return result;
+    try { return String(result); } catch { return JSON.stringify(result); }
+
   } catch (err) {
     console.error(`[LGML] Failed to execute Module:${normalized}:`, err);
     return `<span class="lgml-error">LGML: execution error in ${normalized}</span>`;
-  }
-
-  // --- 5️⃣ Run requested function ---
-  const fn = exported?.[functionName?.trim()];
-  if (typeof fn !== "function") {
-    return `<span class="lgml-error">LGML: function "${functionName}" not found in Module:${normalized}</span>`;
-  }
-
-  try {
-    let result;
-    if (positionalArgs.length === 0 && Object.keys(namedArgs).length > 0) {
-      result = fn(namedArgs);
-    } else {
-      result = fn.apply(null, positionalArgs.length ? positionalArgs : [namedArgs]);
-    }
-    if (result && typeof result.then === "function") result = await result;
-    if (result == null) return "";
-    return typeof result === "string" ? result : String(result);
-  } catch (fnErr) {
-    console.error(`[LGML] Error running ${normalized}.${functionName}:`, fnErr);
-    return `<span class="lgml-error">LGML: error in ${normalized}.${functionName}</span>`;
   }
 }
 
@@ -1119,10 +1143,16 @@ function restoreNowikiBlocks(text, nowikiBlocks) {
 async function renderWikiText(text, options = {}) {
   if (!text) return { html: "", categories: [] };
 
+  const { wikiName, pageName, currentNamespace, WikiPage, currentPageId } = options;
+
+  // --- Skip parser for Special pages ---
+  const isSpecial = currentNamespace === "Special" || pageName.startsWith("Special:");
+  if (isSpecial) {
+    return { html: text, categories: [] }; // return raw content unparsed
+  }
+  
   const pageCategories = new Set(); // collect categories
   const pageTags = new Set();       // collect tags
-
-  const { wikiName, pageName, currentNamespace, WikiPage, currentPageId } = options;
 
   // --- Prepare existing files set ---
   const existingFiles = getExistingFiles(wikiName);
@@ -1139,7 +1169,7 @@ async function renderWikiText(text, options = {}) {
   working = expandMagicWords(working, options);
   working = await expandTemplates(working, { ...options });
 
-  if (isTemplateView) working = wrapNowiki(working);
+  //if (isTemplateView) working = wrapNowiki(working);
 
   if (WikiPage && currentPageId) {
     await WikiPage.updateOne(

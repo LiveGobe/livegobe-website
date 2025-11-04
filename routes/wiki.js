@@ -50,106 +50,134 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         }
     }
 
-    // Handle special pages (e.g., Special:AllPages, Special:RecentChanges)
     async function handleSpecialPage(req, res, pageTitle) {
         const wikiName = req.params.wikiName;
 
         try {
-            // First find the wiki since special pages operate within a wiki's context
             const wiki = await Wiki.findOne({ name: wikiName });
-            if (!wiki) {
-                return res.status(404).serve("_404", { message: req.t("page.wiki.not_found") });
+            if (!wiki) return res.status(404).serve("_404", { message: req.t("page.wiki.not_found") });
+            if (!wiki.canAccess(req.user)) return res.status(403).serve("_403", { message: req.t("page.wiki.no_permission") });
+
+            const key = pageTitle.toLowerCase();
+            let content = "";
+            let pageData = { type: key }; // dynamic page type for JSX template
+
+            // --- Handle Common.css / Common.js ---
+            if (key === "common.css" || key === "common.js") {
+                const specialPage = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: pageTitle }).populate("revisions.author", "name");
+
+                const safePage = {
+                    exists: !!specialPage,
+                    path: pageTitle,
+                    title: pageTitle,
+                    content: specialPage?.content || "",
+                    revisions: specialPage.revisions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),
+                    html: "", // nothing to parse as HTML,
+                    lastModifiedAt: specialPage.revisions.at(0).timestamp,
+                    lastModifiedBy: specialPage.revisions.at(0).author.name,
+                    commonCss: key === "common.css" ? specialPage?.content || "" : "",
+                    commonJs: key === "common.js" ? specialPage?.content || "" : ""
+                };
+
+                return res.serve("wiki-page", {
+                    wiki,
+                    page: safePage,
+                    pageTitle,           // requested title
+                    namespace: "Special",
+                    mode: req.query.mode || "view",
+                    canEdit: wiki.isAdmin(req.user),
+                    canDelete: wiki.isAdmin(req.user),
+                    t: req.t,
+                    query: req.query,
+                    language: req.language,
+                    theme: req.theme
+                });
             }
 
-            // Check basic access permission for the wiki
-            if (!wiki.canAccess(req.user)) {
-                return res.status(403).serve("_403", { message: req.t("page.wiki.no_permission") });
-            }
-
-            switch (pageTitle.toLowerCase()) {
+            // --- Other special pages ---
+            switch (key) {
                 case "allpages": {
                     const namespace = req.query.namespace || "Main";
-                    const page = parseInt(req.query.page) || 1;
+                    const pageNum = parseInt(req.query.page) || 1;
                     const limit = 50;
-                    
-                    const pages = await WikiPage.listPages(
-                        wiki._id,
-                        namespace,
-                        limit,
-                        (page - 1) * limit
-                    );
-                    
-                    // Get total count for pagination
-                    const totalPages = await WikiPage.countDocuments({
-                        wiki: wiki._id,
-                        namespace
-                    });
+                    const pages = await WikiPage.listPages(wiki._id, namespace, limit, (pageNum - 1) * limit);
+                    const total = await WikiPage.countDocuments({ wiki: wiki._id, namespace });
 
-                    return res.serve("wiki-special-allpages", {
+                    return res.serve("wiki-page", {
                         wiki,
-                        namespace,
-                        pages,
-                        pagination: {
-                            current: page,
-                            total: Math.ceil(totalPages / limit)
+                        page: { title: pageTitle, content: "", exists: true },
+                        pageData: {
+                            type: "AllPages",
+                            pages,
+                            pagination: { current: pageNum, total: Math.ceil(total / limit) }
                         },
-                        canEdit: wiki.canEdit(req.user)
+                        namespace: "Special",
+                        pageTitle,
+                        mode: "view",
+                        query: req.query,
+                        canEdit: wiki.canEdit(req.user),
+                        canDelete: wiki.isAdmin(req.user),
+                        t: req.t
                     });
                 }
+
                 case "recentchanges": {
                     const days = parseInt(req.query.days) || 7;
-                    const page = parseInt(req.query.page) || 1;
+                    const pageNum = parseInt(req.query.page) || 1;
                     const limit = 50;
-                    
-                    // Get pages modified within the last X days
                     const since = new Date();
                     since.setDate(since.getDate() - days);
-                    
-                    const changes = await WikiPage.find({
-                        wiki: wiki._id,
-                        lastModifiedAt: { $gte: since }
-                    })
-                    .sort({ lastModifiedAt: -1 })
-                    .skip((page - 1) * limit)
-                    .limit(limit)
-                    .populate("lastModifiedBy", "username");
-                    
-                    // Get total count for pagination
-                    const totalChanges = await WikiPage.countDocuments({
-                        wiki: wiki._id,
-                        lastModifiedAt: { $gte: since }
-                    });
 
-                    return res.serve("wiki-special-recentchanges", {
+                    const changes = await WikiPage.find({ wiki: wiki._id, lastModifiedAt: { $gte: since } })
+                    .sort({ lastModifiedAt: -1 })
+                    .skip((pageNum - 1) * limit)
+                    .limit(limit)
+                    .populate("lastModifiedBy", "name");
+
+                    const total = await WikiPage.countDocuments({ wiki: wiki._id, lastModifiedAt: { $gte: since } });
+
+                    return res.serve("wiki-page", {
                         wiki,
-                        days,
-                        changes,
-                        pagination: {
-                            current: page,
-                            total: Math.ceil(totalChanges / limit)
+                        page: { title: pageTitle, content: "", exists: true },
+                        pageData: {
+                            type: "RecentChanges",
+                            changes,
+                            days,
+                            pagination: { current: pageNum, total: Math.ceil(total / limit) }
                         },
-                        canEdit: wiki.canEdit(req.user)
+                        namespace: "Special",
+                        pageTitle,
+                        mode: "view",
+                        query: req.query,
+                        canEdit: wiki.canEdit(req.user),
+                        canDelete: wiki.isAdmin(req.user),
+                        t: req.t
                     });
                 }
-                case "permissions": {
-                    // Show/edit wiki permissions - admin only
-                    if (!wiki.isAdmin(req.user)) {
-                        return res.status(403).serve("_403", { message: req.t("page.wiki.no_permission") });
-                    }
-                    return res.serve("wiki-special-permissions", { wiki });
-                }
+                case "permissions":
                 case "settings": {
-                    // Wiki settings - admin only
-                    if (!wiki.isAdmin(req.user)) {
-                        return res.status(403).serve("_403", { message: req.t("page.wiki.no_permission") });
-                    }
-                    return res.serve("wiki-special-settings", { wiki });
+                    if (!wiki.isAdmin(req.user)) return res.status(403).serve("_403", { message: req.t("page.wiki.no_permission") });
+                    break;
                 }
+
                 default:
-                    return res.status(404).serve("_404", { 
-                        message: req.t("page.wiki.special_not_found", { page: pageTitle }) 
-                    });
+                    pageData.message = req.t("page.wiki.special_not_found", { page: pageTitle });
+                    pageData.type = "unknown";
             }
+
+            // --- Render generic special page placeholder ---
+            return res.serve("wiki-page", {
+                wiki,
+                page: { title: pageTitle, content, special: true, exists: true },
+                pageData,
+                namespace: "Special",
+                pageTitle,
+                mode: "view",
+                query: req.query,
+                canEdit: wiki.canEdit(req.user),
+                canDelete: wiki.isAdmin(req.user),
+            });
+
         } catch (err) {
             console.error("Error handling special page:", err);
             res.serve("500", { message: err });
@@ -166,6 +194,12 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         .populate("revisions.author", "name")
         .lean();
 
+        const commonCssPage = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: "Common.css" });
+        const commonJsPage  = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: "Common.js" });
+
+        const commonCss = commonCssPage?.content || "";
+        const commonJs  = commonJsPage?.content || "";
+
         if (!page) {
             return {
                 title: fullPath.replace(/_/g, " "),
@@ -176,7 +210,9 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                 content: "",
                 revisions: [],
                 lastModifiedAt: null,
-                lastModifiedBy: null
+                lastModifiedBy: null,
+                commonCss,
+                commonJs
             };
         }
 
@@ -207,6 +243,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                 page.lastModifiedAt = revision.timestamp;
                 page.lastModifiedBy = revision.author;
                 page.isOldRevision = true;
+                page.commonCss = commonCss;
+                page.commonJs = commonJs;
             }
         }
 
@@ -262,6 +300,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             page.html = `<pre class="module-source"><code>${escapeHtml(page.content)}</code></pre>`;
             page.categories = [];
             page.tags = [];
+            page.commonCss = commonCss;
+            page.commonJs = commonJs;
         } else if (!oldid) {
             // --- Normal wiki page rendering ---
             const rendered = await renderWikiText(page.content, {
@@ -282,6 +322,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             page.html = rendered.html;
             page.categories = rendered.categories;
             page.tags = rendered.tags;
+            page.commonCss = commonCss;
+            page.commonJs = commonJs;
         }
 
         page.exists = true;

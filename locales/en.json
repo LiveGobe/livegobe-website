@@ -467,7 +467,8 @@
         "last_modified": "Last modified {0}",
         "by_user": "by {0}",
         "loading": "Loading..."
-      }
+      },
+      "special_not_found": ""
     }
   },
   "filestorage": {
@@ -657,7 +658,8 @@
       "noComment": " ",
       "diff": "Diff",
       "minor": "Minor Edit",
-      "current": "Current"
+      "current": "Current",
+      "unknownAuthor": "Unknown Author"
     },
     "revision": {
       "oldRevisionTitle": "Viewing old revision of {page}",
@@ -667,6 +669,27 @@
     "purge": {
       "confirm": "Are you sure you want to purge the cache for {page}?",
       "confirm_all": "Are you sure you want to purge Ala pages?"
+    },
+    "allPages": {
+      "selectNamespace": "Select Namespace",
+      "go": "Go"
+    },
+    "recentChanges": {
+      "showLast": "Show last",
+      "days": "Days",
+      "go": "Go"
+    },
+    "special": {
+      "upload": {
+        "chooseFile": "Choose a file to upload",
+        "summary": "Comment",
+        "optional": "Optional",
+        "minorEdit": "Minor Edit",
+        "upload": "Upload",
+        "hint": "File Restrictions",
+        "allowedTypes": "Allowed Media Types: Images/Videos/Audio",
+        "maxSize": "Max File Size - 20 MB"
+      }
     }
   }
 }

@@ -49,7 +49,7 @@ function sanitizeFilename(input, replacement = "") {
 }
 
 function getSupportedNamespaces() {
-    return ["Main", "Help", "User", "File", "Category", "Template", "Module"];
+    return ["Main", "Help", "User", "File", "Category", "Template", "Module", "Special"];
 }
 
 module.exports = {

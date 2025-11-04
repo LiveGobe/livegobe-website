@@ -73,13 +73,13 @@
 - [ ] Syntax highlighting for code blocks
 - [ ] Table of Contents customization
 - [x] Redirect pages
-- [ ] Modules for advanced logic
+- [x] Modules for advanced logic
 - [x] Characters escaping
 
 ## Accessibility & UX
 - [x] Sanitized HTML for XSS protection
 - [ ] Responsive rendering (mobile-friendly)
 - [ ] Smooth scrolling to anchors
-- [ ] Custom CSS classes for styling
-- [ ] Custom JavaScript for interactivity
+- [x] Custom CSS classes for styling
+- [x] Custom JavaScript for interactivity
 - [x] LGWL editor with syntax highlighting

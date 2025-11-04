@@ -376,7 +376,7 @@ WikiPageSchema.statics.listPages = function(wiki, namespace = "Main", limit = 10
         .sort("path")
         .skip(skip)
         .limit(limit)
-        .populate("lastModifiedBy", "username");
+        .populate("lastModifiedBy", "name");
 };
 
 // Export model

@@ -1,6 +1,7 @@
 const React = require("react");
 const Head = require("../../components/head");
 const Bundle = require("../../components/bundle");
+const utils = require("../../../bin/utils");
 
 // Helper to format page title with namespace
 function formatPageTitle(namespace, path) {
@@ -101,14 +102,169 @@ function PageHistory({ wiki, page, namespace, path, t }) {
     );
 }
 
+/* ===== RecentChanges component ===== */
+function RecentChanges({ wiki, t, changes, type, days = 7, pagination }) {
+  const dayOptions = [1, 3, 7, 14, 30]; // adjust options as needed
+
+  return (
+    <div className="wiki-recent-changes">
+      <div className="recentchanges-days-selector">
+        <form method="GET" className="days-form">
+          <label>
+            {t("wiki.recentChanges.showLast")}:
+            <select name="days" defaultValue={days}>
+              {dayOptions.map((d) => (
+                <option key={d} value={d}>
+                  {d} {t("wiki.recentChanges.days")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit">{t("wiki.recentChanges.go")}</button>
+        </form>
+      </div>
+
+      <ul>
+        {changes.map((change, idx) => (
+          <li key={idx}>
+            <a
+              href={`/wikis/${wiki.name}/${
+                change.namespace === "Main"
+                  ? change.title.replace(/ /g, "_")
+                  : `${change.namespace}:${change.title.replace(/ /g, "_")}`
+              }`}
+            >
+              {change.namespace === "Main" ? change.title : `${change.namespace}:${change.title}`}
+            </a>{" "}
+            - {change.lastModifiedBy?.name || t("wiki.recentChanges.unknown")} (
+            {new Date(change.lastModifiedAt).toLocaleString()})
+          </li>
+        ))}
+      </ul>
+
+      {pagination && (
+        <div className="wiki-pagination">
+          {Array.from({ length: pagination.total }, (_, i) => (
+            <a
+              key={i}
+              href={`?days=${days}&page=${i + 1}`}
+              className={pagination.current === i + 1 ? "active" : ""}
+            >
+              {i + 1}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ===== AllPages component ===== */
+function AllPages({ wiki, t, pages, type, pagination, currentNamespace = "Main" }) {
+  const namespaces = utils.getSupportedNamespaces();
+
+  return (
+    <div className="wiki-all-pages">
+      <div className="allpages-namespace-selector">
+        <form method="GET" className="namespace-form">
+          <label>
+            {t("wiki.allPages.selectNamespace")}:
+            <select name="namespace" defaultValue={currentNamespace}>
+              {namespaces.map((ns) => (
+                <option key={ns} value={ns}>
+                  {ns}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="submit">{t("wiki.allPages.go")}</button>
+        </form>
+      </div>
+
+      <ul>
+        {pages.map((page) => (
+          <li key={page.path}>
+            <a
+              href={`/wikis/${wiki.name}/${
+                page.namespace === "Main" ? page.path : `${page.namespace}:${page.path}`
+              }`}
+            >
+              {page.namespace === "Main" ? page.title : `${page.namespace}:${page.title}`}
+            </a>
+          </li>
+        ))}
+      </ul>
+
+      {pagination && (
+        <div className="wiki-pagination">
+          {Array.from({ length: pagination.total }, (_, i) => (
+            <a
+              key={i}
+              href={`?namespace=${currentNamespace}&page=${i + 1}`}
+              className={pagination.current === i + 1 ? "active" : ""}
+            >
+              {i + 1}
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ===== SpecialUpload component ===== */
+function SpecialUpload({ wiki, t, user }) {
+  return (
+    <div className="wiki-special-upload">
+      {user ? (
+        <form
+          method="POST"
+          action={`/api/v2/wikis/${wiki.name}/files`}
+          encType="multipart/form-data"
+          className="upload-form"
+        >
+          <div className="form-group">
+            <label htmlFor="file">{t("wiki.special.upload.chooseFile")}:</label>
+            <input type="file" name="file" id="file" required />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="summary">{t("wiki.special.upload.summary")}:</label>
+            <input type="text" name="summary" id="summary" placeholder={t("wiki.special.upload.optional")} />
+          </div>
+
+          <div className="form-group">
+            <label>
+              <input type="checkbox" name="minor" />
+              {t("wiki.special.upload.minorEdit")}
+            </label>
+          </div>
+
+          <button type="submit">{t("wiki.special.upload.upload")}</button>
+        </form>
+      ) : (
+        <p>{t("wiki.special.upload.loginRequired")}</p>
+      )}
+
+      <div className="upload-hint">
+        <p>{t("wiki.special.upload.hint")}</p>
+        <ul>
+          <li>{t("wiki.special.upload.allowedTypes")}</li>
+          <li>{t("wiki.special.upload.maxSize")}</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 module.exports = function WikiPage(props) {
-  const { wiki, page = {}, namespace = "Main", mode, canEdit, canDelete, t, query = {} } = props;
+  const { wiki, page = {}, namespace = "Main", mode, canEdit, canDelete, t, query = {}, pageData, user } = props;
 
   // Provide safe defaults for page to avoid undefined property access
   const safePage = {
     exists: false,
-    path: "Main_Page",
-    title: "Main_Page",
+    path: page?.path || props.pageTitle || "Main_Page",
+    title: page?.title || props.pageTitle || "Main_Page",
     revisions: [],
     categories: [],
     html: "",
@@ -120,6 +276,9 @@ module.exports = function WikiPage(props) {
   const fullTitle = formatPageTitle(namespace, safePage.path || safePage.title || "Main_Page");
   const isModule = namespace === "Module";
   const isDocSubpage = safePage.path.endsWith("/doc");
+  const isCommonCss = namespace === "Special" && safePage.path.toLowerCase() === "common.css";
+  const isCommonJs  = namespace === "Special" && safePage.path.toLowerCase() === "common.js";
+  const isCommonPage = isCommonCss || isCommonJs;
 
   return (
     <html lang={props.language}>
@@ -138,6 +297,10 @@ module.exports = function WikiPage(props) {
         </>}
         <Bundle name="wiki-page.css" />
         <Bundle name="wiki-page.js" />
+
+        {/* Editable common styles and scripts from wiki pages */}
+        {safePage.commonCss && <style dangerouslySetInnerHTML={{ __html: safePage.commonCss }} />}
+        {safePage.commonJs && <script dangerouslySetInnerHTML={{ __html: safePage.commonJs }} />}
       </Head>
 
       <body data-theme={props.theme}>
@@ -199,7 +362,7 @@ module.exports = function WikiPage(props) {
               <div className="wiki-page-header-row">
                 <h2 className="wiki-page-title">
                   {namespace !== "Main" ? `${namespace}:${safePage.title}` : safePage.title}
-                  {safePage.protected !== "none" && (
+                  {safePage.protected !== "none" && safePage.protected !== undefined && (
                     <span
                       className={`protection-badge protection-${safePage.protected}`}
                       title={t("wiki.protected.tooltip")}
@@ -209,61 +372,99 @@ module.exports = function WikiPage(props) {
                   )}
                 </h2>
 
-                <div className="wiki-actions">
-                  <a
-                    href={`/wikis/${wiki.name}/${fullTitle}`}
-                    className={mode === "view" && !safePage.isOldRevision ? "active" : ""}
-                  >
-                    {t("wiki.actions.view")}
-                  </a>
+                {/* Only show actions on normal pages, not Special:AllPages or Special:RecentChanges */}
+                {!(namespace === "Special" && ["AllPages", "RecentChanges", "Upload"].includes(safePage.path)) && (
+                  <div className="wiki-actions">
+                    {isCommonPage ? (
+                      <>
+                        {/* View is always available */}
+                        <a
+                          href={`/wikis/${wiki.name}/${fullTitle}`}
+                          className={mode === "view" && !safePage.isOldRevision ? "active" : ""}
+                        >
+                          {t("wiki.actions.view")}
+                        </a>
 
-                  {canEdit && (
-                    <a
-                      href={`/wikis/${wiki.name}/${fullTitle}?mode=edit`}
-                      className={mode === "edit" ? "active" : ""}
-                    >
-                      {safePage.exists ? t("wiki.edit.edit") : t("wiki.edit.create")}
-                    </a>
-                  )}
-
-                  {safePage.exists && (
-                    <>
-                      <a
-                        href={`/wikis/${wiki.name}/${fullTitle}?mode=history`}
-                        className={mode === "history" ? "active" : ""}
-                      >
-                        {t("wiki.actions.history")}
-                      </a>
-
-                      {/* === Dropdown for extra actions === */}
-                      <div className="wiki-more-actions dropdown">
-                        <button className="dropdown-toggle" type="button">
-                          ⋯
-                        </button>
-                        <div className="dropdown-menu">
+                        {/* Only allow edit for admins */}
+                        {canEdit && (
                           <a
-                            href="#"
-                            className="dropdown-item purge-page"
-                            data-wiki={wiki.name}
-                            data-page={fullTitle}
-                            data-confirm-prompt={t("wiki.purge.confirm", { page: fullTitle }) || "Are you sure you want to purge this page?"}
+                            href={`/wikis/${wiki.name}/${fullTitle}?mode=edit`}
+                            className={mode === "edit" ? "active" : ""}
                           >
-                            {t("wiki.actions.purge")}
+                            {t("wiki.edit.edit")}
                           </a>
+                        )}
 
-                          {canDelete && (
+                        {/* History always available */}
+                        <a
+                          href={`/wikis/${wiki.name}/${fullTitle}?mode=history`}
+                          className={mode === "history" ? "active" : ""}
+                        >
+                          {t("wiki.actions.history")}
+                        </a>
+
+                        {/* Delete / purge are disabled for safety */}
+                      </>
+                    ) : (
+                      <>
+                        {/* Regular actions for normal pages */}
+                        <a
+                          href={`/wikis/${wiki.name}/${fullTitle}`}
+                          className={mode === "view" && !safePage.isOldRevision ? "active" : ""}
+                        >
+                          {t("wiki.actions.view")}
+                        </a>
+
+                        {canEdit && (
+                          <a
+                            href={`/wikis/${wiki.name}/${fullTitle}?mode=edit`}
+                            className={mode === "edit" ? "active" : ""}
+                          >
+                            {safePage.exists ? t("wiki.edit.edit") : t("wiki.edit.create")}
+                          </a>
+                        )}
+
+                        {safePage.exists && (
+                          <>
                             <a
-                              href={`/wikis/${wiki.name}/${fullTitle}?mode=delete`}
-                              className="dropdown-item danger"
+                              href={`/wikis/${wiki.name}/${fullTitle}?mode=history`}
+                              className={mode === "history" ? "active" : ""}
                             >
-                              {t("wiki.actions.delete")}
+                              {t("wiki.actions.history")}
                             </a>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
+
+                            {/* Dropdown for extra actions */}
+                            <div className="wiki-more-actions dropdown">
+                              <button className="dropdown-toggle" type="button">
+                                ⋯
+                              </button>
+                              <div className="dropdown-menu">
+                                <a
+                                  href="#"
+                                  className="dropdown-item purge-page"
+                                  data-wiki={wiki.name}
+                                  data-page={fullTitle}
+                                  data-confirm-prompt={t("wiki.purge.confirm", { page: fullTitle }) || "Are you sure you want to purge this page?"}
+                                >
+                                  {t("wiki.actions.purge")}
+                                </a>
+
+                                {canDelete && (
+                                  <a
+                                    href={`/wikis/${wiki.name}/${fullTitle}?mode=delete`}
+                                    className="dropdown-item danger"
+                                  >
+                                    {t("wiki.actions.delete")}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -295,7 +496,36 @@ module.exports = function WikiPage(props) {
             )}
 
             {/* Page content / modes */}
-            {mode === "edit" ? (
+            {isCommonPage ? (
+              <>
+                {mode === "edit" ? (
+                  <EditForm wiki={wiki} page={safePage} namespace={namespace} path={safePage.path} t={t} />
+                ) : mode === "history" ? (
+                  <PageHistory wiki={wiki} page={safePage} namespace={namespace} path={safePage.path} t={t} />
+                ) : (
+                  <>
+                    <div className="wiki-common-page">
+                      <h2>{safePage.title}</h2>
+                      <pre>{safePage.content}</pre>
+                    </div>
+                    <div className="wiki-page-meta">
+                      <div className="last-modified">
+                        {t("wiki.page.lastModified", {
+                          date: new Date(safePage.lastModifiedAt).toLocaleString(),
+                          user: safePage.lastModifiedBy?.name || ""
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>
+            ) : safePage.path === "RecentChanges" ? (
+              <RecentChanges wiki={wiki} t={t} type={pageData.type} changes={pageData.changes} days={pageData.days} pagination={pageData.pagination} />
+            ) : safePage.path === "AllPages" ? (
+              <AllPages wiki={wiki} t={t} type={pageData.type} pages={pageData.pages} pagination={pageData.pagination} currentNamespace={query.namespace} />
+            ) : safePage.path === "Upload" ? (
+              <SpecialUpload wiki={wiki} t={t} user={user} />
+            ) : mode === "edit" ? (
               <EditForm wiki={wiki} page={safePage} namespace={namespace} path={safePage.path} t={t} />
             ) : mode === "history" ? (
               <PageHistory wiki={wiki} page={safePage} namespace={namespace} path={safePage.path} t={t} />
@@ -334,52 +564,61 @@ module.exports = function WikiPage(props) {
                       </p>
                     )}
                   </div>
-                ) : (
-                  <>
-                    {isModule && !isDocSubpage ? (
-                      <div className="wiki-module">
-                        {/* Try to include documentation subpage */}
-                        {safePage.docHtml ? (
-                          <div className="wiki-module-doc">
-                            <div dangerouslySetInnerHTML={{ __html: safePage.docHtml }} />
-                          </div>
-                        ) : (
-                          <div className="wiki-module-doc-missing">
-                            <em>No documentation subpage (<code>/doc</code>) found for this module.</em>
-                          </div>
-                        )}
-
-                        <pre className="wiki-module-code">
-                          <code>{safePage.content}</code>
-                        </pre>
+                ) : isModule && !isDocSubpage ? (
+                  <div className="wiki-module">
+                    {safePage.docHtml ? (
+                      <div className="wiki-module-doc">
+                        <div dangerouslySetInnerHTML={{ __html: safePage.docHtml }} />
                       </div>
                     ) : (
-                      <div className="wiki-page-content" dangerouslySetInnerHTML={{ __html: safePage.html || "" }} />
+                      <div className="wiki-module-doc-missing">
+                        <em>No documentation subpage (<code>/doc</code>) found for this module.</em>
+                      </div>
                     )}
 
-                    <div className="wiki-page-meta">
-                      <div className="last-modified">
-                        {t("wiki.page.lastModified", {
-                          date: new Date(safePage.lastModifiedAt).toLocaleString(),
-                          user: safePage.lastModifiedBy?.name || ""
-                        })}
-                      </div>
-
-                      {safePage.categories?.length > 0 && (
-                        <div className="categories">
-                          <h3>{t("wiki.page.categories")}:</h3>
-                          <ul>
-                            {safePage.categories.map((cat) => (
-                              <li key={cat}>
-                                <a href={`/wikis/${wiki.name}/Category:${cat}`}>{cat}</a>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  </>
+                    <pre className="wiki-module-code">
+                      <code>{safePage.content}</code>
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="wiki-page-content" dangerouslySetInnerHTML={{ __html: safePage.html || "" }} />
                 )}
+
+                {pageData?.pagination && (
+                  <div className="wiki-pagination">
+                    {Array.from({ length: safePage.pagination.total }, (_, i) => (
+                      <a
+                        key={i}
+                        href={`?page=${i + 1}`}
+                        className={safePage.pagination.current === i + 1 ? "active" : ""}
+                      >
+                        {i + 1}
+                      </a>
+                    ))}
+                  </div>
+                )}
+
+                <div className="wiki-page-meta">
+                  {safePage.exists && (<div className="last-modified">
+                    {t("wiki.page.lastModified", {
+                      date: new Date(safePage.lastModifiedAt).toLocaleString(),
+                      user: safePage.lastModifiedBy?.name || ""
+                    })}
+                  </div>)}
+
+                  {safePage.categories?.length > 0 && (
+                    <div className="categories">
+                      <h3>{t("wiki.page.categories")}:</h3>
+                      <ul>
+                        {safePage.categories.map((cat) => (
+                          <li key={cat}>
+                            <a href={`/wikis/${wiki.name}/Category:${cat}`}>{cat}</a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </article>

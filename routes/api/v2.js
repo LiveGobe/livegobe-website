@@ -1081,6 +1081,21 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
             const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath });
             if (!page) return res.status(404).json({ message: req.t("api.wikis.page_not_found", { page: fullPath }) });
 
+            // --- DELETE FILE FROM DISK IF THIS IS A FILE PAGE ---
+            if (namespace === "File") {
+                const uploadDir = path.join(process.cwd(), `/public/wikis/${wiki.name}/uploads`); // adjust to your uploads path
+                const filePath = path.join(uploadDir, page.path); // page.path = safe filename
+
+                try {
+                    fs.unlinkSync(filePath);
+                    console.log(`Deleted file from disk: ${filePath}`);
+                } catch (err) {
+                    console.warn(`Failed to delete file: ${filePath}`, err);
+                    // do not block page deletion
+                }
+            }
+
+            // Delete the wiki page itself
             await page.deleteOne();
 
             return res.json({ message: req.t("api.wikis.page_deleted") });
@@ -1133,6 +1148,116 @@ router.post("/wikis/:wikiName/render", async (req, res) => {
 		console.error("API: error rendering wiki preview:", err);
 		res.status(500).json({ message: err.toString() });
 	}
+});
+
+// POST /files - upload a file to the wiki
+router.post("/wikis/:wikiName/files", fileUpload({ defParamCharset: "utf-8" }), async (req, res) => {
+  const ALLOWED_MIME_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+    "audio/mpeg",
+    "audio/ogg",
+    "audio/wav",
+    "video/mp4",
+    "video/webm",
+    "video/ogg"
+  ];
+
+  try {
+    const wikiName = req.params.wikiName;
+    const wiki = await Wiki.findOne({ name: wikiName });
+    if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!wiki.canEdit(req.user)) return res.status(403).json({ message: req.t("api.nopermission") });
+
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ message: req.t("api.files.no_file") });
+    }
+
+    const uploadFile = req.files.file;
+
+    if (!ALLOWED_MIME_TYPES.includes(uploadFile.mimetype)) {
+      return res.status(400).json({ message: req.t("api.files.invalid_type") });
+    }
+
+    const uploadDir = path.join(process.cwd(), "public", "wikis", wiki.name, "uploads");
+    fs.mkdirSync(uploadDir, { recursive: true });
+
+    let safeFilename = "";
+    if (req.body.fileName) {
+        safeFilename = req.body.fileName.replace(/\s+/g, "_");
+    } else if (uploadFile?.name) {
+        safeFilename = uploadFile.name.replace(/\s+/g, "_");
+    } else {
+        // fallback to timestamp if all else fails
+        safeFilename = `upload_${Date.now()}`;
+    }
+    const filePath = path.join(uploadDir, safeFilename);
+
+    await uploadFile.mv(filePath);
+
+    const namespace = "File";
+    const pageTitle = safeFilename;
+    const pagePath = safeFilename;
+
+    let page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: pagePath });
+
+    const uploadDate = new Date().toDateString();
+    const fileSizeKB = Math.round(uploadFile.size / 1024);
+
+    const filePageContent = `__NOTOC__
+== File Information ==
+* '''Filename''': ${safeFilename}
+* '''Size''': ${fileSizeKB} KB
+* '''MIME type''': ${uploadFile.mimetype}
+* '''Uploaded at''': ${uploadDate}
+* '''Uploader''': [[User:${req.user.username}|${req.user.name}]]
+
+== Preview ==
+${uploadFile.mimetype.startsWith("image/") ? `[[File:${safeFilename}]]` : "Preview not available for this type."}
+`;
+
+    if (page) {
+      page.addRevision(filePageContent, req.user._id, "Updated file upload", false);
+    } else {
+      page = await WikiPage.createPage(
+        wiki._id,
+        pageTitle,
+        namespace,
+        pagePath,
+        filePageContent,
+        req.user._id,
+        "Initial file upload"
+      );
+    }
+
+    await page.save();
+
+    const populatedPage = await WikiPage.findById(page._id).populate("lastModifiedBy", "name");
+
+    // Use staticLink utility for URL
+    const fileUrl = utils.staticUrl(`wikis/${wiki.name}/uploads/${safeFilename}`);
+
+    return res.json({
+      message: req.t("api.files.upload_success"),
+      file: {
+        title: populatedPage.title,
+        namespace: populatedPage.namespace,
+        path: populatedPage.path,
+        html: populatedPage.html,
+        lastModifiedAt: populatedPage.lastModifiedAt,
+        lastModifiedBy: populatedPage.lastModifiedBy,
+        url: fileUrl
+      }
+    });
+  } catch (err) {
+    console.error("API: error uploading file:", err);
+    res.status(500).json({ message: err.toString() });
+  }
 });
 
 module.exports = router;

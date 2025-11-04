@@ -483,4 +483,82 @@ $(function () {
         e.preventDefault();
         window.location = $(this).attr("href");
     });
+
+	const $uploadForm = $("form.upload-form");
+    if ($uploadForm.length) {
+        const $fileInput = $uploadForm.find("input[type=file]");
+        const $summaryInput = $uploadForm.find("input[name=summary]");
+        const $minorCheckbox = $uploadForm.find("input[name=minor]");
+        const $submitBtn = $uploadForm.find("button[type=submit]");
+
+        // Display selected file name
+        const $fileNameDisplay = $("<span class='file-name-display'></span>").insertAfter($fileInput);
+        $fileInput.on("change", function () {
+            const files = this.files;
+            $fileNameDisplay.text(files && files.length ? files[0].name : "");
+        });
+
+        // Progress bar
+        const $progressBar = $("<div class='upload-progress'><div class='progress-inner'></div></div>").insertAfter($submitBtn);
+        $progressBar.hide();
+
+        $uploadForm.on("submit", function (e) {
+            e.preventDefault();
+            const file = $fileInput[0].files[0];
+            if (!file) return alert("Please select a file to upload.");
+
+			// Use the query parameter ?file if available, else fallback to actual filename
+			let fileName = new URLSearchParams(window.location.search).get("file") || uploadFile.name;
+
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("fileName", fileName);
+            formData.append("summary", $summaryInput.val() || "");
+            formData.append("minor", $minorCheckbox.is(":checked") ? "1" : "0");
+
+            $submitBtn.prop("disabled", true);
+            $progressBar.show();
+            $progressBar.find(".progress-inner").css("width", "0%");
+
+            $.ajax({
+                url: $uploadForm.attr("action"),
+                method: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                xhr: function () {
+                    const xhr = $.ajaxSettings.xhr();
+                    if (xhr.upload) {
+                        xhr.upload.addEventListener("progress", function (evt) {
+                            if (evt.lengthComputable) {
+                                const percent = (evt.loaded / evt.total) * 100;
+                                $progressBar.find(".progress-inner").css("width", percent + "%");
+                            }
+                        }, false);
+                    }
+                    return xhr;
+                },
+                success: function (json) {
+                    if (json.error) {
+						alert("Upload failed: " + json.error);
+					} else if (json.file.path) {
+						alert("Upload successful!");
+						// Redirect to the file's wiki page
+						const safeName = encodeURIComponent(json.file.path.replace(/ /g, "_"));
+						window.location.href = `/wikis/${wikiName}/File:${safeName}`;
+					} else {
+						alert("Upload completed, but no file information returned.");
+					}
+                },
+                error: function (xhr, status, err) {
+                    console.error(err);
+                    alert("Upload failed: " + (xhr.responseJSON?.error || err));
+                },
+                complete: function () {
+                    $submitBtn.prop("disabled", false);
+                    $progressBar.hide();
+                }
+            });
+        });
+    }
 });

@@ -22,17 +22,10 @@
 
 - [x] **Security**
   - [x] Restrict access to `require`, `fs`, `process`, or DB
-  - [ ] Limit execution time and memory usage
+  - [-] Limit execution time and memory usage
   - [ ] Optionally validate LGML code before storing
-
-- [ ] **Testing**
-  - [ ] Test math, string, and array helpers
-  - [ ] Test template `#invoke` calls
-  - [ ] Test old revision handling
-  - [ ] Test redirects and nested templates
-  - [ ] Test sandbox security
-
-- [ ] **Advanced Features (Future)**
-  - [ ] Support module-to-module calls
+  
+- [-] **Advanced Features (Future)**
+  - [x] Support module-to-module calls
   - [ ] Allow modules to define page variables / caching hooks
-  - [ ] Optionally add async LGML functions
+  - [x] Optionally add async LGML functions
