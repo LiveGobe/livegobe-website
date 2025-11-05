@@ -205,7 +205,6 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
             // Early exit for automatic redirect
             return { html: "", categories: [], tags: [], redirectTarget: this.redirectTarget };
         }
-        // else: show the redirect page with notice
     }
 
     // Existing content rendering
@@ -215,13 +214,28 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
     };
 
     try {
+        // ✅ Preload all existing page paths for red link detection
+        const allPages = await WikiPage.find({ wiki: this.wiki._id })
+            .select("namespace path")
+            .lean();
+
+        const existingPages = new Set(
+            allPages.map(p =>
+                p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`
+            )
+        );
+
+        // --- Render LGWL content ---
         const { html, categories, tags } = await renderWikiText(this.content, {
             wikiName: this.wiki.name,
             pageName: this.path,
             currentNamespace: this.namespace,
             WikiPage,
             getPage,
-            currentPageId: this._id
+            currentPageId: this._id,
+
+            // ✅ pass to parser
+            existingPages
         });
 
         this.html = html;

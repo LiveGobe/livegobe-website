@@ -498,7 +498,7 @@ function tokenizeInline(line, linkRegex, options = {}) {
 /* ---------------------------
    Inline Renderer (with Media + link= support)
 ---------------------------- */
-function renderInline(parts, { wikiName, currentNamespace, existingFiles = new Set() }) {
+function renderInline(parts, { wikiName, currentNamespace, existingFiles = new Set(), existingPages = new Set() }) {
   return parts.map(part => {
     if (part.type === "text") return formatText(part.value);
 
@@ -628,8 +628,36 @@ function renderInline(parts, { wikiName, currentNamespace, existingFiles = new S
         return mediaHtml;
       }
 
-      return `<a href="${resolveLink(part.target, { wikiName, currentNamespace })}">
-                ${sanitize(part.label || part.target, PURIFY_CONFIG)}
+      const label = sanitize(part.label || part.target, PURIFY_CONFIG);
+
+      // --- Handle pure anchor links like [[#Section]]
+      if (target.startsWith("#")) {
+        const anchor = target.slice(1);
+        return `<a href="#${sanitize(anchor, PURIFY_CONFIG)}" class="wiki-link">${label}</a>`;
+      }
+
+      // --- Separate anchor for existence check ---
+      let pageOnly = target;
+      if (target.includes("#")) {
+        pageOnly = target.split("#", 1)[0]; // strip off #Anchor for DB existence check
+      }
+
+      // Normalize for consistent lookups
+      const normalized = pageOnly.replace(/\s+/g, "_");
+
+      // Check page existence
+      const pageExists = existingPages.has(normalized);
+
+      // --- Build final href (resolveLink handles anchors properly) ---
+      const href = resolveLink(target, { wikiName, currentNamespace });
+      const finalHref = pageExists ? href : `${href}?mode=edit`;
+
+      // --- Choose link class ---
+      const linkClass = pageExists ? "wiki-link" : "wiki-link wiki-missing";
+
+      // --- Return full link ---
+      return `<a href="${finalHref}" class="${linkClass}">
+                ${label}
               </a>`;
     }
 
@@ -822,7 +850,7 @@ function parse(tokens, options = {}) {
         listStack.push({ level: t.level, ordered: t.ordered });
       }
 
-      const inner = renderInline(t.content, { wikiName, currentNamespace, existingFiles });
+      const inner = renderInline(t.content, { wikiName, currentNamespace, existingFiles, existingPages: options.existingPages });
       html += `<li>${inner}</li>\n`;
       continue;
     }
@@ -886,7 +914,7 @@ function parse(tokens, options = {}) {
       continue;
     }
 
-    const inner = renderInline(t.content, { wikiName, currentNamespace, existingFiles });
+    const inner = renderInline(t.content, { wikiName, currentNamespace, existingFiles, existingPages: options.existingPages });
 
     if (t.type === "htmlBlock") html += sanitize(inner, PURIFY_CONFIG) + "\n";
     else html += `<p>${sanitize(inner, PURIFY_CONFIG)}</p>\n`;
@@ -946,7 +974,17 @@ function resolveLink(target, { wikiName, currentNamespace = "Main" } = {}) {
 
   const pagePath = page.replace(/\s+/g, "_");
   const urlPath = namespace === "Main" ? pagePath : `${namespace}:${pagePath}`;
-  const base = `/wikis/${encodeURIComponent(wikiName || "")}/${encodeURIComponent(urlPath)}`;
+
+  // ✅ Encode only slashes and spaces, not colons
+  const safeWikiName = wikiName.replace(/ /g, "-");
+  const safeUrlPath = urlPath
+    .split("/")
+    .map(seg => encodeURIComponent(seg))
+    .join("/")
+    .replace(/%3A/g, ":") // restore colons for namespaces
+
+  const base = `/wikis/${safeWikiName}/${safeUrlPath}`;
+
   return anchor ? `${base}#${anchor}` : base;
 }
 

@@ -130,6 +130,9 @@
       "modversiondeleted": "Mod version deleted successfully",
       "modonlyversion": "Can't delete the only version of mod",
       "moddeleted": "Mod deleted successfully"
+    },
+    "files": {
+      "upload_success": "File successfully uploaded"
     }
   },
   "theme": {
@@ -468,7 +471,7 @@
         "by_user": "by {0}",
         "loading": "Loading..."
       },
-      "special_not_found": ""
+      "special_not_found": "Special page '{page}' not found"
     }
   },
   "filestorage": {

@@ -89,8 +89,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                     canDelete: wiki.isAdmin(req.user),
                     t: req.t,
                     query: req.query,
-                    language: req.language,
-                    theme: req.theme
+                    language: req.language
                 });
             }
 
@@ -315,24 +314,30 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             page.commonJs = commonJs;
         } else if (!oldid) {
             // --- Normal wiki page rendering ---
-            const rendered = await renderWikiText(page.content, {
-                wikiName: wiki.name,
-                pageName: page.path,
-                currentNamespace: page.namespace,
-                WikiPage,
-                currentPageId: page._id,
-                getPage: async (ns, name) => {
-                    return WikiPage.findOne({
-                        wiki: page.wiki._id,
-                        namespace: ns,
-                        path: name
-                    });
-                }
-            });
+            if (!page.html) {
+                // Render and save if no cached HTML
+                const rendered = await renderWikiText(page.content, {
+                    wikiName: wiki.name,
+                    pageName: page.path,
+                    currentNamespace: page.namespace,
+                    WikiPage,
+                    currentPageId: page._id,
+                    getPage: async (ns, name) => {
+                        return WikiPage.findOne({
+                            wiki: page.wiki._id,
+                            namespace: ns,
+                            path: name
+                        });
+                    }
+                });
 
-            page.html = rendered.html;
-            page.categories = rendered.categories;
-            page.tags = rendered.tags;
+                page.html = rendered.html;
+                page.categories = rendered.categories;
+                page.tags = rendered.tags;
+                await page.save();
+            }
+
+            // Attach common assets
             page.commonCss = commonCss;
             page.commonJs = commonJs;
         }
@@ -397,7 +402,22 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         if (mode === "view" && page.redirectTarget && !page.isOldRevision) {
             if (!req.query.noredirect) {
                 // Pass the original page in the query so the target page can show "Redirected from"
-                return res.redirect(`/wikis/${wiki.name}/${page.redirectTarget.replace(/ /g, "_")}?from=${encodeURIComponent(fullPagePath)}`);
+                // Normalize target and preserve namespace
+                let target = page.redirectTarget.trim().replace(/ /g, "_");
+
+                // If target lacks an explicit namespace (no ':'), keep the same as current page
+                if (!target.includes(":") && page.namespace !== "Main") {
+                target = `${page.namespace}:${target}`;
+                }
+
+                // Construct redirect URL with full "from" (namespace:path)
+                const fromFull = page.namespace === "Main"
+                ? page.path
+                : `${page.namespace}:${page.path}`;
+
+                return res.redirect(
+                `/wikis/${wiki.name}/${encodeURIComponent(target)}?from=${encodeURIComponent(fromFull)}`
+                );
             }
         }
 
