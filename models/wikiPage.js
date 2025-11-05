@@ -365,8 +365,8 @@ WikiPageSchema.statics.createPage = async function(wiki, title, namespace, path,
 };
 
 // Static method to find pages by category
-WikiPageSchema.statics.findByCategory = function(wiki, category) {
-    return this.find({ wiki, categories: category });
+WikiPageSchema.statics.findByCategory = async function(wiki, category) {
+    return await this.find({ wiki, categories: category });
 };
 
 // Static method to list all pages in a namespace

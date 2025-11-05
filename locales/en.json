@@ -690,6 +690,9 @@
         "allowedTypes": "Allowed Media Types: Images/Videos/Audio",
         "maxSize": "Max File Size - 20 MB"
       }
+    },
+    "category": {
+      "pagesInCategory": "Pages in category -"
     }
   }
 }

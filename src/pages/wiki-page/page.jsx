@@ -554,16 +554,34 @@ module.exports = function WikiPage(props) {
             ) : (
               <>
                 {!safePage.exists ? (
-                  <div className="wiki-page-empty">
-                    <p>{t("wiki.page.doesNotExist")}</p>
-                    {canEdit && (
-                      <p>
-                        <a href={`/wikis/${wiki.name}/${fullTitle}?mode=edit`} className="button">
-                          {t("wiki.page.createThis")}
-                        </a>
-                      </p>
+                  <>
+                    <div className="wiki-page-empty">
+                      <p>{t("wiki.page.doesNotExist")}</p>
+                      {canEdit && (
+                        <p>
+                          <a href={`/wikis/${wiki.name}/${fullTitle}?mode=edit`} className="button">
+                            {t("wiki.page.createThis")}
+                          </a>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Category listing */}
+                    {namespace === "Category" && safePage.pageData?.pages?.length > 0 && (
+                        <div className="wiki-category-list">
+                            <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category}"</h3>
+                            <ul>
+                                {safePage.pageData.pages.map((p) => (
+                                    <li key={p.path}>
+                                        <a href={`/wikis/${wiki.name}/${p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`}`}>
+                                            {p.namespace === "Main" ? p.title : `${p.namespace}:${p.title}`}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
                     )}
-                  </div>
+                  </>
                 ) : isModule && !isDocSubpage ? (
                   <div className="wiki-module">
                     {safePage.docHtml ? (
@@ -581,7 +599,26 @@ module.exports = function WikiPage(props) {
                     </pre>
                   </div>
                 ) : (
-                  <div className="wiki-page-content" dangerouslySetInnerHTML={{ __html: safePage.html || "" }} />
+                  <>
+                    {/* Normal content */}
+                    <div className="wiki-page-content" dangerouslySetInnerHTML={{ __html: safePage.html || "" }} />
+
+                    {/* Category listing */}
+                    {namespace === "Category" && safePage.pageData?.pages?.length > 0 && (
+                        <div className="wiki-category-list">
+                            <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category}"</h3>
+                            <ul>
+                                {safePage.pageData.pages.map((p) => (
+                                    <li key={p.path}>
+                                        <a href={`/wikis/${wiki.name}/${p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`}`}>
+                                            {p.namespace === "Main" ? p.title : `${p.namespace}:${p.title}`}
+                                        </a>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                  </>
                 )}
 
                 {pageData?.pagination && (

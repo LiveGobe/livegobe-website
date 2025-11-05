@@ -201,6 +201,12 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         const commonJs  = commonJsPage?.content || "";
 
         if (!page) {
+            // --- Special: List all pages in this category ---
+            let pagesInCategory;
+            if (namespace === "Category") {
+                pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath); // <--- use your static
+            }
+
             return {
                 title: fullPath.replace(/_/g, " "),
                 namespace,
@@ -212,7 +218,12 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                 lastModifiedAt: null,
                 lastModifiedBy: null,
                 commonCss,
-                commonJs
+                commonJs,
+                pageData: {
+                    type: "Category",
+                    category: fullPath,
+                    pages: pagesInCategory
+                }
             };
         }
 
@@ -324,6 +335,16 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             page.tags = rendered.tags;
             page.commonCss = commonCss;
             page.commonJs = commonJs;
+        }
+        
+        // --- Special: List all pages in this category ---
+        if (namespace === "Category") {
+            const pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath); // <--- use your static
+            page.pageData = {
+                type: "Category",
+                category: fullPath,
+                pages: pagesInCategory
+            };
         }
 
         page.exists = true;
