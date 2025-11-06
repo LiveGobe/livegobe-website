@@ -300,15 +300,9 @@ WikiPageSchema.methods.purgeCache = async function(visited = new Set()) {
         { new: true }
     );
 
-    if (!locked) {
-        // Another process is purging this page; skip it
-        console.log(`[Purge] Skipping ${this.fullTitle} (already purging)`); 
-        return;
-    }
+    if (!locked) return;
 
     try {
-        console.log(`[Purge] Re-rendering ${this.fullTitle}`);
-
         // Force re-render of this page
         await this.renderContent();
         await this.save();
