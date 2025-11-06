@@ -694,16 +694,12 @@ function renderInline(parts, { wikiName, currentNamespace, existingFiles = new S
       const linkClass = pageExists ? "wiki-link" : "wiki-link wiki-missing";
 
       // --- Return full link ---
-      return `<a href="${finalHref}" class="${linkClass}">
-                ${label}
-              </a>`;
+      return `<a href="${finalHref}" class="${linkClass}">${label}</a>`;
     }
 
     if (part.type === "externalLink") {
       const safeUrl = encodeURI(part.url.trim());
-      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
-                ${sanitize(part.label || safeUrl, PURIFY_CONFIG)}
-              </a>`;
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${sanitize(part.label || safeUrl, PURIFY_CONFIG)}</a>`;
     }
 
     return "";
