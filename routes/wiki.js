@@ -314,7 +314,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             page.commonJs = commonJs;
         } else if (!oldid) {
             // --- Normal wiki page rendering ---
-            if (!page.html) {
+            if (!page.html && !req.query.noredirect) {
                 // Render and save if no cached HTML
                 const rendered = await renderWikiText(page.content, {
                     wikiName: wiki.name,
@@ -407,7 +407,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
 
                 // If target lacks an explicit namespace (no ':'), keep the same as current page
                 if (!target.includes(":") && page.namespace !== "Main") {
-                target = `${page.namespace}:${target}`;
+                    target = `${page.namespace}:${target}`;
                 }
 
                 // Construct redirect URL with full "from" (namespace:path)

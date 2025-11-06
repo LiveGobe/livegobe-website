@@ -785,9 +785,34 @@ router.route("/wikis").get((req, res) => {
 
         const wiki = new Wiki({ name: slug, title, description, language });
 
-        wiki.save().then(saved => {
-            // Return created wiki object
-            res.status(201).json({ message: req.t("api.wikis.created"), wiki: saved });
+        wiki.save().then(async saved => {
+            try {
+                // Create Special:Common.css
+                await WikiPage.createPage(
+                    saved._id,
+                    "Common.css",
+                    "Special",
+                    "Common.css",
+                    "/* Common CSS for this wiki */",
+                    req.user._id
+                );
+
+                // Create Special:Common.js
+                await WikiPage.createPage(
+                    saved._id,
+                    "Common.js",
+                    "Special",
+                    "Common.js",
+                    "// Common JS for this wiki",
+                    req.user._id
+                );
+
+                // Return created wiki object
+                res.status(201).json({ message: req.t("api.wikis.created"), wiki: saved });
+            } catch (err) {
+                console.error("Error creating Common pages:", err);
+                res.status(500).json({ message: req.t("api.wikis.create_failed_common") });
+            }
         }).catch(err => {
             console.error("Error creating wiki:", err);
             res.status(500).json({ message: req.t("api.wikis.create_failed") });
@@ -905,9 +930,9 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
 
             // include revisions only for editors when requested
             let revisions = undefined;
-            const includeRevisions = req.query.includeRevisions === "1" || req.query.includeRevisions === "true";
+            const includeRevisions = req.body?.includeRevisions || req.query.includeRevisions === "1" || req.query.includeRevisions === "true";
             if (includeRevisions && wiki.canEdit(req.user)) {
-                revisions = page.revisions.map(r => ({ id: r._id, author: r.author, timestamp: r.timestamp, comment: r.comment, minor: r.minor }));
+                revisions = page.revisions.map(r => ({ id: r._id, author: r.author, timestamp: r.timestamp, comment: r.comment, minor: r.minor, content: r.content }));
             }
 
             return res.json({

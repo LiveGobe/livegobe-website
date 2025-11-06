@@ -662,7 +662,11 @@
       "diff": "Diff",
       "minor": "Minor Edit",
       "current": "Current",
-      "unknownAuthor": "Unknown Author"
+      "unknownAuthor": "Unknown Author",
+      "revert": "Revert",
+      "revert_confirm": "Are you sure you want to revert to this revision?",
+      "reverting": "Reverting...",
+      "revert_summary": "Revert to {rev}"
     },
     "revision": {
       "oldRevisionTitle": "Viewing old revision of {page}",

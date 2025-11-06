@@ -561,4 +561,52 @@ $(function () {
             });
         });
     }
+
+	$(document).on("click", ".revert-button", async function (e) {
+		e.preventDefault();
+		const $btn = $(this);
+		const revisionId = $btn.data("revision") || $btn.val();
+		const wiki = $btn.data("wiki") || $("meta[name=wiki]").attr("content");
+		const page = $btn.data("page") || $("meta[name=page]").attr("content");
+
+		if (!revisionId || !wiki || !page) return alert("Missing revision, wiki, or page info.");
+
+		if (!confirm(i18n.t ? i18n.t("wiki.history.revert_confirm") : "Are you sure you want to revert to this revision?")) return;
+
+		try {
+			$btn.prop("disabled", true).text(i18n.t ? i18n.t("wiki.history.reverting") : "Reverting...");
+
+			// 1️⃣ Fetch the current page with all revisions
+			const pageResp = await $.getJSON(`/api/v2/wikis/${encodeURIComponent(wiki)}/pages/${page.replace(/ /g, "_")}?includeRevisions=1`);
+			console.log(pageResp)
+			if (!pageResp.exists) {
+				throw new Error("Failed to fetch page or revisions.");
+			}
+
+			// 2️⃣ Find the revision content
+			const revision = pageResp.page.revisions.find(r => r.id === revisionId);
+			if (!revision) throw new Error("Revision not found.");
+
+			// 3️⃣ POST the revision content to update the page
+			const resp = await $.ajax({
+				url: `/api/v2/wikis/${encodeURIComponent(wiki)}/pages/${page.replace(/ /g, "_")}`,
+				method: "POST",
+				contentType: "application/json",
+				dataType: "json",
+				data: JSON.stringify({
+					content: revision.content,
+					summary: i18n.t ? i18n.t("wiki.history.revert_summary", { rev: revisionId }) : `Reverted to revision ${revisionId}`,
+					minor: false
+				})
+			});
+
+			if (resp && resp.message) alert(resp.message);
+			window.location.reload();
+
+		} catch (err) {
+			console.error(err);
+			alert(err.responseJSON?.error || err.statusText || err.message || "Failed to revert page.");
+			$btn.prop("disabled", false).text(i18n.t ? i18n.t("wiki.history.revert") : "Revert");
+		}
+	});
 });

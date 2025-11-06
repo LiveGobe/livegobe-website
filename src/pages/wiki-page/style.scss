@@ -1,5 +1,9 @@
 /* Auto-generated color variables */
 :root {
+  --revert-button-color: #fff;
+  --revert-button-bg: #e74c3c;
+  --revert-button-hover-bg: #c0392b;
+  --revert-button-disabled-bg: #bdc3c7;
   --body-background: #fafafa;
   --body-color: #222;
   --HEADER_wiki-header-background: #2c3e50;
@@ -556,6 +560,11 @@ body[data-theme="dark"] {
   --wiki-special-upload_upload-form_upload-progress_progress-inner-background: linear-gradient(90deg, #4da6ff, #2ecc71);
 
   --wiki-special-upload_upload-hint-background: #2b2b2b;
+
+  --revert-button-color: #fff;
+  --revert-button-bg: #e74c3c;
+  --revert-button-hover-bg: #ff5c5c;
+  --revert-button-disabled-bg: #555;
 }
 
 body {
@@ -878,8 +887,8 @@ color: var(--wiki-edit-form_edit-buttons_abutton-color);
 
 .wiki-history .history-table .minor-flag {
   display: inline-block;
-background: var(--wiki-content_pre_wiki-content_code-color);
-  color: var(--wiki-recent-changes_ul_li_small-color);
+background: var(--wiki-history_history-table_minor-flag-background);
+  color: var(--wiki-history_history-table_minor-flag-color);
   border-radius: 4px;
   font-size: 0.75rem;
   padding: 0.1rem 0.35rem;
@@ -1338,8 +1347,7 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .draft-banner .draft-buttons button {
-  background-color: #fff;
-background-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+background-color: var(--draft-banner_draft-buttons_button-background-color);
   border: var(--draft-banner_draft-buttons_button-border);
   border-radius: 4px;
   padding: 0.3rem 0.6rem;
@@ -1924,7 +1932,7 @@ background: var(--Module_Page_Styling_Light_Theme_wiki-module-background);
 /* Special page <pre> styles for Common.css and Common.js (light theme) */
 .wiki-common-page pre {
   background: var(--Special_page_pre_styles_for_Commoncss_and_Commonjs_light_theme_wiki-common-page_pre-background);
-color: var(--wiki-category-list_h3-color);
+color: var(--Special_page_pre_styles_for_Commoncss_and_Commonjs_light_theme_wiki-common-page_pre-color);
   font-family: "Fira Code", monospace;
   font-size: 0.95rem;
   padding: 1rem;
@@ -2364,4 +2372,35 @@ color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
 .wiki-content a.wiki-link[href^="#"]:hover {
   color: var(--wiki-content_awiki-linkhrefhover-color);
   text-decoration: underline;
+}
+
+.CodeMirror-cursor {
+  border-left-color: var(--body-color)
+}
+
+.revert-button {
+    display: inline-block;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--revert-button-color, #fff);            /* text color */
+    background-color: var(--revert-button-bg, #e74c3c); /* button bg */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.revert-button:hover {
+    background-color: var(--revert-button-hover-bg, #c0392b);
+}
+
+.revert-button:disabled {
+    background-color: var(--revert-button-disabled-bg, #bdc3c7);
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.revert-button:active:not(:disabled) {
+    transform: scale(0.97);
 }

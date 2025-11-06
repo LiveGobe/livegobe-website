@@ -33,7 +33,7 @@ const WikiSchema = new mongoose.Schema({
         },
         allowAnonymousEdit: {
             type: Boolean,
-            default: false
+            default: true
         },
         defaultLayout: {
             type: String,

@@ -82,17 +82,30 @@ function PageHistory({ wiki, page, namespace, path, t }) {
                                     {rev.comment || t("wiki.history.noComment")}
                                 </td>
                                 <td>
-                                    {index > 0 && (
+                                  {index > 0 ? (
+                                      <>
                                         <a href={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}?oldid=${rev._id}`}>
                                             {t("wiki.history.view")}
                                         </a>
-                                    ) || (<span className="current-revision">{t("wiki.history.current")}</span>)}
-                                    {index > 0 && (
+                                        {" | "}
                                         <a href={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}?diff=${rev._id}`}>
                                             {t("wiki.history.diff")}
                                         </a>
-                                    )}
-                                </td>
+                                        {" | "}
+                                        <button
+                                            type="button"                          // Use button instead of submit
+                                            className="revert-button"
+                                            data-revision={rev._id}                // revision ID to revert to
+                                            data-page={formatPageTitle(namespace, path)}
+                                            data-wiki={wiki.name}
+                                        >
+                                            {t("wiki.history.revert")}
+                                        </button>
+                                      </>
+                                  ) : (
+                                      <span className="current-revision">{t("wiki.history.current")}</span>
+                                  )}
+                              </td>
                             </tr>
                         );
                     })}
@@ -313,7 +326,7 @@ module.exports = function WikiPage(props) {
               <a href={`/wikis/${wiki.name}/Main_Page`}>{t("wiki.nav.mainPage")}</a>
               <a href={`/wikis/${wiki.name}/Special:AllPages`}>{t("wiki.nav.allPages")}</a>
               <a href={`/wikis/${wiki.name}/Special:RecentChanges`}>{t("wiki.nav.recentChanges")}</a>
-              {canEdit && <a href={`/wikis/${wiki.name}/Special:Settings`}>{t("wiki.nav.settings")}</a>}
+              {canDelete && <a href={`/wikis/${wiki.name}/Special:Settings`}>{t("wiki.nav.settings")}</a>}
             </nav>
           </div>
         </header>
@@ -330,7 +343,7 @@ module.exports = function WikiPage(props) {
 
               <h3>{t("wiki.sidebar.tools")}</h3>
               <ul>
-                {canEdit && <li><a href={`/wikis/${wiki.name}/Special:Settings`}>{t("wiki.sidebar.settings")}</a></li>}
+                {canDelete && <li><a href={`/wikis/${wiki.name}/Special:Settings`}>{t("wiki.sidebar.settings")}</a></li>}
                 <li><a href={`/wikis/${wiki.name}/Help:Contents`}>{t("wiki.sidebar.help")}</a></li>
               </ul>
             </nav>
