@@ -44,6 +44,13 @@ const BUILTIN_TEMPLATES = {
   ":": ":"
 };
 
+const BLOCK_TAGS = [
+  "address","article","aside","blockquote","canvas","dd","div","dl","dt","fieldset",
+  "figcaption","figure","footer","form","h1","h2","h3","h4","h5","h6","header",
+  "hr","li","main","nav","noscript","ol","p","pre","section","table","tfoot","ul","video"
+];
+const BLOCK_TAG_RE = new RegExp(`<(?:${BLOCK_TAGS.join("|")})(\\s|>|/>)`, "i");
+
 const PURIFY_CONFIG = {
   ALLOWED_TAGS,
   ALLOWED_ATTR,
@@ -439,8 +446,30 @@ function tokenize(text, options = {}) {
 
     // --- Regular text or inline ---
     const parts = tokenizeInline(trimmed, linkRegex, options);
-    const isHtmlBlock = /^<\s*\w+[^>]*>/.test(trimmed) && /<\/\s*\w+\s*>$/.test(trimmed);
-    tokens.push({ type: isHtmlBlock ? "htmlBlock" : "textBlock", content: parts });
+
+    // Detect start of an HTML block
+    const htmlOpen = /^<([a-zA-Z][\w-]*)\b[^>]*>/.exec(trimmed);
+    if (htmlOpen) {
+      const tag = htmlOpen[1].toLowerCase();
+      if (BLOCK_TAGS.includes(tag)) {
+        const blockLines = [trimmed];
+
+        // read additional lines until closing tag is found
+        while (lines[i + 1] && !new RegExp(`</${tag}>`, "i").test(lines[i + 1])) {
+          blockLines.push(lines[++i]);
+        }
+
+        // include closing tag if found
+        if (lines[i + 1]) blockLines.push(lines[++i]);
+
+        // ✅ Make sure htmlBlock content is a *string*
+        tokens.push({ type: "htmlBlock", content: blockLines.join("\n") });
+        continue;
+      }
+    }
+
+    // fallback: normal text block (inline tokens)
+    tokens.push({ type: "textBlock", content: Array.isArray(parts) ? parts : [parts] });
   }
 
   return tokens;
@@ -499,6 +528,15 @@ function tokenizeInline(line, linkRegex, options = {}) {
    Inline Renderer (with Media + link= support)
 ---------------------------- */
 function renderInline(parts, { wikiName, currentNamespace, existingFiles = new Set(), existingPages = new Set() }) {
+  // ✅ Normalize input to always be an array
+  if (!Array.isArray(parts)) {
+    if (typeof parts === "string" && parts.trim() !== "") {
+      parts = [{ type: "text", value: parts }];
+    } else {
+      return "";
+    }
+  }
+  
   return parts.map(part => {
     if (part.type === "text") return formatText(part.value);
 
@@ -914,10 +952,23 @@ function parse(tokens, options = {}) {
       continue;
     }
 
-    const inner = renderInline(t.content, { wikiName, currentNamespace, existingFiles, existingPages: options.existingPages });
+    const inner = renderInline(t.content, {
+      wikiName,
+      currentNamespace,
+      existingFiles,
+      existingPages: options.existingPages
+    });
 
-    if (t.type === "htmlBlock") html += sanitize(inner, PURIFY_CONFIG) + "\n";
-    else html += `<p>${sanitize(inner, PURIFY_CONFIG)}</p>\n`;
+    if (t.type === "htmlBlock") {
+      // Pure HTML blocks are inserted as-is
+      html += sanitize(inner, PURIFY_CONFIG) + "\n";
+    } else if (BLOCK_TAG_RE.test(inner.trim())) {
+      // Skip wrapping if inline HTML already contains a block element
+      html += sanitize(inner, PURIFY_CONFIG) + "\n";
+    } else if (inner.trim()) {
+      // Normal paragraph
+      html += `<p>${sanitize(inner, PURIFY_CONFIG)}</p>\n`;
+    }
   }
 
   closeListsTo(0);
@@ -993,6 +1044,14 @@ function resolveLink(target, { wikiName, currentNamespace = "Main" } = {}) {
 ---------------------------- */
 function sanitizeAnchor(name) {
   return name.replace(/[^a-zA-Z0-9_\-:.]/g, "");
+}
+
+// Helper to detect block-level HTML
+function isBlockHTML(chunk) {
+  const trimmed = chunk.trim();
+  return BLOCK_TAGS.some(tag =>
+    trimmed.startsWith(`<${tag}`) || trimmed.startsWith(`</${tag}`)
+  );
 }
 
 /* ---------------------------
