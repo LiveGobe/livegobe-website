@@ -33,113 +33,131 @@ $(function () {
 		};
 
 		// === LGWL Base Mode ===
-		CodeMirror.defineMode("lgwlBase", function(config) {
+		CodeMirror.defineMode("lgwlBase", function (config) {
+		return {
+			startState: function () {
 			return {
-				startState: function() {
-				return {
-					inNowiki: false,
-					inTemplate: 0,
-					inLink: 0,
-					inCodeBlock: false
-				};
-				},
-				token: function(stream, state) {
-
-				// --- Nowiki ---
-				if (!state.inNowiki && stream.match("<nowiki>", true)) {
-					state.inNowiki = true;
-					return "nowiki";
-				}
-				if (state.inNowiki) {
-					if (stream.match("</nowiki>", true)) { state.inNowiki = false; }
-					else { stream.next(); }
-					return "nowiki";
-				}
-
-				// --- Redirects ---
-				if (stream.match(/^#REDIRECT\b/i, true)) return "redirect";
-
-				// --- Code block ``` ---
-				if (!state.inCodeBlock && stream.match(/^```/, true)) {
-					state.inCodeBlock = true;
-					return "code-block";
-				}
-				if (state.inCodeBlock) {
-					if (stream.match(/^```/, true)) { state.inCodeBlock = false; }
-					else { stream.skipToEnd(); }
-					return "code-block";
-				}
-
-				// --- Template {{...}} ---
-				if (stream.match("{{", true)) {
-					state.inTemplate++;
-					return "template";
-				}
-				if (state.inTemplate > 0) {
-					// Built-in templates
-					const builtinMatch = stream.match(/(!|=|\(|\)|\[|\]|\{|\}|<|>|:)(?=}})/);
-					if (builtinMatch && BUILTIN_TEMPLATES[builtinMatch[1]]) return "template-builtin";
-
-					if (stream.match("}}", true)) {
-					state.inTemplate--;
-					return "template";
-					} else {
-					stream.next();
-					return "template";
-					}
-				}
-
-				// --- Link [[...]] ---
-				if (stream.match("[[", true)) {
-					state.inLink++;
-					return "link";
-				}
-				if (state.inLink > 0) {
-					// Category / Tag links
-					if (stream.match(/Category:/, true)) return "category-link";
-					if (stream.match(/(Tag|Tags?):/, true)) return "tag-link";
-
-					if (stream.match("]]", true)) {
-					state.inLink--;
-					return "link";
-					} else {
-					stream.next();
-					return "link";
-					}
-				}
-
-				// --- External link [http://...] ---
-				if (!state.inLink && stream.peek() === "[") {
-					const rest = stream.string.slice(stream.pos);
-					const match = rest.match(/^\[(https?:\/\/[^\s\]]+(\s[^\]]+)?)\]/);
-					if (match) {
-					stream.match(match[0]);
-					return "link";
-					}
-				}
-
-				// --- Tables ---
-				if (stream.match(/^\|\-/, true)) return "table-divider";
-				if (stream.match(/^\|\|/, true)) return "table-pipe";
-				if (stream.match(/^\|/, true)) return "table-pipe";
-				if (stream.match(/^!/, true)) return "table-header";
-
-				// --- Headings == ... == ---
-				if (stream.match(/^(={2,6})\s*(.*?)\s*\1$/, true)) return "heading";
-
-				// --- Lists *, #, - ---
-				if (stream.match(/^(\*+|\#+|\-+)\s+/, true)) return "list";
-
-				// --- Blockquote > ---
-				if (stream.match(/^>\s+/, true)) return "blockquote";
-
-				// --- Horizontal rule (---- or ***) ---
-				if (stream.match(/^(-{4,}|\*{3,})$/, true)) return "hr";
-
-				// --- HTML fallback ---
-				if (!stream.eol()) { stream.next(); return null; }
-				}
+				inNowiki: false,
+				inTemplate: 0,
+				inArg: 0,
+				inLink: 0,
+				inCodeBlock: false
 			};
+			},
+
+			token: function (stream, state) {
+			// --- Nowiki ---
+			if (!state.inNowiki && stream.match("<nowiki>", true)) {
+				state.inNowiki = true;
+				return "nowiki";
+			}
+			if (state.inNowiki) {
+				if (stream.match("</nowiki>", true)) state.inNowiki = false;
+				else stream.next();
+				return "nowiki";
+			}
+
+			// --- Redirects ---
+			if (stream.sol() && stream.match(/^#REDIRECT\b/i, true)) return "redirect";
+
+			// --- Code block ```
+			if (!state.inCodeBlock && stream.sol() && stream.match("```", true)) {
+				state.inCodeBlock = true;
+				return "code-block";
+			}
+			if (state.inCodeBlock) {
+				if (stream.match("```", true)) state.inCodeBlock = false;
+				else stream.skipToEnd();
+				return "code-block";
+			}
+
+			// --- Triple-brace {{{argument}}} ---
+			if (stream.match("{{{", true)) {
+				state.inArg++;
+				return "template-arg";
+			}
+			if (state.inArg > 0) {
+				if (stream.match("}}}", true)) {
+				state.inArg--;
+				return "template-arg";
+				} else {
+				stream.next();
+				return "template-arg";
+				}
+			}
+
+			// --- Template {{...}} ---
+			if (stream.match("{{", true)) {
+				state.inTemplate++;
+				return "template";
+			}
+			if (state.inTemplate > 0) {
+				if (stream.match("}}", true)) {
+				state.inTemplate--;
+				return "template";
+				} else {
+				// Optional: detect builtins like {{!}} or {{=}}
+				const ch = stream.peek();
+				if (ch && "!()[]{}<>:=|".includes(ch)) {
+					stream.next();
+					return "template-builtin";
+				}
+				stream.next();
+				return "template";
+				}
+			}
+
+			// --- Link [[...]] ---
+			if (stream.match("[[", true)) {
+				state.inLink++;
+				return "link";
+			}
+			if (state.inLink > 0) {
+				if (stream.match("]]", true)) {
+				state.inLink--;
+				return "link";
+				}
+				if (stream.match(/Category:/, true)) return "category-link";
+				if (stream.match(/(Tag|Tags?):/, true)) return "tag-link";
+				stream.next();
+				return "link";
+			}
+
+			// --- External link [http://...] ---
+			if (!state.inLink && stream.match(/\[(https?:\/\/[^\s\]]+)/, true)) {
+				stream.skipTo("]");
+				stream.next();
+				return "link";
+			}
+
+			// --- Tables ---
+			if (stream.sol()) {
+				if (stream.match("|-", true)) return "table-divider";
+				if (stream.match("||", true)) return "table-pipe";
+				if (stream.match("|", true)) return "table-pipe";
+				if (stream.match("!", true)) return "table-header";
+			}
+
+			// --- Headings == ... ==
+			if (stream.sol() && stream.match(/={2,6}(?=\s)/, true)) {
+				stream.skipToEnd();
+				return "heading";
+			}
+
+			// --- Lists *, #, - ---
+			if (stream.sol() && stream.match(/^(\*+|\#+|\-+)\s+/, true)) return "list";
+
+			// --- Blockquote > ---
+			if (stream.sol() && stream.match(/^>\s+/, true)) return "blockquote";
+
+			// --- Horizontal rule (---- or ***) ---
+			if (stream.sol() && stream.match(/^(-{4,}|\*{3,})/, true)) return "hr";
+
+			// --- Default ---
+			stream.next();
+			return null;
+			}
+		};
 		});
 
 		// === LGWL Inline Formatting Overlay ===
@@ -201,6 +219,9 @@ $(function () {
 			theme: editorMode == "javascript" || editorMode == "css" ? (darkTheme ? "monokai" : "eclipse") : "lgwl",
 			lineWrapping: true,
 			viewportMargin: Infinity,
+			smartIndent: false,
+			indentWithTabs: false,
+			indentUnit: 0,
 			extraKeys: {
 				"Ctrl-S": function(cm) {
 				const content = cm.getValue();
@@ -238,8 +259,8 @@ $(function () {
 			// Combine all lines into one string with newlines for global regex matching
 			const fullText = doc.getValue();
 
-			// Match {{ ... }} blocks that may span multiple lines, up to 1000 characters
-			const regex = /\{\{([\s\S]{0,1000}?)\}\}/g;
+			// Match {{ ... }} but NOT {{{ ... }}}
+			const regex = /(?<!\{)\{\{(?!\{)([\s\S]{0,1000}?)(?<!\})\}\}(?!\})/g;
 			let match;
 
 			while ((match = regex.exec(fullText)) !== null) {

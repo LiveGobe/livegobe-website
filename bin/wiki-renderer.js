@@ -709,130 +709,172 @@ function renderInline(parts, { wikiName, currentNamespace, existingFiles = new S
    Table Parser (Enhanced)
    - Supports rowspan, colspan, style, alignment (:---:), and escape templates
 ---------------------------- */
-function parseTables(text, expandTemplatesFn) {
-  // Match `{| ... |}` blocks
+async function parseTables(text, expandTemplatesFn, options = {}) {
   const tableRegex = /\{\|([\s\S]*?)\|\}/g;
+  const matches = [...text.matchAll(tableRegex)];
+  if (matches.length === 0) return text;
 
-  return text.replace(tableRegex, (match, content) => {
-    const lines = content.trim().split(/\r?\n/);
-    let html = "";
+  let result = text;
 
-    // Extract table-level attributes
-    let firstLine = lines[0]?.trim();
-    let tableAttrs = "";
-    if (firstLine && !firstLine.startsWith("|") && !firstLine.startsWith("!")) {
-      tableAttrs = firstLine;
-      lines.shift();
-    }
-
-    html += `<table ${tableAttrs || 'class="wiki-table"'}>`;
-
-    let currentRow = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i].trim();
-      if (!line) continue;
-
-      // --- Caption ---
-      if (line.startsWith("|+")) {
-        html += `<caption>${line.substring(2).trim()}</caption>`;
-        continue;
-      }
-
-      // --- Row separator ---
-      if (line.startsWith("|-")) {
-        if (currentRow.length > 0) {
-          html += `<tr>${currentRow.join("")}</tr>`;
-          currentRow = [];
-        }
-        continue;
-      }
-
-      // --- Header row ---
-      if (line.startsWith("!")) {
-        const parts = line.substring(1).split("!!");
-        currentRow.push(...parts.map((h) => renderCell(h, true, expandTemplatesFn)));
-        continue;
-      }
-
-      // --- Data row ---
-      if (line.startsWith("|")) {
-        const parts = line.substring(1).split("||");
-        currentRow.push(...parts.map((c) => renderCell(c, false, expandTemplatesFn)));
-        continue;
-      }
-
-      // --- Continuation line (multi-line cell) ---
-      if (currentRow.length > 0) {
-        const last = currentRow.pop();
-        const updated = last.replace(/(<\/t[dh]>)/, " " + line + "$1");
-        currentRow.push(updated);
-      }
-    }
-
-    if (currentRow.length > 0) html += `<tr>${currentRow.join("")}</tr>`;
-    html += "</table>";
-    return html;
-  });
-
-  // --- Helper: render individual cell ---
-  function renderCell(cell, isHeader, expandTemplatesFn) {
-    let attr = "";
-    let text = cell.trim();
-
-    // --- Expand escape templates inside the cell if function provided ---
-    if (expandTemplatesFn) text = expandTemplatesFn(text);
-
-    // --- Split inline attributes before first "|" ---
-    const attrMatch = text.match(/^([^|]+?)\s*\|\s*(.+)$/);
-    if (attrMatch) {
-      attr = attrMatch[1].trim();
-      text = attrMatch[2].trim();
-    }
-
-    // --- Extract rowspan / colspan from attributes ---
-    const spanMatch = attr.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/gi);
-    let rowspan = "", colspan = "";
-    if (spanMatch) {
-      for (const m of spanMatch) {
-        const [, key,, val] = m.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/);
-        if (key.toLowerCase() === "rowspan") rowspan = val;
-        if (key.toLowerCase() === "colspan") colspan = val;
-      }
-    }
-    attr = attr.replace(/\b(rowspan|colspan)\s*=\s*(['"]?).*?\2/gi, "").trim();
-
-    // --- Alignment markers ---
-    let align = "";
-    if (/^:.*:$/.test(text)) {
-      align = "center";
-      text = text.slice(1, -1).trim();
-    } else if (/^:/.test(text)) {
-      align = "left";
-      text = text.slice(1).trim();
-    } else if (/:$/.test(text)) {
-      align = "right";
-      text = text.slice(0, -1).trim();
-    }
-
-    const alignStyle = align ? `text-align:${align};` : "";
-    const hasStyle = /style\s*=/.test(attr);
-    const tag = isHeader ? "th" : "td";
-
-    // --- Merge alignment into existing style ---
-    if (alignStyle && hasStyle) {
-      attr = attr.replace(/style\s*=\s*(['"])(.*?)\1/, (_, q, val) => `style=${q}${val.trim()} ${alignStyle}${q}`);
-    } else if (alignStyle && !hasStyle) {
-      attr = attr ? `${attr} style="${alignStyle}"` : `style="${alignStyle}"`;
-    }
-
-    // --- Append rowspan / colspan ---
-    if (rowspan) attr += ` rowspan="${rowspan}"`;
-    if (colspan) attr += ` colspan="${colspan}"`;
-
-    attr = attr.trim();
-    return `<${tag}${attr ? " " + attr : ""}>${text}</${tag}>`;
+  for (const match of matches) {
+    const fullMatch = match[0];
+    const content = match[1];
+    const html = await renderTable(content, expandTemplatesFn, options);
+    result = result.replace(fullMatch, html);
   }
+
+  return result;
+}
+
+async function renderTable(content, expandTemplatesFn, options = {}) {
+  const lines = content.trim().split(/\r?\n/);
+  let html = "";
+
+  // --- Extract table-level attributes ---
+  let firstLine = lines[0]?.trim();
+  let tableAttrs = "";
+  if (firstLine && !firstLine.startsWith("|") && !firstLine.startsWith("!")) {
+    tableAttrs = firstLine;
+    lines.shift();
+  }
+
+  html += `<table ${tableAttrs || 'class="wiki-table"'}>`;
+  let currentRow = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    if (!line) continue;
+
+    // --- Caption ---
+    if (line.startsWith("|+")) {
+      html += `<caption>${sanitize(renderInline(
+        tokenizeInline(line.substring(2).trim(), LINK_REGEX, {
+          wikiName: options.wikiName,
+          currentNamespace: options.currentNamespace,
+          existingFiles: options.existingFiles,
+          existingPages: options.existingPages
+        }),
+        {
+          wikiName: options.wikiName,
+          currentNamespace: options.currentNamespace,
+          existingFiles: options.existingFiles,
+          existingPages: options.existingPages
+        }
+      ), PURIFY_CONFIG)}</caption>`;
+      continue;
+    }
+
+    // --- Row separator ---
+    if (line.startsWith("|-")) {
+      if (currentRow.length > 0) {
+        html += `<tr>${currentRow.join("")}</tr>`;
+        currentRow = [];
+      }
+      continue;
+    }
+
+    // --- Header row ---
+    if (line.startsWith("!")) {
+      const parts = line.substring(1).split("!!");
+      const renderedCells = await Promise.all(
+        parts.map(h => renderCell(h, true, expandTemplatesFn, options))
+      );
+      currentRow.push(...renderedCells);
+      continue;
+    }
+
+    // --- Data row ---
+    if (line.startsWith("|")) {
+      const parts = line.substring(1).split("||");
+      const renderedCells = await Promise.all(
+        parts.map(c => renderCell(c, false, expandTemplatesFn, options))
+      );
+      currentRow.push(...renderedCells);
+      continue;
+    }
+
+    // --- Continuation line (multi-line cell) ---
+    if (currentRow.length > 0) {
+      const last = currentRow.pop();
+      const updated = last.replace(/(<\/t[dh]>)/, " " + line + "$1");
+      currentRow.push(updated);
+    }
+  }
+
+  if (currentRow.length > 0) html += `<tr>${currentRow.join("")}</tr>`;
+  html += "</table>";
+  return html;
+}
+
+async function renderCell(cell, isHeader, expandTemplatesFn, options = {}) {
+  let attr = "";
+  let text = cell.trim();
+
+  // --- Expand escape templates inside the cell if function provided ---
+  if (expandTemplatesFn) text = await expandTemplatesFn(text, { ...options });
+
+  // --- Split inline attributes before first "|" ---
+  const attrMatch = text.match(/^([^|]+?)\s*\|\s*(.+)$/);
+  if (attrMatch) {
+    attr = attrMatch[1].trim();
+    text = attrMatch[2].trim();
+  }
+
+  // --- Extract rowspan / colspan from attributes ---
+  const spanMatch = attr.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/gi);
+  let rowspan = "", colspan = "";
+  if (spanMatch) {
+    for (const m of spanMatch) {
+      const [, key,, val] = m.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/);
+      if (key.toLowerCase() === "rowspan") rowspan = val;
+      if (key.toLowerCase() === "colspan") colspan = val;
+    }
+  }
+  attr = attr.replace(/\b(rowspan|colspan)\s*=\s*(['"]?).*?\2/gi, "").trim();
+
+  // --- Alignment markers ---
+  let align = "";
+  if (/^:.*:$/.test(text)) {
+    align = "center";
+    text = text.slice(1, -1).trim();
+  } else if (/^:/.test(text)) {
+    align = "left";
+    text = text.slice(1).trim();
+  } else if (/:$/.test(text)) {
+    align = "right";
+    text = text.slice(0, -1).trim();
+  }
+
+  const alignStyle = align ? `text-align:${align};` : "";
+  const hasStyle = /style\s*=/.test(attr);
+  const tag = isHeader ? "th" : "td";
+
+  // --- Merge alignment into existing style ---
+  if (alignStyle && hasStyle) {
+    attr = attr.replace(/style\s*=\s*(['"])(.*?)\1/, (_, q, val) => `style=${q}${val.trim()} ${alignStyle}${q}`);
+  } else if (alignStyle && !hasStyle) {
+    attr = attr ? `${attr} style="${alignStyle}"` : `style="${alignStyle}"`;
+  }
+
+  // --- Append rowspan / colspan ---
+  if (rowspan) attr += ` rowspan="${rowspan}"`;
+  if (colspan) attr += ` colspan="${colspan}"`;
+
+  attr = attr.trim();
+  return `<${tag}${attr ? " " + attr : ""}>${sanitize(renderInline(
+    tokenizeInline(text, LINK_REGEX, {
+      wikiName: options.wikiName,
+      currentNamespace: options.currentNamespace,
+      existingFiles: options.existingFiles,
+      existingPages: options.existingPages
+    }),
+    {
+      wikiName: options.wikiName,
+      currentNamespace: options.currentNamespace,
+      existingFiles: options.existingFiles,
+      existingPages: options.existingPages
+    }
+  ), PURIFY_CONFIG)}</${tag}>`;
 }
 
 /* ---------------------------
@@ -1313,7 +1355,7 @@ async function renderWikiText(text, options = {}) {
   }
 
   // --- Tokenize and parse normally ---
-  working = parseTables(working);
+  working = await parseTables(working, expandTemplates, { ...options });
   const tokens = tokenize(working, { categories: pageCategories, tags: pageTags });
   const html = parse(tokens, options); // parse now returns object
 
