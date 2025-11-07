@@ -44,6 +44,8 @@ const BUILTIN_TEMPLATES = {
   ":": "&#58;"
 };
 
+const LINK_REGEX = /(\[\[([^\]|]+)(?:\|([^\]]+))?\]\])|(\[([a-zA-Z]+:\/\/[^\]\s]+)(?:\s+([^\]]+))?\])/g;
+
 const BLOCK_TAGS = [
   "address","article","aside","blockquote","canvas","dd","div","dl","dt","fieldset",
   "figcaption","figure","footer","form","h1","h2","h3","h4","h5","h6","header",
@@ -246,9 +248,6 @@ function tokenize(text, options = {}) {
   const tokens = [];
   const lines = text.split(/\r?\n/);
 
-  const linkRegex =
-    /(\[\[([^\]|]+)(?:\|([^\]]+))?\]\])|(\[([a-zA-Z]+:\/\/[^\]\s]+)(?:\s+([^\]]+))?\])/g;
-
   let inCodeBlock = false;
   let codeBuffer = [];
 
@@ -416,7 +415,7 @@ function tokenize(text, options = {}) {
       const markers = listMatch[1];
       const level = markers.length;
       const ordered = markers[0] === "#";
-      const content = tokenizeInline(listMatch[2], linkRegex, options);
+      const content = tokenizeInline(listMatch[2], LINK_REGEX, options);
       tokens.push({ type: "listItem", ordered, level, content });
       continue;
     }
@@ -445,7 +444,7 @@ function tokenize(text, options = {}) {
     }
 
     // --- Regular text or inline ---
-    const parts = tokenizeInline(trimmed, linkRegex, options);
+    const parts = tokenizeInline(trimmed, LINK_REGEX, options);
 
     // Detect start of an HTML block
     const htmlOpen = /^<([a-zA-Z][\w-]*)\b[^>]*>/.exec(trimmed);
@@ -956,8 +955,42 @@ function parse(tokens, options = {}) {
     });
 
     if (t.type === "htmlBlock") {
-      // Pure HTML blocks are inserted as-is
-      html += sanitize(inner, PURIFY_CONFIG) + "\n";
+      // Ignore <table> blocks completely
+      if (/^<table\b/i.test(t.content.trim())) {
+        // just output the raw HTML (sanitized)
+        html += sanitize(t.content, PURIFY_CONFIG) + "\n";
+      } else {
+        // Parse the inner text of other HTML blocks
+        const htmlMatch = t.content.match(/^<([a-zA-Z][\w-]*)([^>]*)>([\s\S]*?)<\/\1>$/i);
+
+        if (htmlMatch) {
+          const tag = htmlMatch[1];
+          const attrs = htmlMatch[2]; // keep original attributes
+          const innerText = htmlMatch[3]; // the text inside the HTML block
+
+          // 1️⃣ Tokenize/parse the inner text
+          const innerTokens = tokenizeInline(innerText, LINK_REGEX, {
+            wikiName,
+            currentNamespace,
+            existingFiles,
+            existingPages: options.existingPages,
+          });
+
+          // 2️⃣ Render parsed tokens
+          const parsedInner = renderInline(innerTokens, {
+            wikiName,
+            currentNamespace,
+            existingFiles,
+            existingPages: options.existingPages,
+          });
+
+          // 3️⃣ Sanitize and wrap with original tag/attributes
+          html += `<${tag}${attrs}>${sanitize(parsedInner, PURIFY_CONFIG)}</${tag}>\n`;
+        } else {
+          // fallback: treat as raw HTML
+          html += sanitize(t.content, PURIFY_CONFIG) + "\n";
+        }
+      }
     } else if (BLOCK_TAG_RE.test(inner.trim())) {
       // Skip wrapping if inline HTML already contains a block element
       html += sanitize(inner, PURIFY_CONFIG) + "\n";
@@ -1067,6 +1100,14 @@ const MAX_TEMPLATE_DEPTH = 10;
 async function expandTemplates(text, options = {}, depth = 0, visited = new Set()) {
     const { getPage, pageName, currentNamespace, currentPageId, WikiPage } = options;
     if (!getPage || depth > MAX_TEMPLATE_DEPTH) return text;
+
+    // --- PREPASS: Protect built-in escape templates (like {{!}}, {{[}}, etc.) ---
+    for (const [name, entity] of Object.entries(BUILTIN_TEMPLATES)) {
+      // Escape any regex special characters in the template name
+      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`\\{\\{${escapedName}\\}\\}`, 'g');
+      text = text.replace(regex, entity);
+    }
 
     // Match any double-brace block (including #invoke)
     const templateRegex = /\{\{([^{}]+?)\}\}(?!\})/g;

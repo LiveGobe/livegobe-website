@@ -188,13 +188,17 @@ $(function () {
 		// Detect Module namespace but skip documentation subpages
 		if (pageName.startsWith("Module:") && !pageName.includes("/doc")) {
 			editorMode = "javascript";
+		} else if (pageName.endsWith(".css")) {
+			editorMode = "css";
 		}
 
 		// === Editor Initialization ===
+		const darkTheme = $("body").data("theme") == "dark";
+		console.log(editorMode == "javascript" || editorMode == "css" ? (darkTheme ? "eclipse" : "monokai") : "lgwl");
 		const editor = CodeMirror.fromTextArea($editorTextarea[0], {
 			lineNumbers: true,
 			mode: editorMode,
-			theme: editorMode == "javascript" ? "eclipse" : "lgwl",
+			theme: editorMode == "javascript" || editorMode == "css" ? (darkTheme ? "monokai" : "eclipse") : "lgwl",
 			lineWrapping: true,
 			viewportMargin: Infinity,
 			extraKeys: {
