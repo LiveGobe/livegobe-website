@@ -16,6 +16,11 @@ const prompts = {
         description: colors.yellow("Environment (dev/prod):"),
         type: "string",
         required: true
+    },
+    count: {
+        name: "count",
+        description: colors.yellow("Uses Count:"),
+        type: "number"
     }
 }
 
@@ -26,11 +31,19 @@ prompt.get(prompts.env, async function(err, env) {
         return;
     }
 
-    env = env.env == "production" || env.env == "prod" || env.env == "p" ? "production" : "development"
-    await mongoose.connect(env == "production" ? config.mongodb.uriProd : config.mongodb.uriDev)
-    const registerKey = new RegisterKey();
-    await registerKey.save();
-    console.log(colors.yellow(`Registration key: `) + colors.green(registerKey.key));
-    console.log(colors.yellow(`Registration link: `) + colors.green(`${(env == "production" ? "https" : "http") + "://" + (env == "production" ? config.domainName : `localhost:${config.port}`) + "/register?" + new URLSearchParams("key=" + registerKey.key)}`));
-    mongoose.connection.close();
+    prompt.get(prompts.count, async function(err, count) {
+        if (err) {
+            console.log(err);
+            return;
+        }
+
+        env = env.env == "production" || env.env == "prod" || env.env == "p" ? "production" : "development"
+        await mongoose.connect(env == "production" ? config.mongodb.uriProd : config.mongodb.uriDev)
+        const registerKey = new RegisterKey({ count: count.count ?? 1 });
+        await registerKey.save();
+        console.log(colors.yellow(`Registration key: `) + colors.green(registerKey.key));
+        console.log(colors.yellow(`Registration Count: `) + colors.green(registerKey.count));
+        console.log(colors.yellow(`Registration link: `) + colors.green(`${(env == "production" ? "https" : "http") + "://" + (env == "production" ? config.domainName : `localhost:${config.port}`) + "/register?" + new URLSearchParams("key=" + registerKey.key)}`));
+        mongoose.connection.close();
+    });
 });

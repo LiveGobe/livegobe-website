@@ -93,7 +93,8 @@
       "keymissing": "Registration key is required",
       "userexist": "Selected username is already taken",
       "keymismatch": "Registration key has expired",
-      "success": "Registration successfull"
+      "success": "Registration successfull",
+      "keyusedup": "Registration key no longer available"
     },
     "users": {
       "invalidid": "User id is invalid",
