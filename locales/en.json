@@ -449,7 +449,7 @@
         "name_required": "Wiki name is required",
         "failed": "Failed to create wiki"
       },
-      "lastUpdated": "Updated on: {0}"
+      "lastUpdated": "Created on: {0}"
     },
     "wiki": {
       "not_found": "Wiki not found",

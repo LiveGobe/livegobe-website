@@ -718,7 +718,7 @@ color: var(--wiki-content_pre_wiki-content_code-color);
 }
 
 .wiki-content-area .wiki-page-header .wiki-actions a {
-  margin-left: 0;
+  margin-left: .5rem;
   font-size: 0.9rem;
   color: var(--wiki-redirected-from_a-color);
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
@@ -731,6 +731,10 @@ color: var(--wiki-content_pre_wiki-content_code-color);
 .wiki-content-area .wiki-page-header .wiki-actions a.active {
   font-weight: 600;
   color: var(--wiki-content-area_wiki-page-header_wiki-actions_aactive-color);
+}
+
+.wiki-content-area .wiki-page-header .wiki-actions .dropdown-menu a {
+  margin-left: 0;
 }
 
 .wiki-content-area .wiki-page-content {
