@@ -718,6 +718,7 @@ color: var(--wiki-content_pre_wiki-content_code-color);
 }
 
 .wiki-content-area .wiki-page-header .wiki-actions a {
+  margin-left: 0;
   font-size: 0.9rem;
   color: var(--wiki-redirected-from_a-color);
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
