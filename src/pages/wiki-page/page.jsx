@@ -584,7 +584,7 @@ module.exports = function WikiPage(props) {
                     {/* Category listing */}
                     {namespace === "Category" && safePage.pageData?.pages?.length > 0 && (
                         <div className="wiki-category-list">
-                            <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category}"</h3>
+                            <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category.replace(/_/g, " ")}"</h3>
                             <ul>
                                 {safePage.pageData.pages.map((p) => (
                                     <li key={p.path}>
@@ -621,7 +621,7 @@ module.exports = function WikiPage(props) {
                     {/* Category listing */}
                     {namespace === "Category" && safePage.pageData?.pages?.length > 0 && (
                         <div className="wiki-category-list">
-                            <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category}"</h3>
+                            <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category.replace(/_/g, " ")}"</h3>
                             <ul>
                                 {safePage.pageData.pages.map((p) => (
                                     <li key={p.path}>
@@ -662,9 +662,14 @@ module.exports = function WikiPage(props) {
                     <div className="categories">
                       <h3>{t("wiki.page.categories")}:</h3>
                       <ul>
-                        {safePage.categories.map((cat) => (
-                          <li key={cat}>
-                            <a href={`/wikis/${wiki.name}/Category:${cat}`}>{cat}</a>
+                        {safePage.categoriesWithExists.map(cat => (
+                          <li key={cat.name}>
+                            <a
+                              className={!cat.exists ? "wiki-missing-category" : ""}
+                              href={`/wikis/${wiki.name}/Category:${cat.path}`}
+                            >
+                              {cat.name}
+                            </a>
                           </li>
                         ))}
                       </ul>

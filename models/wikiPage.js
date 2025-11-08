@@ -201,9 +201,16 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
     const redirectMatch = this.content.trim().match(/^#REDIRECT\s*\[\[([^\]]+)\]\]/i);
     if (redirectMatch) {
         this.redirectTarget = redirectMatch[1].trim();
+
+        // ✅ Auto-add Redirect Pages category
+        this.categories = this.categories || [];
+        if (!this.categories.includes("Redirect Pages")) {
+            this.categories.push("Redirect Pages");
+        }
+
         if (!noredirect) {
             // Early exit for automatic redirect
-            return { html: "", categories: [], tags: [], redirectTarget: this.redirectTarget };
+            return { html: "", categories: this.categories, tags: [], redirectTarget: this.redirectTarget };
         }
     }
 
@@ -233,14 +240,18 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
             WikiPage,
             getPage,
             currentPageId: this._id,
-
-            // ✅ pass to parser
             existingPages
         });
 
         this.html = html;
         this.categories = categories;
         this.tags = tags;
+
+        // ✅ If it's a redirect, ensure it stays categorized
+        if (redirectMatch && !this.categories.includes("Redirect_Pages")) {
+            this.categories.push("Redirect_Pages");
+        }
+
     } catch (e) {
         console.error("Error parsing LGWL in renderContent:", e);
         this.html = sanitize(this.content);

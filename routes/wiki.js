@@ -217,7 +217,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             // --- Special: List all pages in this category ---
             let pagesInCategory;
             if (namespace === "Category") {
-                pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath); // <--- use your static
+                pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath.replace(/_/g, " ")); // <--- use your static
             }
 
             return {
@@ -358,7 +358,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         
         // --- Special: List all pages in this category ---
         if (namespace === "Category") {
-            const pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath); // <--- use your static
+            const pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath.replace(/_/g, " "));
             page.pageData = {
                 type: "Category",
                 category: fullPath,
@@ -387,9 +387,6 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         }
     }
 
-    const isModule = namespace === "Module";
-    const isModuleDoc = isModule && pageTitle.endsWith("/doc");
-
     // Handle special pages differently
     if (namespace === "Special") {
         return handleSpecialPage(req, res, pageTitle);
@@ -411,6 +408,34 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         
         // Get page content including redirect detection
         let page = await getWikiPage(wiki, namespace, fullPagePath, req.query.oldid, !!req.query.noredirect);
+
+        // --- Compute categoriesWithExists ---
+        if (Array.isArray(page.categories)) {
+            // Normalize category names for DB lookup (replace spaces with underscores)
+            const categoryPaths = page.categories.map(name => name.replace(/ /g, "_"));
+
+            // Find all category pages that exist in the DB
+            const existingCategoryPages = await WikiPage.find({
+                wiki: wiki._id,
+                namespace: "Category",
+                path: { $in: categoryPaths }
+            }).select("path").lean();
+
+            // Create a set of existing paths for fast lookup
+            const existingSet = new Set(existingCategoryPages.map(p => p.path));
+
+            // Map original categories to objects with existence and URL-safe path
+            page.categoriesWithExists = page.categories.map(name => {
+                const path = name.replace(/ /g, "_");
+                return {
+                    name,       // original display name
+                    path,       // URL-safe path
+                    exists: existingSet.has(path)
+                };
+            });
+        } else {
+            page.categoriesWithExists = [];
+        }
 
         // --- Handle redirects in view mode only ---
         if (mode === "view" && page.redirectTarget && !page.isOldRevision) {

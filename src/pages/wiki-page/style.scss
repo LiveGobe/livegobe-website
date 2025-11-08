@@ -276,6 +276,13 @@
   --wiki-content_awiki-linkwiki-missinghover-color: #d00;
   --wiki-content_awiki-linkhref-color: #00695c;
   --wiki-content_awiki-linkhrefhover-color: #004d40;
+  
+  /* Missing Category link */
+  --wiki-page-meta_categories_ul_li_awiki-missing-category-background: #ffe6e6; /* light red background */
+  --wiki-page-meta_categories_ul_li_awiki-missing-category-color: #c33;          /* red text */
+
+  /* Hover state for Missing Category link */
+  --wiki-page-meta_categories_ul_li_awiki-missing-categoryhover-background: #ffcccc; /* slightly darker red */
 }
 
 body[data-theme="dark"] {
@@ -994,6 +1001,15 @@ color: var(--PAGE_META_wiki-page-meta-color);
 
 .wiki-page-meta .categories ul li a:hover {
   background: var(--wiki-page-meta_categories_ul_li_ahover-background);
+}
+
+.wiki-page-meta .categories ul li a.wiki-missing-category {
+  background: var(--wiki-page-meta_categories_ul_li_awiki-missing-category-background);
+  color: var(--wiki-page-meta_categories_ul_li_awiki-missing-category-color);
+}
+
+.wiki-page-meta .categories ul li a.wiki-missing-category:hover {
+  background: var(--wiki-page-meta_categories_ul_li_awiki-missing-categoryhover-background);
 }
 
 .wiki-content-area .wiki-page-header {
