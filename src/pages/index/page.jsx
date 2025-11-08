@@ -57,6 +57,7 @@ module.exports = function(props) {
                         <a href="/password_generator">{props.t("page.index.content.tools.passwordgenerator")}</a>
                         <a href="/mods_portal/browse">{props.t("page.index.content.tools.modsportal")}</a>
                         <a href="/albion_tools">{props.t("page.index.content.tools.albion")}</a>
+                        <a href="/wikis">{props.t("page.index.content.tools.wikis")}</a>
                     </div>
                     <footer>
                         <span id="copyright">{props.t("copyright")}</span>
