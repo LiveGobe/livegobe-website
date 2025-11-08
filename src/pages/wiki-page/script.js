@@ -212,7 +212,6 @@ $(function () {
 
 		// === Editor Initialization ===
 		const darkTheme = $("body").data("theme") == "dark";
-		console.log(editorMode == "javascript" || editorMode == "css" ? (darkTheme ? "eclipse" : "monokai") : "lgwl");
 		const editor = CodeMirror.fromTextArea($editorTextarea[0], {
 			lineNumbers: true,
 			mode: editorMode,

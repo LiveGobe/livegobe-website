@@ -569,6 +569,12 @@ body[data-theme="dark"] {
   --revert-button-bg: #e74c3c;
   --revert-button-hover-bg: #ff5c5c;
   --revert-button-disabled-bg: #555;
+
+  --wiki-category-list-border: 1px solid #383838;
+  --wiki-category-list-background-color: #2a2a2a;
+  --wiki-category-list_h3-color: #ddd; /* light neutral heading */
+  --wiki-category-list_ul_li_a-color: #8ab4f8; /* soft blue link (like Wikipedia dark) */
+  --wiki-category-list_ul_li_ahover-color: #a8c7fa; /* slightly brighter hover */
 }
 
 body {
@@ -1266,7 +1272,7 @@ color: var(--wiki-content_pre_wiki-content_code-color);
   display: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
   position: absolute;
   top: 100%;
-  left: 0;
+  left: -100%;
   min-width: auto;
   max-width: 180px;
 background: var(--wiki-more-actions_dropdown-menu-background);
@@ -1278,6 +1284,7 @@ background: var(--wiki-more-actions_dropdown-menu-background);
 }
 
 .wiki-more-actions .dropdown-menu .dropdown-item {
+  margin-left: 0;
   display: block;
   padding: 0.4rem 0.8rem;
   background: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
