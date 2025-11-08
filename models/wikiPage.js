@@ -380,7 +380,7 @@ WikiPageSchema.statics.findByCategory = async function(wiki, category) {
 // Static method to list all pages in a namespace
 WikiPageSchema.statics.listPages = function(wiki, namespace = "Main", limit = 100, skip = 0) {
     return this.find({ wiki, namespace })
-        .select("title path namespace lastModifiedAt lastModifiedBy")
+        .select("title content path namespace lastModifiedAt lastModifiedBy")
         .sort("path")
         .skip(skip)
         .limit(limit)

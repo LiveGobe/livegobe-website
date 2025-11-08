@@ -99,16 +99,30 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                     const namespace = req.query.namespace || "Main";
                     const pageNum = parseInt(req.query.page) || 1;
                     const limit = 50;
-                    const pages = await WikiPage.listPages(wiki._id, namespace, limit, (pageNum - 1) * limit);
+
+                    // Get pages normally
+                    const pages = await WikiPage.listPages(
+                        wiki._id,
+                        namespace,
+                        limit,
+                        (pageNum - 1) * limit
+                    );
+
+                    // Filter out redirect pages (#REDIRECT [[...]])
+                    const nonRedirectPages = pages.filter(p => !/^#redirect\s+\[\[.+?\]\]/i.test(p.content || ""));
+
+                    // Count total non-redirect pages (for pagination)
                     const total = await WikiPage.countDocuments({ wiki: wiki._id, namespace });
+                    const totalNonRedirect = (await WikiPage.find({ wiki: wiki._id, namespace }, "content"))
+                        .filter(p => !/^#redirect\s+\[\[.+?\]\]/i.test(p.content || "")).length;
 
                     return res.serve("wiki-page", {
                         wiki,
                         page: { title: pageTitle, content: "", exists: true },
                         pageData: {
                             type: "AllPages",
-                            pages,
-                            pagination: { current: pageNum, total: Math.ceil(total / limit) }
+                            pages: nonRedirectPages,
+                            pagination: { current: pageNum, total: Math.ceil(totalNonRedirect / limit) }
                         },
                         namespace: "Special",
                         pageTitle,
@@ -416,7 +430,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                 : `${page.namespace}:${page.path}`;
 
                 return res.redirect(
-                `/wikis/${wiki.name}/${encodeURIComponent(target)}?from=${encodeURIComponent(fromFull)}`
+                `/wikis/${wiki.name}/${target.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}?from=${fromFull.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}`
                 );
             }
         }
