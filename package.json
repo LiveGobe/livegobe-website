@@ -12,6 +12,7 @@
   "author": "LiveGobe",
   "license": "ISC",
   "dependencies": {
+    "@vitalets/google-translate-api": "^9.2.1",
     "accept-language-parser": "^1.5.0",
     "axios": "^1.12.0",
     "bcrypt": "^5.1.1",
@@ -35,10 +36,10 @@
     "react": "^16.14.0",
     "react-dom": "^16.14.0",
     "sharp": "^0.33.5",
+    "slugify": "^1.6.6",
     "socket.io": "^4.8.0",
     "socket.io-client": "^4.8.0",
-    "uuid": "^9.0.1",
-    "slugify": "^1.6.6"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.18.13",
