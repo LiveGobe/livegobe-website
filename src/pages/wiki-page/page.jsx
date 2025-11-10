@@ -2,6 +2,7 @@ const React = require("react");
 const Head = require("../../components/head");
 const Bundle = require("../../components/bundle");
 const utils = require("../../../bin/utils");
+const config = require("../../../config");
 
 // Helper to format page title with namespace
 function formatPageTitle(namespace, path) {
@@ -293,10 +294,23 @@ module.exports = function WikiPage(props) {
   const isCommonJs  = namespace === "Special" && safePage.path.toLowerCase() === "common.js";
   const isCommonPage = isCommonCss || isCommonJs;
 
+  const isSpecialNamespace = ["Special", "Template", "File"].includes(namespace);
+  const isViewingOldRevision = query.oldid || query.diff; // common wiki params
+
+  const doIndex =
+    safePage.exists &&
+    mode === "view" &&           // only normal viewing mode
+    !isViewingOldRevision &&     // skip old/diff pages
+    !isModule &&
+    !isCommonPage &&
+    !isDocSubpage &&
+    !isSpecialNamespace;         // skip special namespaces
+
   return (
     <html lang={props.language}>
       <Head
         title={t("page.wiki.title", { 0: wiki.title, 1: fullTitle })}
+        doIndex={doIndex}
       >
         {mode === "edit" && <>
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
@@ -312,6 +326,7 @@ module.exports = function WikiPage(props) {
         </>}
         <Bundle name="wiki-page.css" />
         <Bundle name="wiki-page.js" />
+        <meta name="description" content={`A page on ${wiki.title} Wiki, hosted on ${config.domainName}`} />
 
         {/* Editable common styles and scripts from wiki pages */}
         {safePage.commonCss && <style dangerouslySetInnerHTML={{ __html: safePage.commonCss }} />}

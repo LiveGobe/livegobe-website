@@ -39,9 +39,10 @@ function WikiCard({ wiki, t }) {
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.wikis.name")}>
+            <Head title={props.t("page.wikis.name")} doIndex>
                 <Bundle name="wikis.css" />
                 <Bundle name="wikis.js" />
+                <meta name="description" content="A list of Wikis hosted on LiveGobe.ru" />
             </Head>
             <body data-theme={props.theme}>
                 <main className="container py-4">

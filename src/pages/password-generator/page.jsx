@@ -5,9 +5,10 @@ const Bundle = require ("../../components/bundle");
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.passwordgenerator.title")}>
+            <Head title={props.t("page.passwordgenerator.title")} doIndex>
                 <Bundle name="password-generator.js" />
                 <Bundle name="password-generator.css" />
+                <meta name="description" content="A simple password generator made by LiveGobe" />
             </Head>
             <body data-theme={props.theme}>
                 <div id="wrapper">
