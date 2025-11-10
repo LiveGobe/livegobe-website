@@ -204,8 +204,8 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
 
         // ✅ Auto-add Redirect Pages category
         this.categories = this.categories || [];
-        if (!this.categories.includes("Redirect Pages")) {
-            this.categories.push("Redirect Pages");
+        if (!this.categories.includes("Redirect_Pages")) {
+            this.categories.push("Redirect_Pages");
         }
 
         if (!noredirect) {
@@ -247,11 +247,20 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
         this.categories = categories;
         this.tags = tags;
 
-        // ✅ If it's a redirect, ensure it stays categorized
+        // If there's any missing page links, ensure it's categorised
+        if (/\bwiki-missing\b/.test(html) && !this.categories.includes("Pages_with_broken_links")) {
+            this.categories.push("Pages_With_Broken_Links");
+        }
+        
+        // If there's any module error messages, ensure it's categorised
+        if (/\blgml-error\b/.test(html) && !this.categories.includes("Pages_with_Module_errors")) {
+            this.categories.push("Pages_with_Module_errors");
+        }
+
+        // If it's a redirect, ensure it stays categorized
         if (redirectMatch && !this.categories.includes("Redirect_Pages")) {
             this.categories.push("Redirect_Pages");
         }
-
     } catch (e) {
         console.error("Error parsing LGWL in renderContent:", e);
         this.html = sanitize(this.content);

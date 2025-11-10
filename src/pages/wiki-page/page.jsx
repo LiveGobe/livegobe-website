@@ -683,7 +683,7 @@ module.exports = function WikiPage(props) {
                               className={!cat.exists ? "wiki-missing-category" : ""}
                               href={`/wikis/${wiki.name}/Category:${cat.path}`}
                             >
-                              {cat.name}
+                              {cat.name.replace(/_/g, " ")}
                             </a>
                           </li>
                         ))}

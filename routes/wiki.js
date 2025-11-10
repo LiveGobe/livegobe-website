@@ -217,7 +217,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             // --- Special: List all pages in this category ---
             let pagesInCategory;
             if (namespace === "Category") {
-                pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath.replace(/_/g, " ")); // <--- use your static
+                pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath); // <--- use your static
             }
 
             return {
@@ -358,7 +358,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         
         // --- Special: List all pages in this category ---
         if (namespace === "Category") {
-            const pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath.replace(/_/g, " "));
+            const pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath);
             page.pageData = {
                 type: "Category",
                 category: fullPath,

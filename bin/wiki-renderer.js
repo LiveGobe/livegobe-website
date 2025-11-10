@@ -1363,7 +1363,7 @@ async function renderWikiText(text, options = {}) {
   const restoredHtml = restoreNowikiBlocks(html, nowikiBlocks);
 
   // Return both HTML and categories
-  return { html: restoredHtml, categories: Array.from(pageCategories), tags: Array.from(pageTags) };
+  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags) };
 }
 
 module.exports = { renderWikiText, resolveLink };

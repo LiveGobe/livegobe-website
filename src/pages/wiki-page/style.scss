@@ -2430,3 +2430,66 @@ color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
 .revert-button:active:not(:disabled) {
     transform: scale(0.97);
 }
+
+.lgml-error {
+  color: darkred;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+/* --- Layout --- */
+.wiki-container {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible; /* Required for sticky to work */
+}
+
+/* If there is NO TOC, make the content full width */
+.wiki-container:not(:has(> .toc)) {
+  grid-template-columns: 1fr;
+}
+
+/* --- TOC Sidebar --- */
+.wiki-container > .toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  height: fit-content;
+  max-height: calc(76vh - 2rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 0.5rem;
+}
+
+/* --- Mobile Layout --- */
+@media (max-width: 768px) {
+  .wiki-container {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-container > .toc {
+    position: relative;
+    top: 0;
+    max-height: none;
+    overflow: visible;
+    margin-bottom: 1rem;
+  }
+
+  .wiki-layout {
+    flex-direction: column;
+  }
+
+  .wiki-layout aside.wiki-sidebar {
+    order: -1;
+    width: auto;
+    margin-bottom: 1rem;
+  }
+
+  .wiki-layout .wiki-content {
+    width: 100%;
+  }
+}
