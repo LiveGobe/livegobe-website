@@ -298,6 +298,7 @@ module.exports = function WikiPage(props) {
   const isViewingOldRevision = query.oldid || query.diff; // common wiki params
 
   const doIndex =
+    !page.noIndex &&             // Force noindex using __NOINDEX__
     safePage.exists &&
     mode === "view" &&           // only normal viewing mode
     !isViewingOldRevision &&     // skip old/diff pages

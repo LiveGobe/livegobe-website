@@ -515,7 +515,7 @@ function tokenizeInline(line, linkRegex, options = {}) {
       const label = match[3] || target;
 
       // Detect category
-      if (/^Category:/i.test(target)) {
+      if (/^(?!:)\s*Category:/i.test(target)) {
         const categoryName = target.replace(/^Category:/i, "").trim();
         parts.push({ type: "category", name: categoryName });
         options.categories = options.categories || new Set();
@@ -1380,13 +1380,20 @@ async function renderWikiText(text, options = {}) {
   // --- Tokenize and parse normally ---
   working = await parseTables(working, expandTemplates, { ...options });
   const tokens = tokenize(working, { categories: pageCategories, tags: pageTags });
-  const html = parse(tokens, options); // parse now returns object
+  let html = parse(tokens, options); // parse now returns object
+
+  // Detect and strip __NOINDEX__
+  let noIndex = false;
+  if (/__NOINDEX__/i.test(html)) {
+    noIndex = true;
+    html = html.replace(/__NOINDEX__/gi, "");
+  }
 
   // --- Restore <nowiki> after parsing ---
   const restoredHtml = restoreNowikiBlocks(html, nowikiBlocks);
 
   // Return both HTML and categories
-  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags) };
+  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex };
 }
 
 module.exports = { renderWikiText, resolveLink };

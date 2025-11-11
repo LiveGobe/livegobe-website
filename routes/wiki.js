@@ -269,6 +269,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                 page.isOldRevision = true;
                 page.commonCss = commonCss;
                 page.commonJs = commonJs;
+                page.noIndex = rendered.noIndex;
             }
         }
 
@@ -348,6 +349,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                 page.html = rendered.html;
                 page.categories = rendered.categories;
                 page.tags = rendered.tags;
+                page.noIndex = rendered.noIndex;
                 await page.save();
             }
 

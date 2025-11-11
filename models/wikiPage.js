@@ -118,7 +118,11 @@ const WikiPageSchema = new mongoose.Schema({
     pagesUsingCategory: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'WikiPage'
-    }]
+    }],
+    noIndex: {
+        type: Boolean,
+        default: false
+    }
 });
 
 // Compound index for efficient page lookup
@@ -233,7 +237,7 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
         );
 
         // --- Render LGWL content ---
-        const { html, categories, tags } = await renderWikiText(this.content, {
+        const { html, categories, tags, noIndex } = await renderWikiText(this.content, {
             wikiName: this.wiki.name,
             pageName: this.path,
             currentNamespace: this.namespace,
@@ -243,6 +247,7 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
             existingPages
         });
 
+        this.noIndex = noIndex;
         this.html = html;
         this.categories = categories;
         this.tags = tags;
