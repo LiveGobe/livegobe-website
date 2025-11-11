@@ -13,6 +13,7 @@ const config = require("./config");
 const JSXEngine = require("express-react-views").createEngine({ doctype: config.render.doctype });
 
 const routes = require("./routes");
+const WikiPage = require("./models/wikiPage")
 
 async function main() {
     // Connet to DB
@@ -22,6 +23,10 @@ async function main() {
         console.error(e);
         process.exit(1);
     }
+
+    // Clear WikiPage isPurging flag
+    await WikiPage.updateMany({}, { $set: { isPurging: false } });
+
     // Initialize passport
     require("./passport")(passport);
     

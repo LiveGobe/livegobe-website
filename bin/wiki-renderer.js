@@ -163,7 +163,7 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 
     const script = new vm.Script(modulePage.content, {
       filename: `Module:${normalized}`,
-      displayErrors: false,
+      displayErrors: true,
       timeout: 1000
     });
 
@@ -191,8 +191,14 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
         result = await fn.apply(null, positionalArgs.length ? positionalArgs : [namedArgs]);
       }
     } catch (fnErr) {
-      console.error(`[LGML] Error running ${normalized}.${functionName}:`, fnErr);
-      return `<span class="lgml-error">LGML: error in ${normalized}.${functionName}</span>`;
+      const lineInfo = fnErr.stack?.match(new RegExp(`${normalized}:(\\d+):(\\d+)`));
+      const line = lineInfo ? ` at line ${lineInfo[1]}, column ${lineInfo[2]}` : "";
+      const message = fnErr.message ? `: ${fnErr.message}` : "";
+
+      return sanitize(
+        `<span class="lgml-error">LGML: error in ${normalized}.${functionName}${line}${message}</span>`,
+        PURIFY_CONFIG
+      );
     }
 
     if (result == null) return "";
@@ -200,8 +206,25 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     try { return String(result); } catch { return JSON.stringify(result); }
 
   } catch (err) {
-    console.error(`[LGML] Failed to execute Module:${normalized}:`, err);
-    return `<span class="lgml-error">LGML: execution error in ${normalized}</span>`;
+    // 🔍 Try to extract precise line and column from stack (runtime or syntax errors)
+    let line = "";
+    const stack = err.stack || "";
+
+    // Match "Module:Kek:12:34" or "Module:Kek:12"
+    const lineInfo =
+      stack.match(new RegExp(`Module:${normalized}:(\\d+):(\\d+)`)) ||
+      stack.match(new RegExp(`Module:${normalized}:(\\d+)`));
+
+    if (lineInfo) {
+      line = ` at line ${lineInfo[1]}${lineInfo[2] ? `, column ${lineInfo[2]}` : ""}`;
+    }
+
+    const message = err.message ? `: ${err.message}` : "";
+
+    return sanitize(
+      `<span class="lgml-error">LGML: execution error in ${normalized}${line}${message}</span>`,
+      PURIFY_CONFIG
+    );
   }
 }
 
