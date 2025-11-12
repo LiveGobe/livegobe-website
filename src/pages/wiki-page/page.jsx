@@ -310,7 +310,7 @@ module.exports = function WikiPage(props) {
   return (
     <html lang={props.language}>
       <Head
-        title={t("page.wiki.title", { 0: wiki.title, 1: fullTitle })}
+        title={t("page.wiki.title", { 0: wiki.title, 1: fullTitle.replace(/_/g, " ") })}
         doIndex={doIndex}
       >
         {mode === "edit" && <>

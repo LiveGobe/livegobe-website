@@ -267,7 +267,6 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
             this.categories.push("Redirect_Pages");
         }
     } catch (e) {
-        console.error("Error parsing LGWL in renderContent:", e);
         this.html = sanitize(this.content);
         this.categories = [];
         this.tags = [];
