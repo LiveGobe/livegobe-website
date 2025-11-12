@@ -457,7 +457,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                 : `${page.namespace}:${page.path}`;
 
                 return res.redirect(
-                `/wikis/${wiki.name}/${target.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}?from=${fromFull.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}`
+                    301,
+                    `/wikis/${wiki.name}/${target.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}?from=${fromFull.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}`
                 );
             }
         }
