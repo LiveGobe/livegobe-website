@@ -86,7 +86,6 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
   const normalized = (moduleName || "").trim().replace(/\s+/g, "_");
   if (!normalized) return `<span class="lgml-error">LGML: missing module name</span>`;
 
-  // Track recursion depth
   const depth = options._depth || 0;
   if (depth > 5) {
     return `<span class="lgml-error">LGML: nested module limit exceeded</span>`;
@@ -122,7 +121,7 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
   // --- Sandbox setup ---
   const sandbox = {
     module: { exports: {} },
-    exports: {},
+    exports: {}, // we'll sync this below
     Math,
     Date,
     JSON,
@@ -132,7 +131,7 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     Array,
     Object,
 
-    // Safe "require" for LGML modules
+    // Safe require
     require: async function (name) {
       try {
         const mod = String(name || "").trim().replace(/\s+/g, "_");
@@ -158,6 +157,9 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
   };
 
+  // Sync exports reference (like Node)
+  sandbox.exports = sandbox.module.exports;
+
   try {
     vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
 
@@ -169,15 +171,27 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 
     script.runInContext(sandbox, { timeout: 1000 });
 
-    const exported = sandbox.module.exports && Object.keys(sandbox.module.exports).length
-      ? sandbox.module.exports
-      : sandbox.exports || {};
+    // --- Determine exports properly ---
+    let exported;
+    if (sandbox.exports !== sandbox.module.exports) {
+      // exports = {...}
+      exported = sandbox.exports;
+    } else if (sandbox.module.exports && Object.keys(sandbox.module.exports).length) {
+      exported = sandbox.module.exports;
+    } else {
+      exported = sandbox.exports || {};
+    }
 
-    // Internal mode (used by require)
-    if (functionName === "__default__") {
+    // ✅ If module exports a plain object (no functions), treat it as default
+    const isPlainExport =
+      exported && typeof exported === "object" && !Object.values(exported).some(v => typeof v === "function");
+
+    // Internal require mode
+    if (functionName === "__default__" || isPlainExport) {
       return { __exports__: exported };
     }
 
+    // --- Function mode ---
     const fn = exported[functionName];
     if (!fn || typeof fn !== "function") {
       return `<span class="lgml-error">LGML: function "${functionName}" not found in Module:${normalized}</span>`;
@@ -203,14 +217,15 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 
     if (result == null) return "";
     if (typeof result === "string") return result;
-    try { return String(result); } catch { return JSON.stringify(result); }
+    try {
+      return String(result);
+    } catch {
+      return JSON.stringify(result);
+    }
 
   } catch (err) {
-    // 🔍 Try to extract precise line and column from stack (runtime or syntax errors)
     let line = "";
     const stack = err.stack || "";
-
-    // Match "Module:Kek:12:34" or "Module:Kek:12"
     const lineInfo =
       stack.match(new RegExp(`Module:${normalized}:(\\d+):(\\d+)`)) ||
       stack.match(new RegExp(`Module:${normalized}:(\\d+)`));
