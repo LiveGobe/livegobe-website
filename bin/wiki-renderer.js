@@ -119,63 +119,258 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
   }
 
-  // --- Assert Builder ---
-  function assert(value) {
-    return {
-      _value: value,
-      _expected: undefined,
-      _mode: null,
-      _message: undefined,
-      _optional: false,
-      optional() { this._optional = true; return this; },
-      message(msg) { this._message = msg; return this; },
-      equals(expected) { this._expected = expected; this._mode = "equals"; return this; },
-      notEquals(expected) { this._expected = expected; this._mode = "notEquals"; return this; },
-      oneOf(list) { this._expected = list; this._mode = "oneOf"; return this; },
-      keyOf(obj) { this._expected = Object.keys(obj); this._mode = "keyOf"; return this; },
-      truthy() { this._mode = "truthy"; return this; },
-      falsy() { this._mode = "falsy"; return this; },
-      type(name) { this._expected = name.toLowerCase(); this._mode = "type"; return this; },
-      string() { return this.type("string"); },
-      number() { return this.type("number"); },
-      boolean() { return this.type("boolean"); },
-      function() { return this.type("function"); },
-      object() { return this.type("object"); },
-      array() { this._mode = "array"; return this; },
-      null() { this._mode = "null"; return this; },
-      undefined() { this._mode = "undefined"; return this; },
-      decode() {
-        if (this._optional && (this._value === null || this._value === undefined)) return this._value;
-        let ok = true;
-        switch (this._mode) {
-          case "equals": ok = this._value === this._expected; break;
-          case "notEquals": ok = this._value !== this._expected; break;
-          case "oneOf": ok = Array.isArray(this._expected) && this._expected.includes(this._value); break;
-          case "keyOf": ok = this._expected.includes(this._value); break;
-          case "truthy": ok = !!this._value; break;
-          case "falsy": ok = !this._value; break;
-          case "type": ok = typeof this._value === this._expected; break;
-          case "array": ok = Array.isArray(this._value); break;
-          case "null": ok = this._value === null; break;
-          case "undefined": ok = this._value === undefined; break;
-          default: throw new Error("No assertion mode defined");
-        }
-        if (!ok) {
-          const msg = this._message || `Assertion failed: expected ${JSON.stringify(this._value)} to satisfy ${this._mode}` +
-            (this._expected ? ` (${JSON.stringify(this._expected)})` : "");
-          throw new Error(msg);
-        }
-        return this._value;
-      }
-    };
+  /* Padreramnt1 Implementations */
+  function pipe(value, ...functions) {
+      return functions.reduce((res, fn) => fn(res), value)
   }
+
+  function flow(...functions) {
+      return (value) => pipe(value, ...functions)
+  }
+
+  const Either = {
+      error(error) {
+          return {
+              _type: 'Either',
+              ok: false,
+              error,
+          }
+      },
+      ok(value) {
+          return {
+              _type: 'Either',
+              ok: true,
+              value,
+          }
+      },
+      assert(condition, error) {
+          return (value) => {
+              return !condition
+                  ? Either.ok(value)
+                  : Either.error(error)
+          }
+      },
+      map(fn) {
+          return (inp) => {
+              if (inp.ok) {
+                  return Either.ok(fn(inp.value))
+              }
+              return inp
+          }
+      },
+      flattern(inp) {
+          if (!inp.ok) {
+              return inp
+          }
+          if (!inp.value.ok) {
+              return inp.value
+          }
+          return Either.ok(inp.value.value)
+      },
+      chain(fn) {
+          return (inp) => {
+              return pipe(
+                  inp,
+                  Either.map(fn),
+                  Either.flattern,
+              )
+          }
+      },
+      unwrap(inp) {
+          if (!inp.ok) {
+              if (inp.error instanceof Error) {
+                  throw inp.error
+              }
+              throw new Error(inp.error)
+          }
+          return inp.value
+      },
+      tryCatch(fn) {
+          return (it) => {
+              try {
+                  return Either.ok(fn(it))
+              } catch (error) {
+                  return Either.error(error)
+              }
+          }
+      }
+  }
+
+  const Decode = {
+      number: (() => {
+          function convert(value) {
+              if (typeof value === 'string') {
+                  value = value.trim()
+              }
+              if ('' === value) {
+                  return Either.ok(null)
+              }
+              const valueOf = value.valueOf()
+              const asNumber = typeof valueOf === 'number' ? valueOf : Number(valueOf)
+              if (isNaN(asNumber)) {
+                  return Either.error(new TypeError(`nan`, { cause: { value } }))
+              }
+              return Either.ok(asNumber)
+          }
+
+          const decoder = (value, ...asserts) => {
+              return pipe(
+                  value,
+                  convert,
+                  Either.chain(Assert.required),
+                  ...asserts.map(Either.chain),
+                  Either.unwrap
+              )
+          }
+          decoder.optional = (value, ...asserts) => {
+              return pipe(
+                  value,
+                  convert,
+                  ...asserts.map(Either.chain),
+                  Either.unwrap
+              )
+          }
+          return decoder
+      })(),
+      string: (() => {
+          const convert = (value) => {
+              if (null == value) {
+                  return Either.ok(value)
+              }
+              return Either.ok(typeof value === 'string' ? value : value.toString())
+          }
+          const decoder = (value, ...asserts) => {
+              return pipe(
+                  value,
+                  convert,
+                  Either.chain(Assert.required),
+                  ...asserts.map(Either.chain),
+                  Either.unwrap,
+              )
+          }
+          decoder.optional = (value, ...asserts) => {
+              return pipe(
+                  value,
+                  ...asserts.map(Either.chain),
+                  Either.unwrap,
+              )
+          }
+          return decoder
+      })(),
+      object: (() => {
+          const decoder = (scheme, value, ...asserts) => {
+              return pipe(
+                  value,
+                  Assert.required,
+                  Either.chain(Assert.scheme(scheme)),
+                  ...asserts.map(Either.chain),
+                  Either.unwrap,
+              )
+          }
+          decoder.optional = (scheme, value, ...asserts) => {
+              return pipe(
+                  value,
+                  Either.chain(Assert.scheme(scheme)),
+                  ...asserts.map(Either.chain),
+                  Either.unwrap,
+              )
+          }
+          return decoder
+      })()
+  }
+
+  const Assert = {
+      required(it) {
+          return Either.assert(null == it || '' == it, new TypeError('required', {
+              cause: {
+                  value: it
+              }
+          }))(it)
+      },
+      number(it) {
+          return Either.assert(typeof it !== 'number' || isNaN(it), new TypeError('not a number', {
+              cause: {
+                  value: it
+              }
+          }))(it)
+      },
+      string(it) {
+          return Either.assert(typeof it !== 'string', new TypeError(`not a string`, {
+              cause: {
+                  value: it
+              }
+          }))(it)
+      },
+      object(it) {
+          return Either.assert(typeof it !== 'object' || null == it, new TypeError(`not a object`, {
+              cause: {
+                  value: it
+              }
+          }))(it)
+      },
+      range(min, max) {
+          return (it) => {
+              return pipe(
+                  it,
+                  Assert.number,
+                  Either.chain(Either.assert(it < min || max < it), new Error(`out of range [${min}, ${max}]`, {
+                      cause: {
+                          value: it,
+                          min,
+                          max,
+                          range: [min, max]
+                      }
+                  })),
+              )
+          }
+      },
+      oneOf(entries) {
+          return (it) => {
+              return Either.assert(!entries.includes(it), new Error(`expected to be one of`, {
+                  cause: {
+                      value: it,
+                      entries
+                  }
+              }))(it)
+          }
+      },
+      keyOf(obj) {
+          const keys = Object.keys(obj)
+          return Assert.oneOf(keys)
+      },
+      scheme(obj) {
+          const keys = Object.keys(obj)
+          return (it) => {
+              let failed = false;
+              let out = {};
+              let errors = {}
+              keys.forEach(key => {
+                  const value = it[key]
+                  const check = obj[key]
+                  const res = pipe(value, Either.tryCatch(check))
+                  if (res.ok) {
+                      out[key] = res.value
+                  } else {
+                      failed = true
+                      errors[key] = res.error
+                  }
+              })
+              return Either.assert(failed, new Error(`object assert exeption`, {
+                  cause: {
+                      value: it,
+                      errors
+                  }
+              }))(out)
+          }
+      }
+  }
+  /* END of Padreramnt1 Implementation */
 
   // --- Sandbox setup ---
   const sandbox = {
     module: { exports: {} },
     exports: {},
-    Math, Date, JSON, String, Number, Boolean, Array, Object, Promise,
-    assert,
+    Math, Date, JSON, String, Number, Boolean, Array, Object, Promise, pipe, flow, Either, Decode, Assert,
     require: async function (name) {
       try {
         const mod = String(name || "").trim().replace(/\s+/g, "_");
