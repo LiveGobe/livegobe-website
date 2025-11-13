@@ -91,6 +91,7 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     return `<span class="lgml-error">LGML: nested module limit exceeded</span>`;
   }
 
+  // --- Load module page ---
   let modulePage;
   try {
     modulePage = await options.getPage("Module", normalized);
@@ -103,7 +104,7 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     return `<span class="lgml-error">LGML: Module "${normalized}" not found</span>`;
   }
 
-  // --- Parse arguments ---
+  // --- Parse LGML args ---
   const namedArgs = {};
   const positionalArgs = [];
   for (const arg of args) {
@@ -118,20 +119,77 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
   }
 
+  // --- Assert Builder ---
+  function createAssertBuilder() {
+    const builder = (value) => {
+      const chain = {
+        _value: value,
+        _expected: undefined,
+        _mode: null,
+        _message: undefined,
+        _optional: false,
+
+        optional() { this._optional = true; return this; },
+        message(msg) { this._message = msg; return this; },
+
+        equals(expected) { this._expected = expected; this._mode = "equals"; return this; },
+        notEquals(expected) { this._expected = expected; this._mode = "notEquals"; return this; },
+        oneOf(list) { this._expected = list; this._mode = "oneOf"; return this; },
+        keyOf(obj) { this._expected = Object.keys(obj); this._mode = "keyOf"; return this; },
+
+        truthy() { this._mode = "truthy"; return this; },
+        falsy() { this._mode = "falsy"; return this; },
+
+        type(name) { this._expected = name.toLowerCase(); this._mode = "type"; return this; },
+        string() { return this.type("string"); },
+        number() { return this.type("number"); },
+        boolean() { return this.type("boolean"); },
+        function() { return this.type("function"); },
+        object() { return this.type("object"); },
+        array() { this._mode = "array"; return this; },
+        null() { this._mode = "null"; return this; },
+        undefined() { this._mode = "undefined"; return this; },
+
+        decode() {
+          if (this._optional && (this._value === null || this._value === undefined)) {
+            return this._value;
+          }
+          let ok = true;
+          switch (this._mode) {
+            case "equals": ok = this._value === this._expected; break;
+            case "notEquals": ok = this._value !== this._expected; break;
+            case "oneOf": ok = Array.isArray(this._expected) && this._expected.includes(this._value); break;
+            case "keyOf": ok = this._expected.includes(this._value); break;
+            case "truthy": ok = !!this._value; break;
+            case "falsy": ok = !this._value; break;
+            case "type": ok = typeof this._value === this._expected; break;
+            case "array": ok = Array.isArray(this._value); break;
+            case "null": ok = this._value === null; break;
+            case "undefined": ok = this._value === undefined; break;
+            default: throw new Error("No assertion mode defined");
+          }
+          if (!ok) {
+            const msg = this._message ||
+              `Assertion failed: expected ${JSON.stringify(this._value)} to satisfy ${this._mode}` +
+              (this._expected ? ` (${JSON.stringify(this._expected)})` : "");
+            throw new Error(msg);
+          }
+          return this._value;
+        }
+      };
+      return chain;
+    };
+    return builder;
+  }
+
   // --- Sandbox setup ---
   const sandbox = {
     module: { exports: {} },
-    exports: {}, // we'll sync this below
-    Math,
-    Date,
-    JSON,
-    String,
-    Number,
-    Boolean,
-    Array,
-    Object,
+    exports: {},
+    Math, Date, JSON, String, Number, Boolean, Array, Object,
+    assert: createAssertBuilder(),
 
-    // Safe require
+    // Safe async require for other LGML modules
     require: async function (name) {
       try {
         const mod = String(name || "").trim().replace(/\s+/g, "_");
@@ -157,41 +215,30 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
   };
 
-  // Sync exports reference (like Node)
   sandbox.exports = sandbox.module.exports;
+  vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
 
   try {
-    vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
-
     const script = new vm.Script(modulePage.content, {
       filename: `Module:${normalized}`,
       displayErrors: true,
       timeout: 1000
     });
-
     script.runInContext(sandbox, { timeout: 1000 });
 
-    // --- Determine exports properly ---
-    let exported;
+    // --- Determine exports ---
+    let exported = sandbox.module.exports || sandbox.exports;
     if (sandbox.exports !== sandbox.module.exports) {
-      // exports = {...}
       exported = sandbox.exports;
-    } else if (sandbox.module.exports && Object.keys(sandbox.module.exports).length) {
-      exported = sandbox.module.exports;
-    } else {
-      exported = sandbox.exports || {};
     }
 
-    // ✅ If module exports a plain object (no functions), treat it as default
     const isPlainExport =
       exported && typeof exported === "object" && !Object.values(exported).some(v => typeof v === "function");
 
-    // Internal require mode
     if (functionName === "__default__" || isPlainExport) {
       return { __exports__: exported };
     }
 
-    // --- Function mode ---
     const fn = exported[functionName];
     if (!fn || typeof fn !== "function") {
       return `<span class="lgml-error">LGML: function "${functionName}" not found in Module:${normalized}</span>`;
@@ -199,16 +246,14 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 
     let result;
     try {
-      if (positionalArgs.length === 0 && Object.keys(namedArgs).length > 0) {
+      if (positionalArgs.length === 0 && Object.keys(namedArgs).length > 0)
         result = await fn(namedArgs);
-      } else {
+      else
         result = await fn.apply(null, positionalArgs.length ? positionalArgs : [namedArgs]);
-      }
     } catch (fnErr) {
       const lineInfo = fnErr.stack?.match(new RegExp(`${normalized}:(\\d+):(\\d+)`));
       const line = lineInfo ? ` at line ${lineInfo[1]}, column ${lineInfo[2]}` : "";
       const message = fnErr.message ? `: ${fnErr.message}` : "";
-
       return sanitize(
         `<span class="lgml-error">LGML: error in ${normalized}.${functionName}${line}${message}</span>`,
         PURIFY_CONFIG
@@ -224,18 +269,12 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
 
   } catch (err) {
-    let line = "";
     const stack = err.stack || "";
     const lineInfo =
       stack.match(new RegExp(`Module:${normalized}:(\\d+):(\\d+)`)) ||
       stack.match(new RegExp(`Module:${normalized}:(\\d+)`));
-
-    if (lineInfo) {
-      line = ` at line ${lineInfo[1]}${lineInfo[2] ? `, column ${lineInfo[2]}` : ""}`;
-    }
-
+    const line = lineInfo ? ` at line ${lineInfo[1]}${lineInfo[2] ? `, column ${lineInfo[2]}` : ""}` : "";
     const message = err.message ? `: ${err.message}` : "";
-
     return sanitize(
       `<span class="lgml-error">LGML: execution error in ${normalized}${line}${message}</span>`,
       PURIFY_CONFIG
