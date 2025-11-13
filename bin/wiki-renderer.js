@@ -718,16 +718,32 @@ function tokenize(text, options = {}) {
       const tag = htmlOpen[1].toLowerCase();
       if (BLOCK_TAGS.includes(tag)) {
         const blockLines = [trimmed];
+        const stack = [tag]; // track open tags
 
-        // read additional lines until closing tag is found
-        while (lines[i + 1] && !new RegExp(`</${tag}>`, "i").test(lines[i + 1])) {
-          blockLines.push(lines[++i]);
+        while (i + 1 < lines.length && stack.length > 0) {
+          const next = lines[++i];
+
+          // Match <tag> and </tag> for *any* tag
+          const openMatch = next.match(/^<([a-zA-Z][\w-]*)\b[^>]*>/);
+          const closeMatch = next.match(/^<\/([a-zA-Z][\w-]*)>/);
+
+          if (openMatch) {
+            stack.push(openMatch[1].toLowerCase());
+          } else if (closeMatch) {
+            const closing = closeMatch[1].toLowerCase();
+            // Pop only if the stack top matches
+            if (stack[stack.length - 1] === closing) {
+              stack.pop();
+            } else {
+              // If mismatched (e.g. <div><span></div>), still pop safely
+              const idx = stack.lastIndexOf(closing);
+              if (idx !== -1) stack.splice(idx);
+            }
+          }
+
+          blockLines.push(next);
         }
 
-        // include closing tag if found
-        if (lines[i + 1]) blockLines.push(lines[++i]);
-
-        // ✅ Make sure htmlBlock content is a *string*
         tokens.push({ type: "htmlBlock", content: blockLines.join("\n") });
         continue;
       }
