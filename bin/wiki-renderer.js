@@ -129,6 +129,9 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
   }
 
   const Either = {
+      is(it) {
+          return typeof it === 'object' && null != it && 'Either' === it._type
+      },
       error(error) {
           return {
               _type: 'Either',
@@ -151,39 +154,39 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
           }
       },
       map(fn) {
-          return (inp) => {
-              if (inp.ok) {
-                  return Either.ok(fn(inp.value))
+          return (either) => {
+              if (either.ok) {
+                  return Either.ok(fn(either.value))
               }
-              return inp
+              return either
           }
       },
-      flattern(inp) {
-          if (!inp.ok) {
-              return inp
+      flattern(either) {
+          if (!either.ok) {
+              return either
           }
-          if (!inp.value.ok) {
-              return inp.value
+          if (!either.value.ok) {
+              return either.value
           }
-          return Either.ok(inp.value.value)
+          return Either.ok(either.value.value)
       },
       chain(fn) {
-          return (inp) => {
+          return (either) => {
               return pipe(
-                  inp,
+                  either,
                   Either.map(fn),
                   Either.flattern,
               )
           }
       },
-      unwrap(inp) {
-          if (!inp.ok) {
-              if (inp.error instanceof Error) {
-                  throw inp.error
+      unwrap(either) {
+          if (!either.ok) {
+              if (either.error instanceof Error) {
+                  throw either.error
               }
-              throw new Error(inp.error)
+              throw new Error(either.error)
           }
-          return inp.value
+          return either.value
       },
       tryCatch(fn) {
           return (it) => {
@@ -193,10 +196,13 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
                   return Either.error(error)
               }
           }
-      }
+      },
   }
 
   const Decode = {
+      default(fallback) {
+          return Either.chain(value => null == value ? fallback : value)
+      },
       number: (() => {
           function convert(value) {
               if (typeof value === 'string') {
@@ -208,7 +214,7 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
               const valueOf = value.valueOf()
               const asNumber = typeof valueOf === 'number' ? valueOf : Number(valueOf)
               if (isNaN(asNumber)) {
-                  return Either.error(new TypeError(`nan`, { cause: { value } }))
+                  return Either.error(new TypeError(`not a number`, { cause: { value } }))
               }
               return Either.ok(asNumber)
           }
@@ -362,6 +368,12 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
                   }
               }))(out)
           }
+      }
+  }
+
+  const Enum = {
+      create(obj) {
+          return Object.keys(obj).reduce((a, c) => (a[c] = c, a), {})
       }
   }
   /* END of Padreramnt1 Implementation */
