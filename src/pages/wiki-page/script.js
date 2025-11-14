@@ -441,9 +441,22 @@ $(function () {
         })
         .then(resp => resp.json())
         .then(json => {
-            if (json.html) $body.html(`<div class='wiki-preview'>${json.html}</div>`);
-            else $body.html(`<div class='error'>${json.message || "Preview unavailable"}</div>`);
-        })
+			if (json.html) {
+				// Build preview HTML + render time footer
+				const renderTime = json.renderTimeMs
+					? `<div class='preview-render-time'>Rendered in ${json.renderTimeMs} ms</div>`
+					: "";
+
+				$body.html(`
+					${renderTime}
+					<div class='wiki-preview'>
+						${json.html}
+					</div>
+				`);
+			} else {
+				$body.html(`<div class='error'>${json.message || "Preview unavailable"}</div>`);
+			}
+		})
         .catch(err => {
             console.error(err);
             $body.html(`<div class='error'>Failed to load preview: ${err.message}</div>`);

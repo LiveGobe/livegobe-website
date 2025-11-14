@@ -716,7 +716,7 @@ function tokenize(text, options = {}) {
     const htmlOpen = /^<([a-zA-Z][\w-]*)\b[^>]*>/.exec(trimmed);
     if (htmlOpen) {
       const tag = htmlOpen[1].toLowerCase();
-      if (BLOCK_TAGS.includes(tag)) {
+      if (BLOCK_TAGS.includes(tag) && tag !== "table") {
         const blockLines = [trimmed];
         const stack = [tag]; // track open tags
 
@@ -1640,7 +1640,7 @@ async function renderWikiText(text, options = {}) {
   working = await parseTables(working, expandTemplates, { ...options });
   const tokens = tokenize(working, { categories: pageCategories, tags: pageTags });
   let html = parse(tokens, options); // parse now returns object
-
+  
   // Detect and strip __NOINDEX__
   let noIndex = false;
   if (/__NOINDEX__/i.test(html)) {
