@@ -46,6 +46,7 @@ module.exports = function(props) {
             </Head>
             <body data-theme={props.theme}>
                 <main className="container py-4">
+                    <a href="/">{props.t("common.backtomain")}</a>
                     <div className="d-flex justify-content-between align-items-center mb-4">
                         <h1>{props.t("page.wikis.name")}</h1>
                         <CreateWikiButton {...props} />
@@ -61,6 +62,10 @@ module.exports = function(props) {
                                 {props.t("page.wikis.empty")}
                             </div>
                         )}
+                    </div>
+                    <div id="contacts-block">
+                        <p>{props.t("page.wikis.contact")}</p>
+                        <p>{props.t("page.wikis.contacts")}</p>
                     </div>
                 </main>
                 <div id="create-wiki-block" className="wiki-modal hidden">

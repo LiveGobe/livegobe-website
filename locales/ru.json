@@ -450,7 +450,9 @@
         "name_required": "Требуется имя вики",
         "failed": "Неудалось создать вики"
       },
-      "lastUpdated": "Дата Создания: {0}"
+      "lastUpdated": "Дата Создания: {0}",
+      "contact": "Чтобы запросить новую вики, пожалуйста, свяжитесь со мной:",
+      "contacts": "Дискорд - livegobe (LiveGobe) | X - @LiveGobe | Почта - pax01012000@gmail.com"
     },
     "wiki": {
       "not_found": "Вики не найдена",
@@ -577,7 +579,8 @@
   },
   "common": {
     "cancel": "Отмена",
-    "create": "Создать"
+    "create": "Создать",
+    "backtomain": "Назад на Главную Страницу"
   },
   "wiki": {
     "protected": {
@@ -600,7 +603,12 @@
       "settings": "Настройки Вики",
       "recentChanges": "Недавние Изменения",
       "tools": "Инструменты",
-      "help": "Помощь"
+      "help": "Помощь",
+      "website": "LG Вебсайт",
+      "backToMain": "Вернуться на Главную Страницу",
+      "allWikis": "Все Вики",
+      "sourceCode": "Исходный Код",
+      "supportMe": "Поддержать Меня"
     },
     "actions": {
       "view": "Просмотр",

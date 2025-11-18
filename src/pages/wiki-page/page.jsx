@@ -364,6 +364,14 @@ module.exports = function WikiPage(props) {
                 {canDelete && <li><a href={`/wikis/${wiki.name}/Special:Settings`}>{t("wiki.sidebar.settings")}</a></li>}
                 <li><a href={`/wikis/${wiki.name}/Help:Contents`}>{t("wiki.sidebar.help")}</a></li>
               </ul>
+
+              <h3>{t("wiki.sidebar.website")}</h3>
+              <ul>
+                <li><a href="/">{t("wiki.sidebar.backToMain")}</a></li>
+                <li><a href="/wikis">{t("wiki.sidebar.allWikis")}</a></li>
+                <li><a href="https://github.com/LiveGobe/livegobe-website" target="_blank" rel="noopener noreferrer">{t("wiki.sidebar.sourceCode")}</a></li>
+                <li><a href="https://boosty.to/livegobe/donate" target="_blank" rel="noopener noreferrer">{t("wiki.sidebar.supportMe")}</a></li>
+              </ul>
             </nav>
           </aside>
 

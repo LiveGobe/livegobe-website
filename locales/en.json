@@ -450,7 +450,9 @@
         "name_required": "Wiki name is required",
         "failed": "Failed to create wiki"
       },
-      "lastUpdated": "Created on: {0}"
+      "lastUpdated": "Created on: {0}",
+      "contact": "To request a new wiki, please contact me:",
+      "contacts": "Discord - livegobe (LiveGobe) | X - @LiveGobe | Email - pax01012000@gmail.com"
     },
     "wiki": {
       "not_found": "Wiki not found",
@@ -577,7 +579,8 @@
   },
   "common": {
     "cancel": "Cancel",
-    "create": "Create"
+    "create": "Create",
+    "backtomain": "Back to Main Page"
   },
   "wiki": {
     "protected": {
@@ -600,7 +603,12 @@
       "settings": "Wiki Settings",
       "recentChanges": "Recent Changes",
       "tools": "Wiki Tools",
-      "help": "Help"
+      "help": "Help",
+      "website": "LG Website",
+      "backToMain": "Back to Main Page",
+      "allWikis": "All Wikis",
+      "sourceCode": "Source Code",
+      "supportMe": "Support Me"
     },
     "actions": {
       "view": "View",
