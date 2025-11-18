@@ -44,12 +44,18 @@ const BUILTIN_TEMPLATES = {
   ":": "&#58;"
 };
 
-const LINK_REGEX = /(\[\[([^\]|]+)(?:\|([^\]]+))?\]\])|(\[([a-zA-Z]+:\/\/[^\]\s]+)(?:\s+([^\]]+))?\])/g;
+// Matches:
+//  1) Internal link [[Target|Label]]
+//  2) External link [URL Label]
+const LINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\[([a-z]+:\/\/[^\]\s]+)(?:\s+([^\]]+))?\]/gi;
+
 
 const BLOCK_TAGS = [
-  "address","article","aside","blockquote","canvas","dd","div","dl","dt","fieldset",
-  "figcaption","figure","footer","form","h1","h2","h3","h4","h5","h6","header",
-  "hr","li","main","nav","noscript","ol","p","pre","section","table","tfoot","ul","video"
+  "div", "section", "article", "aside", "nav",
+  "header", "footer",
+  "figure", "figcaption",
+  "blockquote",
+  "pre"
 ];
 const BLOCK_TAG_RE = new RegExp(`<(?:${BLOCK_TAGS.join("|")})(\\s|>|/>)`, "i");
 
@@ -530,7 +536,6 @@ function tokenize(text, options = {}) {
     while (i < lines.length && !/^\|\}/.test(lines[i])) {
       const l = lines[i];
 
-      // --- New row ---
       if (/^\|-$/.test(l.trim())) {
         if (currentRow.length > 0) {
           table.rows.push(currentRow);
@@ -540,14 +545,12 @@ function tokenize(text, options = {}) {
         continue;
       }
 
-      // --- Caption ---
       if (/^\|\+/.test(l)) {
         table.caption = l.replace(/^\|\+\s*/, "");
         i++;
         continue;
       }
 
-      // --- Header cells (start with !) ---
       if (/^!/.test(l)) {
         const parts = l.split(/!!/);
         for (const part of parts) {
@@ -555,7 +558,6 @@ function tokenize(text, options = {}) {
           let align = null;
           let text = raw;
 
-          // Detect alignment markers
           if (/^:.*:$/.test(raw)) {
             align = "center";
             text = raw.slice(1, -1).trim();
@@ -577,7 +579,6 @@ function tokenize(text, options = {}) {
         continue;
       }
 
-      // --- Data cells (start with |) ---
       if (/^\|/.test(l)) {
         const parts = l.split(/\|\|/);
         for (const part of parts) {
@@ -610,8 +611,6 @@ function tokenize(text, options = {}) {
     }
 
     if (currentRow.length > 0) table.rows.push(currentRow);
-
-    // Skip closing |}
     return { table, nextIndex: i + 1 };
   }
 
@@ -619,15 +618,13 @@ function tokenize(text, options = {}) {
     const rawLine = lines[i];
     const line = rawLine.replace(/\r$/, "");
 
-    // --- Table start ---
     if (/^\{\|/.test(line)) {
       const { table, nextIndex } = tokenizeTables(i);
       tokens.push(table);
-      i = nextIndex - 1; // skip past the table
+      i = nextIndex - 1;
       continue;
     }
 
-    // --- Multiline code block (``` ... ```) ---
     if (/^```/.test(line.trim())) {
       if (!inCodeBlock) {
         inCodeBlock = true;
@@ -647,25 +644,21 @@ function tokenize(text, options = {}) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // --- Horizontal rule ---
     if (/^(?:-{4,}|\*{3,})$/.test(trimmed)) {
       tokens.push({ type: "hr" });
       continue;
     }
 
-    // --- Blockquote ---
     if (/^>\s?/.test(trimmed)) {
       tokens.push({ type: "blockquote", content: trimmed.replace(/^>\s?/, "") });
       continue;
     }
 
-    // --- Indented code block (4 spaces or tab) ---
     if (/^(?:\t| {4})/.test(rawLine)) {
       tokens.push({ type: "codeBlock", content: rawLine.replace(/^(?:\t| {4})/, "") });
       continue;
     }
 
-    // --- Headings ===
     const headingMatch = trimmed.match(/^(={2,6})\s*(.+?)\s*\1$/);
     if (headingMatch) {
       const level = headingMatch[1].length;
@@ -675,7 +668,6 @@ function tokenize(text, options = {}) {
       continue;
     }
 
-    // --- List items ---
     const listMatch = trimmed.match(/^([*#-]+)\s+(.*)$/);
     if (listMatch) {
       const markers = listMatch[1];
@@ -686,7 +678,6 @@ function tokenize(text, options = {}) {
       continue;
     }
 
-    // --- Gallery block ---
     if (/^<gallery/i.test(trimmed)) {
       const galleryLines = [];
 
@@ -709,52 +700,62 @@ function tokenize(text, options = {}) {
       continue;
     }
 
-    // --- Regular text or inline ---
     const parts = tokenizeInline(trimmed, LINK_REGEX, options);
 
-    // Detect start of an HTML block
-    const htmlOpen = /^<([a-zA-Z][\w-]*)\b[^>]*>/.exec(trimmed);
+    /* -------------------------------------------------------------
+       FIXED: Safe HTML block detection (no greediness)
+    ------------------------------------------------------------- */
+    // Detect start of a block-level HTML element
+    const htmlOpen = trimmed.match(/^<([a-zA-Z][\w-]*)\b[^>]*>\s*$/);
+
     if (htmlOpen) {
       const tag = htmlOpen[1].toLowerCase();
-      if (BLOCK_TAGS.includes(tag) && tag !== "table") {
+
+      // Only treat known block-level elements as htmlBlock
+      if (BLOCK_TAGS.includes(tag)) {
         const blockLines = [trimmed];
-        const stack = [tag]; // track open tags
+        const stack = [tag];
 
         while (i + 1 < lines.length && stack.length > 0) {
-          const next = lines[++i];
+          const nextLine = lines[++i];
 
-          // Match <tag> and </tag> for *any* tag
-          const openMatch = next.match(/^<([a-zA-Z][\w-]*)\b[^>]*>/);
-          const closeMatch = next.match(/^<\/([a-zA-Z][\w-]*)>/);
+          // A line containing ONLY "<tag ...>"
+          const nextOpen = nextLine.trim().match(/^<([a-zA-Z][\w-]*)\b[^>]*>\s*$/);
+          // A line containing ONLY "</tag>"
+          const nextClose = nextLine.trim().match(/^<\/([a-zA-Z][\w-]*)>\s*$/);
 
-          if (openMatch) {
-            stack.push(openMatch[1].toLowerCase());
-          } else if (closeMatch) {
-            const closing = closeMatch[1].toLowerCase();
-            // Pop only if the stack top matches
-            if (stack[stack.length - 1] === closing) {
+          if (nextOpen) {
+            const t = nextOpen[1].toLowerCase();
+            if (BLOCK_TAGS.includes(t)) stack.push(t);
+          } else if (nextClose) {
+            const t = nextClose[1].toLowerCase();
+            if (stack[stack.length - 1] === t) {
               stack.pop();
             } else {
-              // If mismatched (e.g. <div><span></div>), still pop safely
-              const idx = stack.lastIndexOf(closing);
+              const idx = stack.lastIndexOf(t);
               if (idx !== -1) stack.splice(idx);
             }
           }
 
-          blockLines.push(next);
+          blockLines.push(nextLine);
         }
 
-        tokens.push({ type: "htmlBlock", content: blockLines.join("\n") });
+        tokens.push({
+          type: "htmlBlock",
+          content: blockLines.join("\n")
+        });
+
         continue;
       }
     }
 
-    // fallback: normal text block (inline tokens)
+    // default text
     tokens.push({ type: "textBlock", content: Array.isArray(parts) ? parts : [parts] });
   }
 
   return tokens;
 }
+
 
 // Helper to tokenize inline text (links + text)
 function tokenizeInline(line, linkRegex, options = {}) {
@@ -762,42 +763,47 @@ function tokenizeInline(line, linkRegex, options = {}) {
   let lastIndex = 0;
   let match;
 
+  options.categories ||= new Set();
+  options.tags ||= new Set();
+
   while ((match = linkRegex.exec(line)) !== null) {
-    // Push preceding text
+
     if (match.index > lastIndex) {
       parts.push({ type: "text", value: line.slice(lastIndex, match.index) });
     }
 
-    // Internal link [[Page|Label]] or [[Category:Name]]
+    // Internal [[Target|Label]]
     if (match[1]) {
-      const target = match[2];
-      const label = match[3] || target;
+      const target = match[1];
+      const label = match[2] || target;
 
-      // Detect category
-      if (/^(?!:)\s*Category:/i.test(target)) {
+      if (/^Category:/i.test(target)) {
         const categoryName = target.replace(/^Category:/i, "").trim();
         parts.push({ type: "category", name: categoryName });
-        options.categories = options.categories || new Set();
         options.categories.add(categoryName);
+
       } else if (/^Tag:/i.test(target)) {
         const tagName = target.replace(/^Tag:/i, "").trim();
         parts.push({ type: "tag", name: tagName });
         options.tags.add(tagName);
-        options.tags = options.tags || new Set();
-        options.tags.add(tagName);
+
       } else {
         parts.push({ type: "link", target, label });
       }
     }
-    // External link [https://example.com Label]
-    else if (match[4]) {
-      parts.push({ type: "externalLink", url: match[5], label: match[6] || match[5] });
+
+    // External link
+    else if (match[3]) {
+      parts.push({
+        type: "externalLink",
+        url: match[3],
+        label: match[4] || match[3]
+      });
     }
 
     lastIndex = linkRegex.lastIndex;
   }
 
-  // Push remaining text
   if (lastIndex < line.length) {
     parts.push({ type: "text", value: line.slice(lastIndex) });
   }
