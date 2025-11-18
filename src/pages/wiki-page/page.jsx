@@ -706,7 +706,11 @@ module.exports = function WikiPage(props) {
         </main>
 
         <footer className="wiki-footer">
-          <small>{t("wiki.footer.text", { wiki: wiki.title })}</small>
+          <small>{t("wiki.footer.text", { wiki: wiki.title })}</small> - <a href="https://livegobe.ru/wikis/livegobe-wiki/Legal#Privacy_Policy">
+            <small>Privacy Policy</small>
+          </a> - <a href="https://livegobe.ru/wikis/livegobe-wiki/Legal#Terms_of_Service">
+            <small>Terms of Service</small>
+          </a>
         </footer>
       </body>
     </html>
