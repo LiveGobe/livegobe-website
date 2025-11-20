@@ -301,6 +301,7 @@ module.exports = function WikiPage(props) {
     !page.noIndex &&             // Force noindex using __NOINDEX__
     safePage.exists &&
     mode === "view" &&           // only normal viewing mode
+    !query.noredirect &&         // skip redirected pages
     !isViewingOldRevision &&     // skip old/diff pages
     !isModule &&
     !isCommonPage &&
