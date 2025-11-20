@@ -2504,6 +2504,9 @@ color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
 /* Legal */
 .wiki-footer a {
   color: yellow;
+  background-color: grey;
+  padding: 2px 6px;
+  border-radius: 4px;
   text-decoration: none;
 }
 
