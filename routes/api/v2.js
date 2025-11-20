@@ -1318,7 +1318,7 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
         }
 
         // ================================
-        //  Namespace extraction
+        // Namespace extraction
         // ================================
         let namespace = null;
         let search = rawSearch;
@@ -1335,15 +1335,13 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
         }
 
         // ================================
-        //  Namespace filter
+        // Namespace filter
         // ================================
         let namespaceFilter = {};
 
         if (namespace === null) {
-            // No namespace mentioned → search only Main namespace
             namespaceFilter = { namespace: "Main" };
         } else {
-            // Search only in provided namespace
             namespaceFilter = { namespace };
         }
 
@@ -1356,8 +1354,19 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
         const fuzzyRegex = (str) =>
             str.split("").map(ch => escapeRegex(ch)).join(".*");
 
-        const exact = new RegExp(escapeRegex(search), "i");
+        function extractRedirectTarget(content) {
+            const m = content.match(/^#redirect\s*\[\[(.+?)\]\]/i);
+            return m ? m[1] : null;
+        }
+
+        // Create reusable escaped value
+        const escaped = escapeRegex(search);
+
+        const exact = new RegExp(escaped, "i");
         const fuzzy = new RegExp(fuzzyRegex(search), "i");
+
+        // Redirect syntax
+        const redirectRegex = /^#redirect\s*\[\[(.+?)\]\]/i;
 
         // ================================
         // Query
@@ -1366,12 +1375,29 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
             wiki: wiki._id,
             ...namespaceFilter,
             $or: [
+                // direct matches
                 { title: exact },
                 { path: exact },
 
-                // fuzzy fallback
+                // fuzzy
                 { title: fuzzy },
-                { path: fuzzy }
+                { path: fuzzy },
+
+                // redirect pages
+                {
+                    content: { $regex: redirectRegex },
+                    $or: [
+                        { title: exact },
+                        { path: exact },
+
+                        { title: fuzzy },
+                        { path: fuzzy },
+
+                        // redirect target match
+                        { content: { $regex: new RegExp(`\\[\\[${escaped}\\]\\]`, "i") } },
+                        { content: { $regex: new RegExp(escaped, "i") } }
+                    ]
+                }
             ]
         }).limit(100);
 
@@ -1400,11 +1426,13 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
             .map(page => ({ page, score: scorePage(page) }))
             .sort((a, b) => b.score - a.score)
             .slice(0, 50)
-            .map(r => ({
-                title: r.page.title,
-                path: r.page.path,
-                namespace: r.page.namespace
-            }));
+            .map(p => ({
+                title: p.page.title,
+                path: p.page.path,
+                namespace: p.page.namespace,
+                isRedirect: redirectRegex.test(p.page.content),
+                redirectTo: extractRedirectTarget(p.page.content)
+            }))
 
         return res.json({
             message: req.t("api.wikis.search_results", {

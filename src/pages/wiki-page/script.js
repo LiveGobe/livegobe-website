@@ -688,24 +688,37 @@ $(function () {
 	});
 
     function renderResults(results) {
-        const container = $("#wiki-search-results");
-        container.empty();
+		const container = $("#wiki-search-results");
+		container.empty();
 
-        if (!results.length) {
-            container
-                .html('<div class="wiki-search-empty">No results</div>')
-                .show();
-            return;
-        }
+		if (!results.length) {
+			container
+				.html('<div class="wiki-search-empty">No results</div>')
+				.show();
+			return;
+		}
 
-        results.forEach(r => {
-            container.append(`
-                <a class="wiki-search-item" href="/wikis/${wikiName}/${r.namespace == "Main" ? r.path : r.namespace + ":" + r.path}">
-                    <div class="wiki-search-title">${r.namespace == "Main" ? r.title : r.namespace + ":" + r.title}</div>
-                </a>
-            `);
-        });
+		results.forEach(r => {
+			const isMain = r.namespace === "Main";
+			const title = isMain ? r.title : `${r.namespace}:${r.title}`;
 
-        container.show();
-    }
+			// Final target: If it's a redirect, show redirectTo, else show normal path
+			const finalTarget = r.isRedirect && r.redirectTo
+				? r.redirectTo
+				: (isMain ? r.path : `${r.namespace}:${r.path}`);
+
+			const href = `/wikis/${wikiName}/${encodeURIComponent(finalTarget.replace(/ /g, "_"))}`;
+
+			container.append(`
+				<a class="wiki-search-item" href="${href}">
+					<div class="wiki-search-title">
+						${title}
+						${r.isRedirect ? `<span class="wiki-search-redirect">→ ${r.redirectTo}</span>` : ""}
+					</div>
+				</a>
+			`);
+		});
+
+		container.show();
+	}
 });
