@@ -340,6 +340,10 @@ module.exports = function WikiPage(props) {
             <h1 className="wiki-site-title">
               <a href={`/wikis/${wiki.name}`}>{wiki.title}</a>
             </h1>
+            <div className="wiki-search">
+              <input type="search" name="search" id="wiki-search" autoComplete="off" />
+              <div id="wiki-search-results" />
+            </div>
             <nav className="wiki-top-nav">
               <a href={`/wikis/${wiki.name}/Main_Page`}>{t("wiki.nav.mainPage")}</a>
               <a href={`/wikis/${wiki.name}/Special:AllPages`}>{t("wiki.nav.allPages")}</a>

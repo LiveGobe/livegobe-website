@@ -38,7 +38,9 @@
       "create_failed": "Не удалось создать вики",
       "no_change_detected": "Нет изменений",
       "page_rendered": "Страница обновлена",
-      "page_purged": "Кэш страницы сброшен"
+      "page_purged": "Кэш страницы сброшен",
+      "search_term_required": "Требуется поисковый запрос",
+      "search_results": "Найдено {0} результатов для '{1}'"
     },
     "filestorage": {
       "exists": "Файловое хранилище уже существует",

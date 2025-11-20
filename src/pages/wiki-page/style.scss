@@ -2499,3 +2499,129 @@ color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
   color: yellow;
   text-decoration: none;
 }
+
+.wiki-search {
+  position: relative;
+  width: 100%;
+  margin-right: 1rem;
+  margin-left: 1rem;
+}
+
+.wiki-search::before {
+  content: "🔍";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+#wiki-search {
+  width: 100%;
+  padding: 10px 14px 10px 40px;
+  border-radius: 50px;
+  border: 1px solid var(--border-color, #444);
+  background: var(--bg, rgba(0,0,0,0.1));
+  color: var(--text-color);
+  font-size: 15px;
+}
+
+@media (max-width: 768px) {
+  // Hide navigation links on small screens
+  .wiki-header .wiki-top-nav {
+    display: none;
+  }
+}
+
+/* ===========================
+   SEARCH DROPDOWN CONTAINER
+   =========================== */
+#wiki-search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  max-height: 280px;
+
+  margin-top: 6px;
+  background: var(--bg, rgba(255,255,255,0.95));
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+
+  overflow-y: auto;
+  display: none;
+  z-index: 9999;
+}
+
+body[data-theme="dark"] #wiki-search-results {
+  --bg: rgba(30,30,30,0.95);
+}
+
+/* ===========================
+   EMPTY STATE
+   =========================== */
+.wiki-search-empty {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--wiki-muted, #666);
+}
+
+body[data-theme="dark"] .wiki-search-empty {
+  --wiki-muted: #aaa;
+}
+
+/* ===========================
+   SEARCH RESULT ITEM
+   =========================== */
+.search-result, .wiki-search-item {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, padding-left 0.1s;
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 2px;
+}
+
+.search-result:last-child, .wiki-search-item:last-child {
+  margin-bottom: 0;
+}
+
+.search-result:hover, .wiki-search-item:hover {
+  background: rgba(255,255,255,0.12);
+  padding-left: 12px;
+}
+
+body[data-theme="dark"] .search-result:hover,
+body[data-theme="dark"] .wiki-search-item:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+/* ===========================
+   TITLE AND NAMESPACE
+   =========================== */
+.wiki-search-title {
+  font-weight: 600;
+  line-height: 1.3;
+  font-size: 14px;
+  color: var(--wiki-title-color, #111);
+}
+
+body[data-theme="dark"] .wiki-search-title {
+  --wiki-title-color: #eee;
+}
+
+.wiki-search-namespace, .search-result span {
+  font-size: 12px;
+  opacity: 0.8;
+  display: block;
+}
+
+/* ===========================
+   SEARCH WRAPPER
+   =========================== */
+.wiki-search {
+  position: relative;
+}

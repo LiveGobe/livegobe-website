@@ -38,7 +38,9 @@
       "create_failed": "Failed to create wiki",
       "no_change_detected": "No changes detected",
       "page_rendered": "Page rendered successfully",
-      "page_purged": "Page cache purged successfully"
+      "page_purged": "Page cache purged successfully",
+      "search_term_required": "Search term is required",
+      "search_results": "{0} results found for '{1}'"
     },
     "filestorage": {
       "exists": "Filestorage already exists",

@@ -646,4 +646,51 @@ $(function () {
 			$btn.prop("disabled", false).text(i18n.t ? i18n.t("wiki.history.revert") : "Revert");
 		}
 	});
+
+	let debounceTimer = null;
+
+    $("#wiki-search").on("input", function () {
+        const query = $(this).val().trim();
+
+        clearTimeout(debounceTimer);
+
+        // If empty — clear list
+        if (!query) {
+            $(".wiki-search-results").empty().hide();
+            return;
+        }
+
+        debounceTimer = setTimeout(() => {
+            $.ajax({
+                url: `/api/v2/wiki/${wikiName}/search`,
+                method: "GET",
+                data: { search: query },
+                success: function (data) {
+                    renderResults(data.results);
+                }
+            });
+        }, 300);
+    });
+
+    function renderResults(results) {
+        const container = $("#wiki-search-results");
+        container.empty();
+
+        if (!results.length) {
+            container
+                .html('<div class="wiki-search-empty">No results</div>')
+                .show();
+            return;
+        }
+
+        results.forEach(r => {
+            container.append(`
+                <a class="wiki-search-item" href="/wikis/${wikiName}/${r.namespace == "Main" ? r.path : r.namespace + ":" + r.path}">
+                    <div class="wiki-search-title">${r.namespace == "Main" ? r.title : r.namespace + ":" + r.title}</div>
+                </a>
+            `);
+        });
+
+        container.show();
+    }
 });

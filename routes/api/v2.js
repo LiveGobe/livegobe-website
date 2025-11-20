@@ -1292,4 +1292,132 @@ ${uploadFile.mimetype.startsWith("image/") ? `[[File:${safeFilename}]]` : "Previ
   }
 });
 
+// GET /search - search wiki pages
+router.get("/wiki/:wikiName/search", async (req, res) => {
+    try {
+        const wikiName = req.params.wikiName;
+        const rawSearch = (req.body.search || req.query.search || "").trim();
+
+        if (!rawSearch) {
+            return res.status(400).json({
+                message: req.t("api.wikis.search_term_required")
+            });
+        }
+
+        const wiki = await Wiki.findOne({ name: wikiName });
+        if (!wiki) {
+            return res.status(404).json({
+                message: req.t("api.wikis.not_found")
+            });
+        }
+
+        if (!wiki.canAccess(req.user)) {
+            return res.status(403).json({
+                message: req.t("api.nopermission")
+            });
+        }
+
+        // ================================
+        //  Namespace extraction
+        // ================================
+        let namespace = null;
+        let search = rawSearch;
+
+        const colonIndex = rawSearch.indexOf(":");
+        if (colonIndex !== -1) {
+            namespace = rawSearch.slice(0, colonIndex).trim();
+            search = rawSearch.slice(colonIndex + 1).trim();
+
+            if (!search) {
+                search = namespace;
+                namespace = null;
+            }
+        }
+
+        // ================================
+        //  Namespace filter
+        // ================================
+        let namespaceFilter = {};
+
+        if (namespace === null) {
+            // No namespace mentioned → search only Main namespace
+            namespaceFilter = { namespace: "Main" };
+        } else {
+            // Search only in provided namespace
+            namespaceFilter = { namespace };
+        }
+
+        // ================================
+        // Regex helpers
+        // ================================
+        const escapeRegex = (str) =>
+            str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+        const fuzzyRegex = (str) =>
+            str.split("").map(ch => escapeRegex(ch)).join(".*");
+
+        const exact = new RegExp(escapeRegex(search), "i");
+        const fuzzy = new RegExp(fuzzyRegex(search), "i");
+
+        // ================================
+        // Query
+        // ================================
+        const pages = await WikiPage.find({
+            wiki: wiki._id,
+            ...namespaceFilter,
+            $or: [
+                { title: exact },
+                { path: exact },
+
+                // fuzzy fallback
+                { title: fuzzy },
+                { path: fuzzy }
+            ]
+        }).limit(100);
+
+        // ================================
+        // Ranking
+        // ================================
+        const term = search.toLowerCase();
+        const scorePage = (p) => {
+            let score = 0;
+
+            const title = p.title.toLowerCase();
+            const path = p.path.toLowerCase();
+
+            if (title === term) score += 100;
+            if (title.startsWith(term)) score += 50;
+
+            if (title.match(exact)) score += 30;
+            if (path.match(exact)) score += 15;
+
+            if (title.match(fuzzy)) score += 5;
+
+            return score;
+        };
+
+        const ranked = pages
+            .map(page => ({ page, score: scorePage(page) }))
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 50)
+            .map(r => ({
+                title: r.page.title,
+                path: r.page.path,
+                namespace: r.page.namespace
+            }));
+
+        return res.json({
+            message: req.t("api.wikis.search_results", {
+                "0": ranked.length,
+                "1": rawSearch
+            }),
+            results: ranked
+        });
+
+    } catch (err) {
+        console.error("API: error searching wiki pages:", err);
+        return res.status(500).json({ message: err.toString() });
+    }
+});
+
 module.exports = router;
