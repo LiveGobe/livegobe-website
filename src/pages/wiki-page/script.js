@@ -647,30 +647,47 @@ $(function () {
 		}
 	});
 
-	let debounceTimer = null;
+	const $searchInput = $("#wiki-search");
+	const $results = $("#wiki-search-results");
+	let searchTimer;
 
-    $("#wiki-search").on("input", function () {
-        const query = $(this).val().trim();
+	$searchInput.on("input", function () {
+		clearTimeout(searchTimer);
 
-        clearTimeout(debounceTimer);
+		const query = $(this).val().trim();
 
-        // If empty — clear list
-        if (!query) {
-            $(".wiki-search-results").empty().hide();
-            return;
-        }
+		searchTimer = setTimeout(function () {
+			if (!query) {
+				$results.hide().empty();
+				return;
+			}
 
-        debounceTimer = setTimeout(() => {
-            $.ajax({
-                url: `/api/v2/wiki/${wikiName}/search`,
-                method: "GET",
-                data: { search: query },
-                success: function (data) {
-                    renderResults(data.results);
-                }
-            });
-        }, 300);
-    });
+			$.ajax({
+				url: `/api/v2/wiki/${encodeURIComponent(wikiName)}/search`,
+				method: "GET",
+				data: { search: query },
+				dataType: "json"
+			}).done(function (data) {
+				renderResults(data.results);
+			});
+		}, 250);
+	});
+
+	// Hide results on blur if search is empty
+	$searchInput.on("blur", function () {
+		setTimeout(() => { // small delay to allow click on result
+			if (!$searchInput.val().trim()) {
+				$results.hide();
+			}
+		}, 150);
+	});
+
+	// Optionally, show results again on focus if there is input
+	$searchInput.on("focus", function () {
+		if ($searchInput.val().trim()) {
+			$results.show();
+		}
+	});
 
     function renderResults(results) {
         const container = $("#wiki-search-results");

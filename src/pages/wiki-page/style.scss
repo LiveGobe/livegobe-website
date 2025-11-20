@@ -2502,7 +2502,7 @@ color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
 
 .wiki-search {
   position: relative;
-  width: 100%;
+  width: 40%;
   margin-right: 1rem;
   margin-left: 1rem;
 }
@@ -2617,11 +2617,4 @@ body[data-theme="dark"] .wiki-search-title {
   font-size: 12px;
   opacity: 0.8;
   display: block;
-}
-
-/* ===========================
-   SEARCH WRAPPER
-   =========================== */
-.wiki-search {
-  position: relative;
 }
