@@ -1045,6 +1045,7 @@ color: var(--wiki-content_pre_wiki-content_code-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  align-items: flex-end;
   width: 100%;
 }
 
@@ -2467,6 +2468,12 @@ color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
 
 /* --- Mobile Layout --- */
 @media (max-width: 768px) {
+  .wiki-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
   .wiki-container {
     grid-template-columns: 1fr;
   }
