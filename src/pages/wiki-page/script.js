@@ -651,9 +651,9 @@ $(function () {
 	const $results = $("#wiki-search-results");
 	let searchTimer;
 
+	// Input debounce + search
 	$searchInput.on("input", function () {
 		clearTimeout(searchTimer);
-
 		const query = $(this).val().trim();
 
 		searchTimer = setTimeout(function () {
@@ -673,18 +673,16 @@ $(function () {
 		}, 250);
 	});
 
-	// Hide results on blur if search is empty
-	$searchInput.on("blur", function () {
-		setTimeout(() => { // small delay to allow click on result
-			if (!$searchInput.val().trim()) {
-				$results.hide();
-			}
-		}, 150);
+	// Hide results when clicking outside the search wrapper
+	$(document).on("click", function (e) {
+		if (!$(e.target).closest(".wiki-search").length) {
+			$results.hide();
+		}
 	});
 
-	// Optionally, show results again on focus if there is input
+	// Optional: show results if input has value on focus
 	$searchInput.on("focus", function () {
-		if ($searchInput.val().trim()) {
+		if ($(this).val().trim() && $results.children().length) {
 			$results.show();
 		}
 	});
