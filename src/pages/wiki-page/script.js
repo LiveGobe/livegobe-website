@@ -713,7 +713,7 @@ $(function () {
 				<a class="wiki-search-item" href="${href}">
 					<div class="wiki-search-title">
 						${title}
-						${r.isRedirect ? `<span class="wiki-search-redirect">→ ${r.redirectTo}</span>` : ""}
+						${r.isRedirect ? `<span class="wiki-search-redirect">→ ${r.redirectTo.replace(/_/g, " ")}</span>` : ""}
 					</div>
 				</a>
 			`);
