@@ -97,6 +97,50 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     return `<span class="lgml-error">LGML: nested module limit exceeded</span>`;
   }
 
+  // --- Per-request module cache (so multiple requires in same render reuse compiled exports)
+  // options._moduleCache is a Map keyed by normalized module name -> exported object
+  if (!options._moduleCache) options._moduleCache = new Map();
+  const moduleCache = options._moduleCache;
+
+  // If we've already loaded this module for this request, reuse it
+  if (moduleCache.has(normalized)) {
+    const cachedExport = moduleCache.get(normalized);
+    // If caller asked for __default__, return exports container
+    if (functionName === "__default__") return { __exports__: cachedExport };
+    // Otherwise, try to call requested function on cached export.
+    // Reconstruct named/positional args locally (same logic as below) so we can
+    // invoke the cached function without depending on later variables.
+    const localNamed = {};
+    const localPos = [];
+    for (const a of args) {
+      const trimmed = (a || "").trim();
+      const eqIndex = trimmed.indexOf("=");
+      if (eqIndex > 0) {
+        const key = trimmed.slice(0, eqIndex).trim();
+        const value = trimmed.slice(eqIndex + 1).trim();
+        localNamed[key] = value;
+      } else {
+        if (trimmed !== "") localPos.push(trimmed);
+      }
+    }
+
+    const fn = cachedExport && cachedExport[functionName];
+    if (!fn || typeof fn !== "function") {
+      return `<span class="lgml-error">LGML: function "${functionName}" not found in Module:${normalized}</span>`;
+    }
+
+    try {
+      if (localPos.length === 0 && Object.keys(localNamed).length > 0)
+        return await fn(localNamed);
+      return await fn.apply(null, localPos.length ? localPos : [localNamed]);
+    } catch (fnErr) {
+      const lineInfo = fnErr.stack?.match(new RegExp(`${normalized}:(\\d+):(\\d+)`));
+      const line = lineInfo ? ` at line ${lineInfo[1]}, column ${lineInfo[2]}` : "";
+      const message = fnErr.message ? `: ${fnErr.message}` : "";
+      return sanitize(`<span class="lgml-error">LGML: error in ${normalized}.${functionName}${line}${message}</span>`, PURIFY_CONFIG);
+    }
+  }
+
   // --- Load module page ---
   let modulePage;
   try {
@@ -438,6 +482,15 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     // --- Determine exports ---
     let exported = sandbox.module.exports || sandbox.exports;
     if (sandbox.exports !== sandbox.module.exports) exported = sandbox.exports;
+
+    // Cache module exports for this request so subsequent requires reuse it
+    try {
+      if (options && options._moduleCache && typeof options._moduleCache.set === 'function') {
+        options._moduleCache.set(normalized, exported);
+      }
+    } catch (e) {
+      // ignore cache set errors
+    }
 
     const isPlainExport =
       exported && typeof exported === "object" && !Object.values(exported).some(v => typeof v === "function");
@@ -1606,6 +1659,11 @@ function restoreNowikiBlocks(text, nowikiBlocks) {
 ---------------------------- */
 async function renderWikiText(text, options = {}) {
   if (!text) return { html: "", categories: [] };
+
+  // Ensure a per-request module cache exists. This Map stores module exports
+  // keyed by module name so repeated `require`/#invoke calls reuse the same
+  // compiled module during a single render request.
+  if (!options._moduleCache) options._moduleCache = new Map();
 
   const { wikiName, pageName, currentNamespace, WikiPage, currentPageId } = options;
 
