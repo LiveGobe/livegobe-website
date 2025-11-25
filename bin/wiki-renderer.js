@@ -436,7 +436,7 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
   function isModuleSafe(code) {
     if (!code || typeof code !== 'string') return false;
     try {
-      const ast = acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'script' });
+      const ast = acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'script', allowAwaitOutsideFunction: true });
       let ok = true;
       walk.simple(ast, {
         Identifier(node) {
@@ -447,7 +447,19 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
           if (node.callee && node.callee.type === 'Identifier' && node.callee.name === 'eval') ok = false;
           if (node.callee && node.callee.type === 'Identifier' && node.callee.name === 'require') {
             const arg = node.arguments && node.arguments[0];
-            if (!arg || arg.type !== 'Literal' || !/^Module:?/i.test(String(arg.value))) ok = false;
+            // require must be a string literal; allow any literal name but block relative/absolute paths and builtin modules
+            if (!arg || arg.type !== 'Literal') ok = false;
+            else {
+              const val = String(arg.value || '').trim();
+              // disallow relative imports or filesystem paths (./, ../, /) or windows absolute paths (C:\)
+              if (/^(?:\.\.?[\/\\]|[\/\\]|[A-Za-z]:[\/\\])/.test(val)) ok = false;
+              try {
+                const builtins = require('module').builtinModules || [];
+                if (builtins.includes(val)) ok = false;
+              } catch (e) {
+                // ignore builtin detection errors
+              }
+            }
           }
         },
         NewExpression(node) {

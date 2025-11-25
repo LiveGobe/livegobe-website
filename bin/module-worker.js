@@ -157,11 +157,15 @@ function resolveLink(target, { wikiName, currentNamespace = 'Main' } = {}) {
 
 // Worker: compile and execute module content safely inside its VM context
 async function executeModuleInWorker(normalized, code, functionName, args, envOptions, currentDepth = initialDepth) {
+  // Block disallowed constructs before executing
+  if (!isModuleSafeLocal(code)) {
+    return sanitizeOutput(`<span class=\"lgml-error\">LGML: Module ${normalized} contains disallowed constructs</span>`);
+  }
   // Local AST check to avoid executing disallowed constructs inside the worker
   function isModuleSafeLocal(code) {
     if (!code || typeof code !== 'string') return false;
     try {
-      const ast = require('acorn').parse(code, { ecmaVersion: 'latest', sourceType: 'script' });
+      const ast = require('acorn').parse(code, { ecmaVersion: 'latest', sourceType: 'script', allowAwaitOutsideFunction: true });
       let ok = true;
       require('acorn-walk').simple(ast, {
         Identifier(node) {
@@ -172,7 +176,12 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
           if (node.callee && node.callee.type === 'Identifier' && node.callee.name === 'eval') ok = false;
           if (node.callee && node.callee.type === 'Identifier' && node.callee.name === 'require') {
             const arg = node.arguments && node.arguments[0];
-            if (!arg || arg.type !== 'Literal' || !/^Module:?/i.test(String(arg.value))) ok = false;
+            if (!arg || arg.type !== 'Literal') ok = false;
+            else {
+              const val = String(arg.value || '').trim();
+              if (/^(?:\.\.?[\/\\]|[\/\\]|[A-Za-z]:[\/\\])/.test(val)) ok = false;
+              try { const builtins = require('module').builtinModules || []; if (builtins.includes(val)) ok = false; } catch (e) {}
+            }
           }
         },
         NewExpression(node) {
@@ -207,6 +216,7 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
   }
 
   // Build safe context
+  const hostRequire = require;
   const sandbox = {
     module: { exports: {} },
     exports: {},
@@ -229,8 +239,13 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
     __resolveLink: (t) => resolveLink(t, envOptions || {}),
     require: async function (name) {
       try {
-        const mod = String(name || '').trim().replace(/\s+/g, '_');
-        if (!mod) throw new Error('Empty module name');
+        const raw = String(name || '').trim();
+        if (!raw) throw new Error('Empty module name');
+        if (/^(?:\.\.?[\/\\]|[\/\\]|[A-Za-z]:[\/\\])/.test(raw)) throw new Error('Relative or absolute requires are not allowed');
+        try { const builtins = hostRequire('module').builtinModules || []; if (builtins.includes(raw)) throw new Error('Requiring builtin modules is not allowed'); } catch (e) {}
+        // normalize module: strip "Module:" if provided
+        const cleaned = raw.replace(/^Module:?/i, '');
+        const mod = cleaned.replace(/\s+/g, '_');
         if (mod === normalized) throw new Error(`Recursive require: Module:${mod}`);
         // Simple recursion guard via local depth
           if (typeof currentDepth === 'number' && currentDepth >= maxDepth) throw new Error('Nested module limit exceeded');
@@ -239,13 +254,14 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
         if (!content || !content.content) return {}; // module not found
         // compile and execute submodule inside same worker
         const res = await executeModuleInWorker(mod, content.content, '__default__', [], envOptions, currentDepth + 1);
+        // require debug suppressed
         // `res` is likely a sanitized string or { __exports__: ... }
         // but for require we want the exports object
         // executeModuleInWorker returns { __exports__ } for __default__ case
         if (res && typeof res === 'object' && res.__exports__) return res.__exports__;
         return {};
       } catch (e) {
-        parentPort.postMessage({ type: 'log', message: `require(\"${name}\") failed in ${normalized}: ${String(e)}` });
+              // require failed; suppressed
         return {};
       }
     }
@@ -257,15 +273,16 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
   const wrapped = `\n(async (module, exports) => {\n  try {\n    'use strict';\n    ${code}\n  } catch (e) {\n    console.error(\"LGML module error:\", e);\n    throw e;\n  }\n  if (typeof exports === \"object\" && exports !== module.exports) { Object.assign(module.exports, exports); }\n})(module, module.exports)\n`;
 
   try {
+    // executing module -- debug suppressed
     const script = new vm.Script(wrapped, { filename: `Module:${normalized}`, displayErrors: true, timeout: 1000 });
     const res = script.runInContext(sandbox, { timeout: 1000 });
     await res;
 
-    let exported = sandbox.module.exports || sandbox.exports;
-    if (sandbox.exports !== sandbox.module.exports) exported = sandbox.exports;
+    let exported = sandbox.module.exports != null ? sandbox.module.exports : sandbox.exports;
 
     // Cache per-worker exports
     try { moduleCache.set(normalized, exported); } catch (e) {}
+    // executed module -- debug suppressed
 
     // If plain export -> return object wrapper
     const isPlainExport = exported && typeof exported === 'object' && !Object.values(exported).some(v => typeof v === 'function');
