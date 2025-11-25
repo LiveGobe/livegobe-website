@@ -350,15 +350,15 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
     }
   }
 
-  // --- Build sandbox with Node-style exports behavior ---
+  // Build sandbox
   const moduleObj = { exports: {} };
-
-  // "exports" starts as a reference:
-  let exportsObj = moduleObj.exports;
 
   const sandbox = {
     module: moduleObj,
-    exports: exportsObj,  // injected
+
+    // exports ALWAYS points to moduleObj.exports
+    get exports() { return moduleObj.exports; },
+    set exports(v) { moduleObj.exports = v; },
     Math: shallowFreeze(Math),
     Date,
     JSON,
@@ -415,7 +415,7 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
   const context = vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
 
   const wrappedCode =
-    `\n(async (module, exports) => {\n'use strict';\n${code}\n})(module, module.exports)\n`;
+    `\n(async (module) => {\n'use strict';\n${code}\n})(module)\n`;
 
   try {
     VM_SCRIPT_OPTIONS.filename = `Module:${normalized}`;
@@ -425,6 +425,8 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
 
     // Sync exports if user assigned `exports = {...}`
     syncExportsBack();
+
+    const exported = moduleObj.exports;
 
     moduleCache.set(normalized, exported);
 
