@@ -10,17 +10,17 @@ const sanitize = DOMPurify.sanitize;
 // --- STATIC CONSTANTS ---
 
 const ALLOWED_TAGS = [
-  "a","b","i","u","s","strong","em","br","p","span","div",
-  "section","header","footer","article","figure","figcaption",
-  "ul","ol","li","table","thead","tbody","tr","td","th",
-  "blockquote","pre","code","hr","h1","h2","h3","h4","h5","h6",
-  "img","button","video","audio","source"
+  "a", "b", "i", "u", "s", "strong", "em", "br", "p", "span", "div",
+  "section", "header", "footer", "article", "figure", "figcaption",
+  "ul", "ol", "li", "table", "thead", "tbody", "tr", "td", "th",
+  "blockquote", "pre", "code", "hr", "h1", "h2", "h3", "h4", "h5", "h6",
+  "img", "button", "video", "audio", "source"
 ];
 
 const ALLOWED_ATTR = [
-  "href","src","alt","title","width","height",
-  "colspan","rowspan","class","id","style",
-  "role","aria-label"
+  "href", "src", "alt", "title", "width", "height",
+  "colspan", "rowspan", "class", "id", "style",
+  "role", "aria-label"
 ];
 
 // Hoisted once (important)
@@ -28,7 +28,7 @@ const PURIFY_CONFIG = Object.freeze({
   ALLOWED_TAGS,
   ALLOWED_ATTR,
   ALLOW_DATA_ATTR: true,
-  FORBID_TAGS: ["script","iframe","object","embed","link","meta"],
+  FORBID_TAGS: ["script", "iframe", "object", "embed", "link", "meta"],
   FORBID_ATTR: [/^on/i],
   KEEP_CONTENT: true,
   ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|ftp|tel|data|#):|[^a-z]|[a-z+.-]+:)/i
@@ -84,16 +84,16 @@ const Either = {
 
 const Assert = {
   required(it) {
-    return Either.assert(it == null || it === '', new TypeError('required',{cause:{value:it}}))(it);
+    return Either.assert(it == null || it === '', new TypeError('required', { cause: { value: it } }))(it);
   },
   number(it) {
-    return Either.assert(typeof it !== 'number' || isNaN(it), new TypeError('not a number',{cause:{value:it}}))(it);
+    return Either.assert(typeof it !== 'number' || isNaN(it), new TypeError('not a number', { cause: { value: it } }))(it);
   },
   string(it) {
-    return Either.assert(typeof it !== 'string', new TypeError('not a string',{cause:{value:it}}))(it);
+    return Either.assert(typeof it !== 'string', new TypeError('not a string', { cause: { value: it } }))(it);
   },
   object(it) {
-    return Either.assert(typeof it !== 'object' || it == null, new TypeError('not a object',{cause:{value:it}}))(it);
+    return Either.assert(typeof it !== 'object' || it == null, new TypeError('not a object', { cause: { value: it } }))(it);
   },
   range(min, max) {
     return it => pipe(
@@ -101,13 +101,13 @@ const Assert = {
       Assert.number,
       Either.chain(
         Either.assert(it < min || it > max,
-          new Error(`out of range [${min}, ${max}]`,{cause:{value:it,min,max}})
+          new Error(`out of range [${min}, ${max}]`, { cause: { value: it, min, max } })
         )
       )
     );
   },
   oneOf(list) {
-    return it => Either.assert(!list.includes(it), new Error("expected to be one of",{cause:{value:it,entries:list}}))(it);
+    return it => Either.assert(!list.includes(it), new Error("expected to be one of", { cause: { value: it, entries: list } }))(it);
   },
   keyOf(obj) { return Assert.oneOf(Object.keys(obj)); },
 
@@ -130,7 +130,7 @@ const Assert = {
       }
 
       return Either.assert(failed,
-        new Error('object assert exeption',{cause:{value:it,errors}})
+        new Error('object assert exeption', { cause: { value: it, errors } })
       )(out);
     };
   }
@@ -146,7 +146,7 @@ const Decode = {
       if (typeof v === 'string') v = v.trim();
       if (v === '') return Either.ok(null);
       const n = typeof v.valueOf === 'function' ? Number(v.valueOf()) : Number(v);
-      return isNaN(n) ? Either.error(new TypeError('not a number',{cause:{value:v}})) : Either.ok(n);
+      return isNaN(n) ? Either.error(new TypeError('not a number', { cause: { value: v } })) : Either.ok(n);
     }
 
     const decoder = (value, ...asserts) =>
@@ -181,7 +181,7 @@ const Decode = {
   })()
 };
 
-const Enum = { create(o){ const out={}; for(const k of Object.keys(o)) out[k]=k; return out; }};
+const Enum = { create(o) { const out = {}; for (const k of Object.keys(o)) out[k] = k; return out; } };
 
 // Freeze top-level helpers
 shallowFreeze(pipe); shallowFreeze(flow);
@@ -214,7 +214,7 @@ function fetchPage(kind, name) {
     }
 
     parentPort.on('message', onMessage);
-    parentPort.postMessage({ type:'getPage', id, kind, name });
+    parentPort.postMessage({ type: 'getPage', id, kind, name });
   });
 }
 
@@ -223,7 +223,7 @@ function sanitizeAnchor(t) {
   return t.replace(/[^a-zA-Z0-9_\-:.]/g, '');
 }
 
-function resolveLink(target, { wikiName, currentNamespace='Main' } = {}) {
+function resolveLink(target, { wikiName, currentNamespace = 'Main' } = {}) {
   if (!target) return '#';
   target = target.trim();
   if (target.startsWith('#')) return "#" + sanitizeAnchor(target.slice(1));
@@ -234,24 +234,24 @@ function resolveLink(target, { wikiName, currentNamespace='Main' } = {}) {
 
   const hashI = page.indexOf('#');
   if (hashI !== -1) {
-    anchor = sanitizeAnchor(page.slice(hashI+1));
+    anchor = sanitizeAnchor(page.slice(hashI + 1));
     page = page.slice(0, hashI);
   }
 
   const nsI = page.indexOf(':');
   if (nsI !== -1) {
     namespace = page.slice(0, nsI);
-    page = page.slice(nsI+1);
+    page = page.slice(nsI + 1);
   }
 
-  const pagePath = page.replace(/\s+/g,'_');
+  const pagePath = page.replace(/\s+/g, '_');
   const urlPath = namespace === 'Main' ? pagePath : `${namespace}:${pagePath}`;
 
-  const safeWiki = (wikiName||'').replace(/ /g,'-');
+  const safeWiki = (wikiName || '').replace(/ /g, '-');
   const safeUrl = urlPath.split('/')
     .map(seg => encodeURIComponent(seg))
     .join('/')
-    .replace(/%3A/g,':');
+    .replace(/%3A/g, ':');
 
   const base = `/wikis/${safeWiki}/${safeUrl}`;
   return anchor ? `${base}#${anchor}` : base;
@@ -279,7 +279,7 @@ function isModuleSafeLocal(code) {
     Identifier(n) {
       const name = n.name;
       if (name === 'process' || name === 'global' || name === 'globalThis' ||
-          name === 'Buffer' || name === 'XMLHttpRequest' || name === 'fetch')
+        name === 'Buffer' || name === 'XMLHttpRequest' || name === 'fetch')
         ok = false;
     },
 
@@ -350,12 +350,15 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
     }
   }
 
-  // BUILD SANDBOX (same logic, but hoisted pieces reused)
-  const hostRequire = require;
+  // --- Build sandbox with Node-style exports behavior ---
+  const moduleObj = { exports: {} };
+
+  // "exports" starts as a reference:
+  let exportsObj = moduleObj.exports;
 
   const sandbox = {
-    module: { exports: {} },
-    exports: {},
+    module: moduleObj,
+    exports: exportsObj,  // injected
     Math: shallowFreeze(Math),
     Date,
     JSON,
@@ -401,7 +404,13 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
     }
   };
 
-  sandbox.exports = sandbox.module.exports;
+  // After execution, if user overwrote `exports = {...}`,
+  // sync it back into module.exports.
+  function syncExportsBack() {
+    if (sandbox.exports !== moduleObj.exports) {
+      moduleObj.exports = sandbox.exports;
+    }
+  }
 
   const context = vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
 
@@ -414,7 +423,8 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
     const runFn = script.runInContext(context, { timeout: 1000 });
     await runFn;
 
-    const exported = sandbox.module.exports || sandbox.exports;
+    // Sync exports if user assigned `exports = {...}`
+    syncExportsBack();
 
     moduleCache.set(normalized, exported);
 
@@ -454,11 +464,11 @@ async function executeModuleInWorker(normalized, code, functionName, args, envOp
     const env = workerData.options || {};
 
     const result = await executeModuleInWorker(name, code, fn, args, env);
-    parentPort.postMessage({ type:'result', result });
+    parentPort.postMessage({ type: 'result', result });
 
   } catch (error) {
     parentPort.postMessage({
-      type:'error',
+      type: 'error',
       error: error.message || String(error),
       stack: error.stack
     });
