@@ -12,6 +12,8 @@
   "author": "LiveGobe",
   "license": "ISC",
   "dependencies": {
+    "acorn": "^8.9.0",
+    "acorn-walk": "^8.2.0",
     "@vitalets/google-translate-api": "^9.2.1",
     "accept-language-parser": "^1.5.0",
     "axios": "^1.12.0",

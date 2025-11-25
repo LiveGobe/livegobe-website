@@ -79,6 +79,10 @@ const sanitize = DOMPurify.sanitize;
    - Supports async module functions (awaits returned promises)
 ----------------------------*/
 const vm = require("vm");
+const { Worker } = require("worker_threads");
+const acorn = require('acorn');
+const walk = require('acorn-walk');
+const workerPath = path.join(__dirname, 'module-worker.js');
 
 /**
  * Execute a module function, e.g. {{#invoke:ModuleName|funcName|arg1|arg2}}
@@ -428,95 +432,113 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
   }
   /* END of Padreramnt1 Implementation */
 
-  // --- Sandbox setup ---
-  const sandbox = {
-    module: { exports: {} },
-    exports: {},
-    Math, Date, JSON, String, Number, Boolean, Array, Object, Promise, pipe, flow, Either, Decode, Assert,
-    require: async function (name) {
-      try {
-        const mod = String(name || "").trim().replace(/\s+/g, "_");
-        if (!mod) throw new Error("Empty module name");
-        if (mod === normalized) throw new Error(`Recursive require: Module:${mod}`);
-        const subOptions = { ...options, _depth: depth + 1 };
-        const subResult = await executeWikiModule(subOptions, mod, "__default__");
-        return subResult?.__exports__ || {};
-      } catch (err) {
-        console.error(`[LGML] require("${name}") failed in ${normalized}:`, err);
-        return {};
-      }
-    },
-    __resolveLink(target) {
-      try {
-        const wikiName = options.wikiName || "";
-        return resolveLink(target, { wikiName, currentNamespace: options.currentNamespace });
-      } catch {
-        return "#";
-      }
+  // --- AST quick safety check (disallow imports, eval, new Function, process, Buffer, globalThis) ---
+  function isModuleSafe(code) {
+    if (!code || typeof code !== 'string') return false;
+    try {
+      const ast = acorn.parse(code, { ecmaVersion: 'latest', sourceType: 'script' });
+      let ok = true;
+      walk.simple(ast, {
+        Identifier(node) {
+          const name = node.name;
+          if (['process', 'global', 'globalThis', 'Buffer', 'XMLHttpRequest', 'fetch'].includes(name)) ok = false;
+        },
+        CallExpression(node) {
+          if (node.callee && node.callee.type === 'Identifier' && node.callee.name === 'eval') ok = false;
+          if (node.callee && node.callee.type === 'Identifier' && node.callee.name === 'require') {
+            const arg = node.arguments && node.arguments[0];
+            if (!arg || arg.type !== 'Literal' || !/^Module:?/i.test(String(arg.value))) ok = false;
+          }
+        },
+        NewExpression(node) {
+          if (node.callee && node.callee.type === 'Identifier' && node.callee.name === 'Function') ok = false;
+        },
+        ImportDeclaration() { ok = false; },
+        ImportExpression() { ok = false; },
+        ExportNamedDeclaration() { ok = false; },
+        ExportDefaultDeclaration() { ok = false; },
+        ExportAllDeclaration() { ok = false; }
+      });
+      return ok;
+    } catch (e) {
+      return false;
     }
-  };
-  sandbox.exports = sandbox.module.exports;
-  vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
+  }
 
+  // --- Use a worker to run the module code for isolation and resource limits ---
   try {
     // --- Wrap module in async IIFE to support top-level await ---
-    const wrapped = `
-(async (module, exports) => {
-  try {
-    ${modulePage.content}
-  } catch (e) {
-    console.error("LGML module error:", e);
-    throw e;
-  }
-  // Merge top-level returned object into module.exports
-  if (typeof exports === "object" && exports !== module.exports) {
-    Object.assign(module.exports, exports);
-  }
-})(module, module.exports)
-`;
-
-    const script = new vm.Script(wrapped, { filename: `Module:${normalized}`, displayErrors: true, timeout: 1000 });
-    const resultPromise = script.runInContext(sandbox, { timeout: 1000 });
-    await resultPromise;
-
-    // --- Determine exports ---
-    let exported = sandbox.module.exports || sandbox.exports;
-    if (sandbox.exports !== sandbox.module.exports) exported = sandbox.exports;
-
-    // Cache module exports for this request so subsequent requires reuse it
-    try {
-      if (options && options._moduleCache && typeof options._moduleCache.set === 'function') {
-        options._moduleCache.set(normalized, exported);
-      }
-    } catch (e) {
-      // ignore cache set errors
+    if (!isModuleSafe(modulePage.content)) {
+      return `<span class="lgml-error">LGML: Module ${normalized} contains disallowed constructs</span>`;
     }
 
-    const isPlainExport =
-      exported && typeof exported === "object" && !Object.values(exported).some(v => typeof v === "function");
+    // Sanitize/serialize some options to send to worker
+    const workerOptions = {
+      wikiName: options.wikiName,
+      currentNamespace: options.currentNamespace,
+      depth,
+      _maxDepth: 10
+    };
 
-    if (functionName === "__default__" || isPlainExport) return { __exports__: exported };
+    const worker = new Worker(workerPath, {
+      workerData: {
+        moduleName: normalized,
+        functionName,
+        args: positionalArgs.length === 0 && Object.keys(namedArgs).length > 0 ? [namedArgs] : positionalArgs.length ? positionalArgs : [namedArgs],
+        code: modulePage.content,
+        options: workerOptions
+      },
+      resourceLimits: { maxOldGenerationSizeMb: 256 }
+    });
 
-    const fn = exported[functionName];
-    if (!fn || typeof fn !== "function") {
-      return `<span class="lgml-error">LGML: function "${functionName}" not found in Module:${normalized}</span>`;
-    }
+    let timer;
+    const timeoutMs = 2000; // overall execution timeout
+    const result = await new Promise((resolve, reject) => {
+      const onMessage = async (msg) => {
+        if (!msg || !msg.type) return;
+        if (msg.type === 'getPage') {
+          // a worker requests a page from DB
+          try {
+            const { id, kind, name } = msg;
+            const p = await options.getPage(kind, name);
+            worker.postMessage({ type: 'getPageResponse', id, content: p });
+          } catch (e) {
+            worker.postMessage({ type: 'getPageResponse', id, content: null });
+          }
+          return;
+        }
+        if (msg.type === 'log') {
+          try { console.error('[LGML Worker] ', msg.message); } catch (e) {}
+          return;
+        }
+        if (msg.type === 'result') {
+          clearTimeout(timer);
+          resolve(msg.result);
+        } else if (msg.type === 'error') {
+          clearTimeout(timer);
+          reject(new Error(msg.error || 'Module execution error'));
+        }
+      };
+      worker.on('message', onMessage);
+      worker.on('error', (err) => { clearTimeout(timer); reject(err); });
+      worker.on('exit', (code) => { if (code !== 0) clearTimeout(timer); });
+      timer = setTimeout(() => {
+        try { worker.terminate(); } catch (e) {}
+        reject(new Error('Module execution timeout'));
+      }, timeoutMs);
+    }).catch((err) => {
+      return sanitize(`<span class="lgml-error">LGML: execution error in ${normalized}: ${String(err)}</span>`, PURIFY_CONFIG);
+    });
 
-    let result;
-    try {
-      if (positionalArgs.length === 0 && Object.keys(namedArgs).length > 0)
-        result = await fn(namedArgs);
-      else
-        result = await fn.apply(null, positionalArgs.length ? positionalArgs : [namedArgs]);
-    } catch (fnErr) {
-      const lineInfo = fnErr.stack?.match(new RegExp(`${normalized}:(\\d+):(\\d+)`));
-      const line = lineInfo ? ` at line ${lineInfo[1]}, column ${lineInfo[2]}` : "";
-      const message = fnErr.message ? `: ${fnErr.message}` : "";
-      return sanitize(`<span class="lgml-error">LGML: error in ${normalized}.${functionName}${line}${message}</span>`, PURIFY_CONFIG);
-    }
 
+    // the worker returned a sanitized or serialized result
     if (result == null) return "";
-    if (typeof result === "string") return result;
+    if (typeof result === 'object' && result.__exports__) {
+      // cache the plain exports (if serializable) and return
+      try { if (options && options._moduleCache && typeof options._moduleCache.set === 'function') options._moduleCache.set(normalized, result.__exports__); } catch (e) {}
+      return { __exports__: result.__exports__ };
+    }
+    if (typeof result === 'string') return result;
     try { return String(result); } catch { return JSON.stringify(result); }
 
   } catch (err) {
