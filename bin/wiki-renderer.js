@@ -78,7 +78,7 @@ const sanitize = DOMPurify.sanitize;
    - Executes module code in a small vm sandbox (no require/process)
    - Supports async module functions (awaits returned promises)
 ----------------------------*/
-const vm = require("vm");
+const VM = require("vm2");
 
 /**
  * Execute a module function, e.g. {{#invoke:ModuleName|funcName|arg1|arg2}}
@@ -456,7 +456,8 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
   };
   sandbox.exports = sandbox.module.exports;
-  vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
+  //vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
+  const vm = new VM.VM({ timeout: 2000, sandbox, allowAsync: true });
 
   try {
     // --- Wrap module in async IIFE to support top-level await ---
@@ -475,9 +476,8 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 })(module, module.exports)
 `;
 
-    const script = new vm.Script(wrapped, { filename: `Module:${normalized}`, displayErrors: true, timeout: 1000 });
-    const resultPromise = script.runInContext(sandbox, { timeout: 1000 });
-    await resultPromise;
+    // --- Execute module code ---
+    await vm.run(wrapped, `LGML:Module:${normalized}`);
 
     // --- Determine exports ---
     let exported = sandbox.module.exports || sandbox.exports;
