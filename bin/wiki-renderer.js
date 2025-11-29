@@ -171,260 +171,260 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 
   /* Padreramnt1 Implementations */
   function pipe(value, ...functions) {
-      return functions.reduce((res, fn) => fn(res), value)
+    return functions.reduce((res, fn) => fn(res), value)
   }
 
   function flow(...functions) {
-      return (value) => pipe(value, ...functions)
+    return (value) => pipe(value, ...functions)
   }
 
   const Either = {
-      is(it) {
-          return typeof it === 'object' && null != it && 'Either' === it._type
-      },
-      error(error) {
-          return {
-              _type: 'Either',
-              ok: false,
-              error,
-          }
-      },
-      ok(value) {
-          return {
-              _type: 'Either',
-              ok: true,
-              value,
-          }
-      },
-      assert(condition, error) {
-          return (value) => {
-              return !condition
-                  ? Either.ok(value)
-                  : Either.error(error)
-          }
-      },
-      map(fn) {
-          return (either) => {
-              if (either.ok) {
-                  return Either.ok(fn(either.value))
-              }
-              return either
-          }
-      },
-      flattern(either) {
-          if (!either.ok) {
-              return either
-          }
-          if (!either.value.ok) {
-              return either.value
-          }
-          return Either.ok(either.value.value)
-      },
-      chain(fn) {
-          return (either) => {
-              return pipe(
-                  either,
-                  Either.map(fn),
-                  Either.flattern,
-              )
-          }
-      },
-      unwrap(either) {
-          if (!either.ok) {
-              if (either.error instanceof Error) {
-                  throw either.error
-              }
-              throw new Error(either.error)
-          }
-          return either.value
-      },
-      tryCatch(fn) {
-          return (it) => {
-              try {
-                  return Either.ok(fn(it))
-              } catch (error) {
-                  return Either.error(error)
-              }
-          }
-      },
+    is(it) {
+      return typeof it === 'object' && null != it && 'Either' === it._type
+    },
+    error(error) {
+      return {
+        _type: 'Either',
+        ok: false,
+        error,
+      }
+    },
+    ok(value) {
+      return {
+        _type: 'Either',
+        ok: true,
+        value,
+      }
+    },
+    assert(condition, error) {
+      return (value) => {
+        return !condition
+          ? Either.ok(value)
+          : Either.error(error)
+      }
+    },
+    map(fn) {
+      return (either) => {
+        if (either.ok) {
+          return Either.ok(fn(either.value))
+        }
+        return either
+      }
+    },
+    flattern(either) {
+      if (!either.ok) {
+        return either
+      }
+      if (!either.value.ok) {
+        return either.value
+      }
+      return Either.ok(either.value.value)
+    },
+    chain(fn) {
+      return (either) => {
+        return pipe(
+          either,
+          Either.map(fn),
+          Either.flattern,
+        )
+      }
+    },
+    unwrap(either) {
+      if (!either.ok) {
+        if (either.error instanceof Error) {
+          throw either.error
+        }
+        throw new Error(either.error)
+      }
+      return either.value
+    },
+    tryCatch(fn) {
+      return (it) => {
+        try {
+          return Either.ok(fn(it))
+        } catch (error) {
+          return Either.error(error)
+        }
+      }
+    },
   }
 
   const Decode = {
-      default(fallback) {
-          return Either.chain(value => null == value ? fallback : value)
-      },
-      number: (() => {
-          function convert(value) {
-              if (typeof value === 'string') {
-                  value = value.trim()
-              }
-              if ('' === value) {
-                  return Either.ok(null)
-              }
-              const valueOf = value.valueOf()
-              const asNumber = typeof valueOf === 'number' ? valueOf : Number(valueOf)
-              if (isNaN(asNumber)) {
-                  return Either.error(new TypeError(`not a number`, { cause: { value } }))
-              }
-              return Either.ok(asNumber)
-          }
+    default(fallback) {
+      return Either.chain(value => null == value ? fallback : value)
+    },
+    number: (() => {
+      function convert(value) {
+        if (typeof value === 'string') {
+          value = value.trim()
+        }
+        if ('' === value) {
+          return Either.ok(null)
+        }
+        const valueOf = value.valueOf()
+        const asNumber = typeof valueOf === 'number' ? valueOf : Number(valueOf)
+        if (isNaN(asNumber)) {
+          return Either.error(new TypeError(`not a number`, { cause: { value } }))
+        }
+        return Either.ok(asNumber)
+      }
 
-          const decoder = (value, ...asserts) => {
-              return pipe(
-                  value,
-                  convert,
-                  Either.chain(Assert.required),
-                  ...asserts.map(Either.chain),
-                  Either.unwrap
-              )
-          }
-          decoder.optional = (value, ...asserts) => {
-              return pipe(
-                  value,
-                  convert,
-                  ...asserts.map(Either.chain),
-                  Either.unwrap
-              )
-          }
-          return decoder
-      })(),
-      string: (() => {
-          const convert = (value) => {
-              if (null == value) {
-                  return Either.ok(value)
-              }
-              return Either.ok(typeof value === 'string' ? value : value.toString())
-          }
-          const decoder = (value, ...asserts) => {
-              return pipe(
-                  value,
-                  convert,
-                  Either.chain(Assert.required),
-                  ...asserts.map(Either.chain),
-                  Either.unwrap,
-              )
-          }
-          decoder.optional = (value, ...asserts) => {
-              return pipe(
-                  value,
-                  ...asserts.map(Either.chain),
-                  Either.unwrap,
-              )
-          }
-          return decoder
-      })(),
-      object: (() => {
-          const decoder = (scheme, value, ...asserts) => {
-              return pipe(
-                  value,
-                  Assert.required,
-                  Either.chain(Assert.scheme(scheme)),
-                  ...asserts.map(Either.chain),
-                  Either.unwrap,
-              )
-          }
-          decoder.optional = (scheme, value, ...asserts) => {
-              return pipe(
-                  value,
-                  Either.chain(Assert.scheme(scheme)),
-                  ...asserts.map(Either.chain),
-                  Either.unwrap,
-              )
-          }
-          return decoder
-      })()
+      const decoder = (value, ...asserts) => {
+        return pipe(
+          value,
+          convert,
+          Either.chain(Assert.required),
+          ...asserts.map(Either.chain),
+          Either.unwrap
+        )
+      }
+      decoder.optional = (value, ...asserts) => {
+        return pipe(
+          value,
+          convert,
+          ...asserts.map(Either.chain),
+          Either.unwrap
+        )
+      }
+      return decoder
+    })(),
+    string: (() => {
+      const convert = (value) => {
+        if (null == value) {
+          return Either.ok(value)
+        }
+        return Either.ok(typeof value === 'string' ? value : value.toString())
+      }
+      const decoder = (value, ...asserts) => {
+        return pipe(
+          value,
+          convert,
+          Either.chain(Assert.required),
+          ...asserts.map(Either.chain),
+          Either.unwrap,
+        )
+      }
+      decoder.optional = (value, ...asserts) => {
+        return pipe(
+          value,
+          ...asserts.map(Either.chain),
+          Either.unwrap,
+        )
+      }
+      return decoder
+    })(),
+    object: (() => {
+      const decoder = (scheme, value, ...asserts) => {
+        return pipe(
+          value,
+          Assert.required,
+          Either.chain(Assert.scheme(scheme)),
+          ...asserts.map(Either.chain),
+          Either.unwrap,
+        )
+      }
+      decoder.optional = (scheme, value, ...asserts) => {
+        return pipe(
+          value,
+          Either.chain(Assert.scheme(scheme)),
+          ...asserts.map(Either.chain),
+          Either.unwrap,
+        )
+      }
+      return decoder
+    })()
   }
 
   const Assert = {
-      required(it) {
-          return Either.assert(null == it || '' == it, new TypeError('required', {
-              cause: {
-                  value: it
-              }
-          }))(it)
-      },
-      number(it) {
-          return Either.assert(typeof it !== 'number' || isNaN(it), new TypeError('not a number', {
-              cause: {
-                  value: it
-              }
-          }))(it)
-      },
-      string(it) {
-          return Either.assert(typeof it !== 'string', new TypeError(`not a string`, {
-              cause: {
-                  value: it
-              }
-          }))(it)
-      },
-      object(it) {
-          return Either.assert(typeof it !== 'object' || null == it, new TypeError(`not a object`, {
-              cause: {
-                  value: it
-              }
-          }))(it)
-      },
-      range(min, max) {
-          return (it) => {
-              return pipe(
-                  it,
-                  Assert.number,
-                  Either.chain(Either.assert(it < min || max < it), new Error(`out of range [${min}, ${max}]`, {
-                      cause: {
-                          value: it,
-                          min,
-                          max,
-                          range: [min, max]
-                      }
-                  })),
-              )
-          }
-      },
-      oneOf(entries) {
-          return (it) => {
-              return Either.assert(!entries.includes(it), new Error(`expected to be one of`, {
-                  cause: {
-                      value: it,
-                      entries
-                  }
-              }))(it)
-          }
-      },
-      keyOf(obj) {
-          const keys = Object.keys(obj)
-          return Assert.oneOf(keys)
-      },
-      scheme(obj) {
-          const keys = Object.keys(obj)
-          return (it) => {
-              let failed = false;
-              let out = {};
-              let errors = {}
-              keys.forEach(key => {
-                  const value = it[key]
-                  const check = obj[key]
-                  const res = pipe(value, Either.tryCatch(check))
-                  if (res.ok) {
-                      out[key] = res.value
-                  } else {
-                      failed = true
-                      errors[key] = res.error
-                  }
-              })
-              return Either.assert(failed, new Error(`object assert exeption`, {
-                  cause: {
-                      value: it,
-                      errors
-                  }
-              }))(out)
-          }
+    required(it) {
+      return Either.assert(null == it || '' == it, new TypeError('required', {
+        cause: {
+          value: it
+        }
+      }))(it)
+    },
+    number(it) {
+      return Either.assert(typeof it !== 'number' || isNaN(it), new TypeError('not a number', {
+        cause: {
+          value: it
+        }
+      }))(it)
+    },
+    string(it) {
+      return Either.assert(typeof it !== 'string', new TypeError(`not a string`, {
+        cause: {
+          value: it
+        }
+      }))(it)
+    },
+    object(it) {
+      return Either.assert(typeof it !== 'object' || null == it, new TypeError(`not a object`, {
+        cause: {
+          value: it
+        }
+      }))(it)
+    },
+    range(min, max) {
+      return (it) => {
+        return pipe(
+          it,
+          Assert.number,
+          Either.chain(Either.assert(it < min || max < it), new Error(`out of range [${min}, ${max}]`, {
+            cause: {
+              value: it,
+              min,
+              max,
+              range: [min, max]
+            }
+          })),
+        )
       }
+    },
+    oneOf(entries) {
+      return (it) => {
+        return Either.assert(!entries.includes(it), new Error(`expected to be one of`, {
+          cause: {
+            value: it,
+            entries
+          }
+        }))(it)
+      }
+    },
+    keyOf(obj) {
+      const keys = Object.keys(obj)
+      return Assert.oneOf(keys)
+    },
+    scheme(obj) {
+      const keys = Object.keys(obj)
+      return (it) => {
+        let failed = false;
+        let out = {};
+        let errors = {}
+        keys.forEach(key => {
+          const value = it[key]
+          const check = obj[key]
+          const res = pipe(value, Either.tryCatch(check))
+          if (res.ok) {
+            out[key] = res.value
+          } else {
+            failed = true
+            errors[key] = res.error
+          }
+        })
+        return Either.assert(failed, new Error(`object assert exeption`, {
+          cause: {
+            value: it,
+            errors
+          }
+        }))(out)
+      }
+    }
   }
 
   const Enum = {
-      create(obj) {
-          return Object.keys(obj).reduce((a, c) => (a[c] = c, a), {})
-      }
+    create(obj) {
+      return Object.keys(obj).reduce((a, c) => (a[c] = c, a), {})
+    }
   }
   /* END of Padreramnt1 Implementation */
 
@@ -577,8 +577,8 @@ function tokenize(text, options = {}) {
   let codeBuffer = [];
 
   function tokenizeTables(startIndex) {
-    const table = { 
-      type: "tableBlock", 
+    const table = {
+      type: "tableBlock",
       attrs: lines[startIndex].replace(/^\{\|\s*/, "").trim(),
       caption: null,
       rows: []
@@ -876,7 +876,7 @@ function renderInline(parts, { wikiName, currentNamespace, existingFiles = new S
       return "";
     }
   }
-  
+
   return parts.map(part => {
     if (part.type === "text") return formatText(part.value);
 
@@ -1166,7 +1166,7 @@ async function renderCell(cell, isHeader, expandTemplatesFn, options = {}) {
   let rowspan = "", colspan = "";
   if (spanMatch) {
     for (const m of spanMatch) {
-      const [, key,, val] = m.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/);
+      const [, key, , val] = m.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/);
       if (key.toLowerCase() === "rowspan") rowspan = val;
       if (key.toLowerCase() === "colspan") colspan = val;
     }
@@ -1470,9 +1470,9 @@ function isBlockHTML(chunk) {
    Nowiki Helper
 ---------------------------- */
 function wrapNowiki(content) {
-    if (!content) return "";
-    // Escape any nested <nowiki> tags to prevent breaking
-    return `<nowiki>${content.replace(/<\/?nowiki>/g, m => m === '<nowiki>' ? '&lt;nowiki&gt;' : '&lt;/nowiki&gt;')}</nowiki>`;
+  if (!content) return "";
+  // Escape any nested <nowiki> tags to prevent breaking
+  return `<nowiki>${content.replace(/<\/?nowiki>/g, m => m === '<nowiki>' ? '&lt;nowiki&gt;' : '&lt;/nowiki&gt;')}</nowiki>`;
 }
 
 /* ---------------------------
@@ -1481,116 +1481,122 @@ function wrapNowiki(content) {
 const MAX_TEMPLATE_DEPTH = 10;
 
 async function expandTemplates(text, options = {}, depth = 0, visited = new Set()) {
-    const { getPage, pageName, currentNamespace, currentPageId, WikiPage } = options;
-    if (!getPage || depth > MAX_TEMPLATE_DEPTH) return text;
+  const { getPage, pageName, currentNamespace, currentPageId, WikiPage } = options;
+  if (!getPage || depth > MAX_TEMPLATE_DEPTH) return text;
 
-    // --- PREPASS: Protect built-in escape templates (like {{!}}, {{[}}, etc.) ---
-    for (const [name, entity] of Object.entries(BUILTIN_TEMPLATES)) {
-      // Escape any regex special characters in the template name
-      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`\\{\\{${escapedName}\\}\\}`, 'g');
-      text = text.replace(regex, entity);
+  // --- PREPASS: Protect built-in escape templates (like {{!}}, {{[}}, etc.) ---
+  for (const [name, entity] of Object.entries(BUILTIN_TEMPLATES)) {
+    // Escape any regex special characters in the template name
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\{\\{${escapedName}\\}\\}`, 'g');
+    text = text.replace(regex, entity);
+  }
+
+  // Match any double-brace block (including #invoke)
+  const templateRegex = /\{\{([^{}]+?)\}\}(?!\})/g;
+
+  async function replaceTemplate(match, inner) {
+    const trimmed = inner.trim();
+
+    // === LGML: #invoke ===
+    // Syntax: {{#invoke:ModuleName|functionName|arg1|arg2|...}}
+    // === LGML: #invoke ===
+    if (/^#invoke:/i.test(trimmed)) {
+      const invokeParts = trimmed.split("|");
+      const invokeHeader = invokeParts.shift(); // "#invoke:ModuleName"
+      const moduleName = invokeHeader.split(":")[1]?.trim();
+      const functionName = (invokeParts.shift() || "").trim();
+      let args = invokeParts.map(p => p.trim());
+
+      if (!moduleName || !functionName)
+        return `<span class="error">[Invalid #invoke syntax]</span>`;
+
+      // --- Skip if /doc page ---
+      if (moduleName.endsWith("/doc")) {
+        return `<span class="error">[Cannot invoke documentation page: ${moduleName}]</span>`;
+      }
+
+      // --- EXPAND TEMPLATES INSIDE ARGUMENTS ---
+      for (let i = 0; i < args.length; i++) {
+        args[i] = await expandTemplates(args[i], options, depth + 1, visited);
+      }
+
+      try {
+        const result = await executeWikiModule(options, moduleName, functionName, args);
+        return result ?? "";
+      } catch (err) {
+        console.error(`[LGML] Error in #invoke ${moduleName}.${functionName}:`, err);
+        return `<span class="error">[LGML execution error]</span>`;
+      }
     }
 
-    // Match any double-brace block (including #invoke)
-    const templateRegex = /\{\{([^{}]+?)\}\}(?!\})/g;
+    // === Normal Template Handling ===
+    const parts = trimmed.split("|");
+    const name = parts.shift().trim();
+    const normalizedName = name.replace(/ /g, "_");
 
-    async function replaceTemplate(match, inner) {
-        const trimmed = inner.trim();
-
-        // === LGML: #invoke ===
-        // Syntax: {{#invoke:ModuleName|functionName|arg1|arg2|...}}
-        if (/^#invoke:/i.test(trimmed)) {
-            const invokeParts = trimmed.split("|");
-            const invokeHeader = invokeParts.shift(); // "#invoke:ModuleName"
-            const moduleName = invokeHeader.split(":")[1]?.trim();
-            const functionName = (invokeParts.shift() || "").trim();
-            const args = invokeParts.map(p => p.trim());
-
-            if (!moduleName || !functionName)
-                return `<span class="error">[Invalid #invoke syntax]</span>`;
-
-            // --- Skip if /doc page ---
-            if (moduleName.endsWith("/doc")) {
-                return `<span class="error">[Cannot invoke documentation page: ${moduleName}]</span>`;
-            }
-
-            try {
-                const result = await executeWikiModule(options, moduleName, functionName, args);
-                return result ?? "";
-            } catch (err) {
-                console.error(`[LGML] Error in #invoke ${moduleName}.${functionName}:`, err);
-                return `<span class="error">[LGML execution error]</span>`;
-            }
-        }
-
-        // === Normal Template Handling ===
-        const parts = trimmed.split("|");
-        const name = parts.shift().trim();
-        const normalizedName = name.replace(/ /g, "_");
-
-        // === Magic words ===
-        const upperName = normalizedName.toUpperCase();
-        switch (upperName) {
-            case "PAGENAME": return pageName?.replace(/_/g, " ") || "";
-            case "NAMESPACE": return currentNamespace || "";
-            case "FULLPAGENAME":
-                return currentNamespace
-                    ? `${currentNamespace}:${pageName?.replace(/_/g, " ")}`
-                    : pageName?.replace(/_/g, " ");
-        }
-
-        // === Built-in templates ===
-        if (BUILTIN_TEMPLATES.hasOwnProperty(normalizedName)) {
-            return BUILTIN_TEMPLATES[normalizedName];
-        }
-
-        // === Prevent recursion ===
-        const templateKey = `Template:${normalizedName}`;
-        if (visited.has(templateKey))
-            return `<span class="error">[Recursive template: ${normalizedName}]</span>`;
-        visited.add(templateKey);
-
-        // === Fetch template ===
-        const templatePage = await getPage("Template", normalizedName);
-        if (!templatePage || !templatePage.content) {
-            return `<span class="missing-template">{{${name}}}</span>`;
-        }
-
-        // === Process includeonly/noinclude/onlyinclude ===
-        let content = processIncludeBlocks(templatePage.content, false);
-
-        // === Replace parameters ===
-        content = content.replace(/\{\{\{([^{}]+)\}\}\}/g, (_, key) => {
-            key = key.trim();
-            const named = parts.find(p => p.startsWith(key + "="));
-            if (named) return named.split("=").slice(1).join("=").trim();
-
-            const index = parseInt(key);
-            if (!isNaN(index) && parts[index - 1]) return parts[index - 1].trim();
-
-            return `{{{${key}}}}`;
-        });
-
-        // === Recursively expand nested templates ===
-        const expanded = await expandTemplates(content, options, depth + 1, visited);
-
-        visited.delete(templateKey);
-        return expanded;
+    // === Magic words ===
+    const upperName = normalizedName.toUpperCase();
+    switch (upperName) {
+      case "PAGENAME": return pageName?.replace(/_/g, " ") || "";
+      case "NAMESPACE": return currentNamespace || "";
+      case "FULLPAGENAME":
+        return currentNamespace
+          ? `${currentNamespace}:${pageName?.replace(/_/g, " ")}`
+          : pageName?.replace(/_/g, " ");
     }
 
-    let result = "";
-    let lastIndex = 0;
-    let match;
-
-    while ((match = templateRegex.exec(text)) !== null) {
-        result += text.slice(lastIndex, match.index);
-        result += await replaceTemplate(match[0], match[1]);
-        lastIndex = templateRegex.lastIndex;
+    // === Built-in templates ===
+    if (BUILTIN_TEMPLATES.hasOwnProperty(normalizedName)) {
+      return BUILTIN_TEMPLATES[normalizedName];
     }
 
-    result += text.slice(lastIndex);
-    return result;
+    // === Prevent recursion ===
+    const templateKey = `Template:${normalizedName}`;
+    if (visited.has(templateKey))
+      return `<span class="error">[Recursive template: ${normalizedName}]</span>`;
+    visited.add(templateKey);
+
+    // === Fetch template ===
+    const templatePage = await getPage("Template", normalizedName);
+    if (!templatePage || !templatePage.content) {
+      return `<span class="missing-template">{{${name}}}</span>`;
+    }
+
+    // === Process includeonly/noinclude/onlyinclude ===
+    let content = processIncludeBlocks(templatePage.content, false);
+
+    // === Replace parameters ===
+    content = content.replace(/\{\{\{([^{}]+)\}\}\}/g, (_, key) => {
+      key = key.trim();
+      const named = parts.find(p => p.startsWith(key + "="));
+      if (named) return named.split("=").slice(1).join("=").trim();
+
+      const index = parseInt(key);
+      if (!isNaN(index) && parts[index - 1]) return parts[index - 1].trim();
+
+      return `{{{${key}}}}`;
+    });
+
+    // === Recursively expand nested templates ===
+    const expanded = await expandTemplates(content, options, depth + 1, visited);
+
+    visited.delete(templateKey);
+    return expanded;
+  }
+
+  let result = "";
+  let lastIndex = 0;
+  let match;
+
+  while ((match = templateRegex.exec(text)) !== null) {
+    result += text.slice(lastIndex, match.index);
+    result += await replaceTemplate(match[0], match[1]);
+    lastIndex = templateRegex.lastIndex;
+  }
+
+  result += text.slice(lastIndex);
+  return result;
 }
 
 function processIncludeBlocks(content, isTemplateView) {
@@ -1672,7 +1678,7 @@ async function renderWikiText(text, options = {}) {
   if (isSpecial) {
     return { html: text, categories: [] }; // return raw content unparsed
   }
-  
+
   const pageCategories = new Set(); // collect categories
   const pageTags = new Set();       // collect tags
 
@@ -1697,14 +1703,14 @@ async function renderWikiText(text, options = {}) {
     await WikiPage.updateOne(
       { _id: currentPageId },
       { $set: { templatesUsed: [] } } // optional: track templates
-    ).catch(() => {});
+    ).catch(() => { });
   }
 
   // --- Tokenize and parse normally ---
   working = await parseTables(working, expandTemplates, { ...options });
   const tokens = tokenize(working, { categories: pageCategories, tags: pageTags });
   let html = parse(tokens, options); // parse now returns object
-  
+
   // Detect and strip __NOINDEX__
   let noIndex = false;
   if (/__NOINDEX__/i.test(html)) {
