@@ -1476,50 +1476,74 @@ function wrapNowiki(content) {
 }
 
 /* ---------------------------
-   Template Expansion
+   Template Expansion (Patched)
 ---------------------------- */
 const MAX_TEMPLATE_DEPTH = 10;
 
 async function expandTemplates(text, options = {}, depth = 0, visited = new Set()) {
-  const { getPage, pageName, currentNamespace, currentPageId, WikiPage } = options;
+  const { getPage, pageName, currentNamespace } = options;
   if (!getPage || depth > MAX_TEMPLATE_DEPTH) return text;
 
-  // --- PREPASS: Protect built-in escape templates (like {{!}}, {{[}}, etc.) ---
+  /* ---------------------------
+     MAGIC WORD EXPANSION (NEW)
+  ---------------------------- */
+  function expandMagicWords(str) {
+    return str.replace(/{{\s*(PAGENAME|NAMESPACE|FULLPAGENAME)\s*}}/gi, (m, word) => {
+      const W = word.toUpperCase();
+
+      if (W === "PAGENAME") return pageName?.replace(/_/g, " ") || "";
+      if (W === "NAMESPACE") return currentNamespace || "";
+      if (W === "FULLPAGENAME") {
+        const base = pageName?.replace(/_/g, " ") || "";
+        return currentNamespace ? `${currentNamespace}:${base}` : base;
+      }
+      return m;
+    });
+  }
+
+  // Expand magic words immediately (required for {{PAGENAME}} inside args)
+  text = expandMagicWords(text);
+
+  /* ---------------------------
+     Built-in template escapes
+  ---------------------------- */
   for (const [name, entity] of Object.entries(BUILTIN_TEMPLATES)) {
-    // Escape any regex special characters in the template name
-    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\{\\{${escapedName}\\}\\}`, 'g');
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`\\{\\{${escapedName}\\}\\}`, "g");
     text = text.replace(regex, entity);
   }
 
-  // Match any double-brace block (including #invoke)
+  // Match any {{...}}
   const templateRegex = /\{\{([^{}]+?)\}\}(?!\})/g;
 
   async function replaceTemplate(match, inner) {
     const trimmed = inner.trim();
 
-    // === LGML: #invoke ===
-    // Syntax: {{#invoke:ModuleName|functionName|arg1|arg2|...}}
-    // === LGML: #invoke ===
+    /* ---------------------------
+       #invoke handler (patched)
+    ---------------------------- */
     if (/^#invoke:/i.test(trimmed)) {
       const invokeParts = trimmed.split("|");
-      const invokeHeader = invokeParts.shift(); // "#invoke:ModuleName"
+      const invokeHeader = invokeParts.shift();
       const moduleName = invokeHeader.split(":")[1]?.trim();
       const functionName = (invokeParts.shift() || "").trim();
-      let args = invokeParts.map(p => p.trim());
+
+      // Parse arguments into a structure supporting name=value
+      const rawArgs = invokeParts.map(p => p.trim());
+
+      // --- PATCH: Expand magic words BEFORE expanding templates ---
+      for (let i = 0; i < rawArgs.length; i++) {
+        rawArgs[i] = expandMagicWords(rawArgs[i]);
+      }
+
+      // --- PATCH: Expand nested templates inside arguments ---
+      const args = [];
+      for (let i = 0; i < rawArgs.length; i++) {
+        args[i] = await expandTemplates(rawArgs[i], options, depth + 1, visited);
+      }
 
       if (!moduleName || !functionName)
         return `<span class="error">[Invalid #invoke syntax]</span>`;
-
-      // --- Skip if /doc page ---
-      if (moduleName.endsWith("/doc")) {
-        return `<span class="error">[Cannot invoke documentation page: ${moduleName}]</span>`;
-      }
-
-      // --- EXPAND TEMPLATES INSIDE ARGUMENTS ---
-      for (let i = 0; i < args.length; i++) {
-        args[i] = await expandTemplates(args[i], options, depth + 1, visited);
-      }
 
       try {
         const result = await executeWikiModule(options, moduleName, functionName, args);
@@ -1530,61 +1554,75 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
       }
     }
 
-    // === Normal Template Handling ===
+    /* ---------------------------
+       Normal template handling
+    ---------------------------- */
     const parts = trimmed.split("|");
     const name = parts.shift().trim();
     const normalizedName = name.replace(/ /g, "_");
 
-    // === Magic words ===
+    // Magic words already expanded earlier, but keep fallback
     const upperName = normalizedName.toUpperCase();
-    switch (upperName) {
-      case "PAGENAME": return pageName?.replace(/_/g, " ") || "";
-      case "NAMESPACE": return currentNamespace || "";
-      case "FULLPAGENAME":
-        return currentNamespace
-          ? `${currentNamespace}:${pageName?.replace(/_/g, " ")}`
-          : pageName?.replace(/_/g, " ");
+    if (upperName === "PAGENAME")
+      return pageName?.replace(/_/g, " ") || "";
+    if (upperName === "NAMESPACE")
+      return currentNamespace || "";
+    if (upperName === "FULLPAGENAME") {
+      const base = pageName?.replace(/_/g, " ") || "";
+      return currentNamespace ? `${currentNamespace}:${base}` : base;
     }
 
-    // === Built-in templates ===
+    // Built-in templates
     if (BUILTIN_TEMPLATES.hasOwnProperty(normalizedName)) {
       return BUILTIN_TEMPLATES[normalizedName];
     }
 
-    // === Prevent recursion ===
+    // Prevent template recursion
     const templateKey = `Template:${normalizedName}`;
     if (visited.has(templateKey))
       return `<span class="error">[Recursive template: ${normalizedName}]</span>`;
     visited.add(templateKey);
 
-    // === Fetch template ===
+    // Fetch template page
     const templatePage = await getPage("Template", normalizedName);
     if (!templatePage || !templatePage.content) {
       return `<span class="missing-template">{{${name}}}</span>`;
     }
 
-    // === Process includeonly/noinclude/onlyinclude ===
+    // <includeonly> / <noinclude> / <onlyinclude>
     let content = processIncludeBlocks(templatePage.content, false);
 
-    // === Replace parameters ===
+    /* ---------------------------
+       Template parameter expansion (patched)
+    ---------------------------- */
     content = content.replace(/\{\{\{([^{}]+)\}\}\}/g, (_, key) => {
       key = key.trim();
+
+      // named param: name=value
       const named = parts.find(p => p.startsWith(key + "="));
-      if (named) return named.split("=").slice(1).join("=").trim();
+      if (named) {
+        const value = named.split("=").slice(1).join("=");
+        return expandMagicWords(value.trim());
+      }
 
-      const index = parseInt(key);
-      if (!isNaN(index) && parts[index - 1]) return parts[index - 1].trim();
+      // positional param: {{{1}}} or {{{2}}}
+      const index = Number(key);
+      if (!isNaN(index) && parts[index - 1])
+        return expandMagicWords(parts[index - 1].trim());
 
-      return `{{{${key}}}}`;
+      return ""; // fallback empty
     });
 
-    // === Recursively expand nested templates ===
-    const expanded = await expandTemplates(content, options, depth + 1, visited);
+    // Expand nested templates inside template body
+    let expanded = await expandTemplates(content, options, depth + 1, visited);
 
     visited.delete(templateKey);
     return expanded;
   }
 
+  /* ---------------------------
+     Main expansion loop
+  ---------------------------- */
   let result = "";
   let lastIndex = 0;
   let match;
