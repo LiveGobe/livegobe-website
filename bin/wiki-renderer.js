@@ -1429,6 +1429,8 @@ function resolveLink(target, { wikiName, currentNamespace = "Main" } = {}) {
     anchor = sanitizeAnchor(anchorPart);
   }
 
+  if (page.startsWith(":")) page = page.slice(1);
+
   if (page.includes(":")) {
     const parts = page.split(":");
     namespace = parts.shift();
