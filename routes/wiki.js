@@ -307,7 +307,9 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                     path: docPath
                 });
 
-                if (docPage && docPage.content) {
+                if (docPage && docPage.html) {
+                    page.docHtml = docPage.html;
+                } else if (docPage && docPage.content) {
                     const renderedDoc = await renderWikiText(docPage.content, {
                         wikiName: wiki.name,
                         pageName: docPage.path,
@@ -315,7 +317,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                         WikiPage,
                         currentPageId: docPage._id,
                         getPage: async (ns, name) =>
-                            WikiPage.findOne({ wiki: wiki._id, namespace: ns, path: name })
+                            WikiPage.findOne({ wiki: wiki._id, namespace: ns, path: name }),
+                        existingPages: new Set((await WikiPage.find({ wiki: wiki._id }).select("namespace path").lean()).map(p => p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`))
                     });
                     page.docHtml = renderedDoc.html;
                 }
