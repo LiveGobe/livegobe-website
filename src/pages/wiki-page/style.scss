@@ -1719,6 +1719,11 @@ body {
   padding: 0.25rem 0.5rem;
 }
 
+.wiki-content img.wiki-media-inline {
+  display: inline-block;
+  margin: 0 0.2rem;
+}
+
 /* ============================
    Default Wiki Table Styles
 ============================ */
