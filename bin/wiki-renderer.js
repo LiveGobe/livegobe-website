@@ -1021,13 +1021,18 @@ function renderInline(parts, { wikiName, currentNamespace, existingFiles = new S
       }
 
       // Normalize for consistent lookups
+      // Also remove starting colon (:) if present
+      if (pageOnly.startsWith(":")) {
+        pageOnly = pageOnly.slice(1);
+      }
+
       const normalized = pageOnly.replace(/\s+/g, "_");
 
       // Check page existence
       const pageExists = existingPages.has(normalized);
 
       // --- Build final href (resolveLink handles anchors properly) ---
-      const href = resolveLink(target, { wikiName, currentNamespace });
+      const href = resolveLink(target, { wikiName });
       const finalHref = pageExists ? href : `${href}?mode=edit`;
 
       // --- Choose link class ---
