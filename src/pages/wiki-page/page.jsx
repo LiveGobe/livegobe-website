@@ -294,7 +294,7 @@ module.exports = function WikiPage(props) {
   const isCommonJs  = namespace === "Special" && safePage.path.toLowerCase() === "common.js";
   const isCommonPage = isCommonCss || isCommonJs;
 
-  const isSpecialNamespace = ["Special", "Template", "File"].includes(namespace);
+  const isSpecialNamespace = ["Special", "Template", "File", "User"].includes(namespace);
   const isViewingOldRevision = query.oldid || query.diff; // common wiki params
 
   const doIndex =
