@@ -472,7 +472,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         }
 
         // Render page normally, show redirect notice if noredirect
-        res.serve("wiki-page", { 
+        res.serve("wiki-page", {
             wiki,
             page,
             namespace,

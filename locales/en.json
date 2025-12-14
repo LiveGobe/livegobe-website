@@ -458,7 +458,7 @@
     },
     "wiki": {
       "not_found": "Wiki not found",
-      "title": "{0}: {1}",
+      "title": "{0} - {1} Wiki",
       "page": {
         "draft_saved": "Draft saved",
         "draft_restored": "Draft restored",

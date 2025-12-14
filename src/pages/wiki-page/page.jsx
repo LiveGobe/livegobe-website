@@ -328,7 +328,7 @@ module.exports = function WikiPage(props) {
         </>}
         <Bundle name="wiki-page.css" />
         <Bundle name="wiki-page.js" />
-        <meta name="description" content={`A page on ${wiki.title} Wiki, hosted on ${config.domainName}`} />
+        <meta name="description" content={safePage.meta?.description || `A page on ${wiki.title} Wiki, hosted on ${config.domainName}`} />
 
         {/* Editable common styles and scripts from wiki pages */}
         {safePage.commonCss && <style dangerouslySetInnerHTML={{ __html: safePage.commonCss }} />}

@@ -103,7 +103,7 @@ const WikiPageSchema = new mongoose.Schema({
     templatesUsed: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'WikiPage'
-        }],
+    }],
     // Page protection level
     protected: {
         type: String,
@@ -122,6 +122,14 @@ const WikiPageSchema = new mongoose.Schema({
     noIndex: {
         type: Boolean,
         default: false
+    },
+    meta: {
+        description: {
+            type: String,
+            default: null,
+            trim: true,
+            maxlength: 160
+        }
     }
 });
 
@@ -132,65 +140,95 @@ WikiPageSchema.index({ wiki: 1, namespace: 1, path: 1 }, { unique: true });
    Template Extraction (for tracking dependencies)
 ---------------------------- */
 function extractTemplatesFromText(text) {
-  const templateRegex = /\{\{([^{}][^{}]*?)\}\}(?!\})/g;
-  const templates = new Set();
-  let match;
-  while ((match = templateRegex.exec(text)) !== null) {
-    const name = match[1].split("|")[0].trim().replace(/ /g, "_");
-    if (name) templates.add(name);
-  }
-  return Array.from(templates);
+    const templateRegex = /\{\{([^{}][^{}]*?)\}\}(?!\})/g;
+    const templates = new Set();
+    let match;
+    while ((match = templateRegex.exec(text)) !== null) {
+        const name = match[1].split("|")[0].trim().replace(/ /g, "_");
+        if (name) templates.add(name);
+    }
+    return Array.from(templates);
 }
 
 // Pre-save hook to update HTML and timestamps
 // Pre-save hook to update HTML, categories, tags, and timestamps
-WikiPageSchema.pre("save", async function(next) {
-  if (!this.populated('wiki')) {
-    await this.populate('wiki');
-  }
-
-  const WikiPage = this.constructor;
-
-  // Only update templatesUsed, categories, tags if content changed
-  if (this.isModified("content") || this.isModified("categories") || this.isModified("tags")) {
-    // 1. Scan content for template names
-    const templateNames = extractTemplatesFromText(this.content);
-
-    // 2. Fetch template pages by name
-    const templates = await WikiPage.find({
-      wiki: this.wiki._id,
-      namespace: "Template",
-      path: { $in: templateNames }
-    });
-
-    // 3. Update this.templatesUsed
-    this.templatesUsed = templates.map(t => t._id);
-
-    // 4. Update templateUsedBy on each template page
-    for (const tpl of templates) {
-      await WikiPage.updateOne(
-        { _id: tpl._id },
-        { $addToSet: { templateUsedBy: this._id } }
-      );
+WikiPageSchema.pre("save", async function (next) {
+    if (!this.populated('wiki')) {
+        await this.populate('wiki');
     }
-    
-    // 6. Store rendered HTML, categories, and tags
-    const { html, categories, tags } = await this.renderContent();
-    this.html = html;
-    this.categories = categories;
-    this.tags = tags;
 
-    // 7. Update last modified timestamp and normalize path
-    this.lastModifiedAt = new Date();
-    this.path = this.path.trim().replace(/ /g, "_");
-  }
+    const WikiPage = this.constructor;
 
-  next();
+    // Only update templatesUsed, categories, tags if content changed
+    if (this.isModified("content") || this.isModified("categories") || this.isModified("tags")) {
+        // 1. Scan content for template names
+        const templateNames = extractTemplatesFromText(this.content);
+
+        // 2. Fetch template pages by name
+        const templates = await WikiPage.find({
+            wiki: this.wiki._id,
+            namespace: "Template",
+            path: { $in: templateNames }
+        });
+
+        // 3. Update this.templatesUsed
+        this.templatesUsed = templates.map(t => t._id);
+
+        // 4. Update templateUsedBy on each template page
+        for (const tpl of templates) {
+            await WikiPage.updateOne(
+                { _id: tpl._id },
+                { $addToSet: { templateUsedBy: this._id } }
+            );
+        }
+
+        // 6. Store rendered HTML, categories, and tags
+        const { html, categories, tags } = await this.renderContent();
+        this.html = html;
+        this.categories = categories;
+        this.tags = tags;
+
+        // 7. Update last modified timestamp and normalize path
+        this.lastModifiedAt = new Date();
+        this.path = this.path.trim().replace(/ /g, "_");
+
+        // 8. Add Metadata about the page
+        function extractFirstMeaningfulParagraph(htmlString) {
+            if (!htmlString) return null;
+
+            const paragraphRegex = /<p\b[^>]*>([\s\S]*?)<\/p>/gi;
+            let match;
+
+            while ((match = paragraphRegex.exec(htmlString)) !== null) {
+                const raw = match[1]
+                    .replace(/<[^>]+>/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                if (raw.length >= 20) {
+                    return raw;
+                }
+            }
+
+            return null;
+        }
+
+        function normalizeDescription(text, max = 160) {
+            if (!text) return null;
+            if (text.length <= max) return text;
+            return text.slice(0, max).replace(/\s+\S*$/, "") + "…";
+        }
+
+        const firstParagraph = extractFirstMeaningfulParagraph(this.html);
+        this.meta.description = normalizeDescription(firstParagraph);
+    }
+
+    next();
 });
 
 
 // Virtual for full title (namespace:path)
-WikiPageSchema.virtual("fullTitle").get(function() {
+WikiPageSchema.virtual("fullTitle").get(function () {
     if (this.namespace === "Main") {
         return this.path;
     }
@@ -198,7 +236,7 @@ WikiPageSchema.virtual("fullTitle").get(function() {
 });
 
 // Instance method to render markdown content to sanitized HTML
-WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {}) {
+WikiPageSchema.methods.renderContent = async function ({ noredirect = false } = {}) {
     if (!this.populated('wiki')) await this.populate('wiki');
 
     // --- Redirect detection ---
@@ -256,7 +294,7 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
         if (/\bwiki-missing\b/.test(html) && !this.categories.includes("Pages_with_broken_links")) {
             this.categories.push("Pages_With_Broken_Links");
         }
-        
+
         // If there's any module error messages, ensure it's categorised
         if (/\blgml-error\b/.test(html) && !this.categories.includes("Pages_with_Module_errors")) {
             this.categories.push("Pages_with_Module_errors");
@@ -282,7 +320,7 @@ WikiPageSchema.methods.renderContent = async function({ noredirect = false } = {
 };
 
 // Instance method to add a new revision
-WikiPageSchema.methods.addRevision = function(content, author, comment = "", minor = false) {
+WikiPageSchema.methods.addRevision = function (content, author, comment = "", minor = false) {
     // Add current content as a revision if this is a new page
     if (this.revisions.length === 0) {
         this.revisions.push({
@@ -309,7 +347,7 @@ WikiPageSchema.methods.addRevision = function(content, author, comment = "", min
 };
 
 // Recursively purge and re-render a page and its dependents
-WikiPageSchema.methods.purgeCache = async function(visited = new Set()) {
+WikiPageSchema.methods.purgeCache = async function (visited = new Set()) {
     const WikiPage = this.constructor;
     const pageIdStr = this._id.toString();
 
@@ -348,13 +386,13 @@ WikiPageSchema.methods.purgeCache = async function(visited = new Set()) {
         await WikiPage.updateOne(
             { _id: this._id },
             { $set: { isPurging: false } }
-        ).catch(() => {});
+        ).catch(() => { });
     }
 
     return { success: true };
 };
 
-WikiPageSchema.statics.purgeByTitle = async function(wikiId, namespace, path) {
+WikiPageSchema.statics.purgeByTitle = async function (wikiId, namespace, path) {
     const page = await this.findOne({ wiki: wikiId, namespace, path });
     if (!page) throw new Error(`Page not found: ${namespace}:${path}`);
 
@@ -363,7 +401,7 @@ WikiPageSchema.statics.purgeByTitle = async function(wikiId, namespace, path) {
 };
 
 // Static: Purge all pages in the wiki
-WikiPageSchema.statics.purgeAll = async function(wikiId) {
+WikiPageSchema.statics.purgeAll = async function (wikiId) {
     const pages = await this.find({ wiki: wikiId });
     for (const page of pages) {
         await page.purgeCache();
@@ -372,7 +410,7 @@ WikiPageSchema.statics.purgeAll = async function(wikiId) {
 };
 
 // Static method to create a new page
-WikiPageSchema.statics.createPage = async function(wiki, title, namespace, path, content, author, comment = "") {
+WikiPageSchema.statics.createPage = async function (wiki, title, namespace, path, content, author, comment = "") {
     const page = new this({
         wiki,
         title,
@@ -397,12 +435,12 @@ WikiPageSchema.statics.createPage = async function(wiki, title, namespace, path,
 };
 
 // Static method to find pages by category
-WikiPageSchema.statics.findByCategory = async function(wiki, category) {
+WikiPageSchema.statics.findByCategory = async function (wiki, category) {
     return await this.find({ wiki, categories: category });
 };
 
 // Static method to list all pages in a namespace
-WikiPageSchema.statics.listPages = function(wiki, namespace = "Main", limit = 100, skip = 0) {
+WikiPageSchema.statics.listPages = function (wiki, namespace = "Main", limit = 100, skip = 0) {
     return this.find({ wiki, namespace })
         .select("title content path namespace lastModifiedAt lastModifiedBy")
         .sort("path")
