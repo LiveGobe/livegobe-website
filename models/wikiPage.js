@@ -367,18 +367,7 @@ WikiPageSchema.methods.purgeCache = async function (visited = new Set()) {
     try {
         // Force re-render of this page
         await this.renderContent();
-
-        // Atomic cache update (NO version check)
-        await WikiPage.updateOne(
-            { _id: locked._id },
-            {
-                $set: {
-                    html: locked.html,
-                    categories: locked.categories,
-                    lastModifiedAt: locked.lastModifiedAt
-                }
-            }
-        );
+        await this.save();
 
         // Recursively purge dependents
         if (this.templateUsedBy?.length) {
