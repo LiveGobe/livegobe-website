@@ -128,7 +128,7 @@ async function main() {
     io.use(wrap(passport.session()));
     require("./bin/socket-handler")(io);
 
-    const server = httpServer.listen(config.port, () => {
+    const server = httpServer.listen(config.port, "0.0.0.0", () => {
         console.log(`Server started on port ${config.port} in ${app.get("env")} mode`);
     });
 
