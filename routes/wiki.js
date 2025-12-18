@@ -142,10 +142,10 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                     since.setDate(since.getDate() - days);
 
                     const changes = await WikiPage.find({ wiki: wiki._id, lastModifiedAt: { $gte: since } })
-                    .sort({ lastModifiedAt: -1 })
-                    .skip((pageNum - 1) * limit)
-                    .limit(limit)
-                    .populate("lastModifiedBy", "name");
+                        .sort({ lastModifiedAt: -1 })
+                        .skip((pageNum - 1) * limit)
+                        .limit(limit)
+                        .populate("lastModifiedBy", "name");
 
                     const total = await WikiPage.countDocuments({ wiki: wiki._id, lastModifiedAt: { $gte: since } });
 
@@ -203,15 +203,15 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             namespace,
             path: fullPath
         })
-        .populate("lastModifiedBy", "name")
-        .populate("revisions.author", "name")
-        .lean();
+            .populate("lastModifiedBy", "name")
+            .populate("revisions.author", "name")
+            .lean();
 
         const commonCssPage = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: "Common.css" });
-        const commonJsPage  = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: "Common.js" });
+        const commonJsPage = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: "Common.js" });
 
         const commonCss = commonCssPage?.content || "";
-        const commonJs  = commonJsPage?.content || "";
+        const commonJs = commonJsPage?.content || "";
 
         if (!page) {
             // --- Special: List all pages in this category ---
@@ -246,30 +246,16 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             if (revision) {
                 page.content = revision.content;
 
-                const rendered = await renderWikiText(revision.content, {
-                    wikiName: wiki.name,
-                    pageName: page.path,
-                    currentNamespace: page.namespace,
-                    WikiPage,
-                    currentPageId: page._id,
-                    getPage: async (ns, name) => {
-                        return WikiPage.findOne({
-                            wiki: page.wiki._id,
-                            namespace: ns,
-                            path: name
-                        });
-                    }
-                });
-
-                page.html = rendered.html;
-                page.categories = rendered.categories;
-                page.tags = rendered.tags;
+                // For old revisions show raw source instead of running the renderer
+                page.html = `<pre class="wiki-source"><code>${escapeHtml(revision.content)}</code></pre>`;
+                page.categories = [];
+                page.tags = [];
                 page.lastModifiedAt = revision.timestamp;
                 page.lastModifiedBy = revision.author;
                 page.isOldRevision = true;
                 page.commonCss = commonCss;
                 page.commonJs = commonJs;
-                page.noIndex = rendered.noIndex;
+                page.noIndex = true;
             }
         }
 
@@ -334,6 +320,10 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             // --- Normal wiki page rendering ---
             if (!page.html && !req.query.noredirect) {
                 // Render and save if no cached HTML
+                // Build an existingPages set so links like "Main_Page" are detected
+                const existingRows = await WikiPage.find({ wiki: wiki._id }).select("namespace path").lean();
+                const existingPages = new Set(existingRows.map(p => p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`));
+
                 const rendered = await renderWikiText(page.content, {
                     wikiName: wiki.name,
                     pageName: page.path,
@@ -346,7 +336,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                             namespace: ns,
                             path: name
                         });
-                    }
+                    },
+                    existingPages
                 });
 
                 page.html = rendered.html;
@@ -360,7 +351,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             page.commonCss = commonCss;
             page.commonJs = commonJs;
         }
-        
+
         // --- Special: List all pages in this category ---
         if (namespace === "Category") {
             const pagesInCategory = await WikiPage.findByCategory(wiki._id, fullPath);
@@ -378,8 +369,14 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
     const wikiName = req.params.wikiName;
     let pageTitle = req.params.pageTitle || "Main_Page";
     const mode = req.query.mode || "view";
+
+    // Set caching headers for anonymous GET view requests
+    if (req.method === "GET" && mode === "view" && !req.user) {
+        res.set("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=59");
+    }
+
     const subPath = req.params[0] || ""; // Captures everything after pageTitle
-    
+
     // Parse namespace and actual title
     let namespace = "Main";
     if (pageTitle.includes(":")) {
@@ -410,12 +407,74 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         if (!canAccessMode(wiki, req.user, mode)) {
             return res.status(403).serve("_403", { message: req.t("page.wiki.no_permission") });
         }
-        
+
         // Get page content including redirect detection
         let page = await getWikiPage(wiki, namespace, fullPagePath, req.query.oldid, !!req.query.noredirect);
 
-        // --- Compute categoriesWithExists ---
-        if (Array.isArray(page.categories)) {
+        // --- Handle redirects in view mode only ---
+        if (mode === "view" && page.redirectTarget && !page.isOldRevision) {
+            if (!req.query.noredirect) {
+                // Pass the original page in the query so the target page can show "Redirected from"
+                // Normalize target and preserve namespace
+                let target = page.redirectTarget.trim().replace(/ /g, "_");
+
+                // If target lacks an explicit namespace (no ':'), keep the same as current page
+                if (!target.includes(":") && page.namespace !== "Main") {
+                    target = `${page.namespace}:${target}`;
+                }
+
+                // Construct redirect URL with full "from" (namespace:path)
+                const fromFull = page.namespace === "Main"
+                    ? page.path
+                    : `${page.namespace}:${page.path}`;
+
+                return res.redirect(
+                    301,
+                    `/wikis/${wiki.name}/${target.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}?from=${fromFull.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}`
+                );
+            }
+        }
+
+        // Sort revisions descending
+        if (page.revisions && Array.isArray(page.revisions)) {
+            page.revisions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
+
+        // Render page normally, show redirect notice if noredirect
+        // If stored HTML is unexpectedly empty but we have source content,
+        // render synchronously as a fallback so the user sees the page immediately.
+        try {
+            if ((!page.html || String(page.html).trim() === "") && page.content) {
+                console.warn(`[wiki] Empty stored HTML for ${wiki.name}/${fullPagePath} — rendering fallback`);
+                // Build existingPages set for proper link detection
+                const existingRows = await WikiPage.find({ wiki: wiki._id }).select("namespace path").lean();
+                const existingPages = new Set(existingRows.map(p => p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`));
+
+                const rendered = await renderWikiText(page.content, {
+                    wikiName: wiki.name,
+                    pageName: page.path,
+                    currentNamespace: page.namespace,
+                    WikiPage,
+                    currentPageId: page._id,
+                    getPage: async (ns, name) => {
+                        return WikiPage.findOne({
+                            wiki: page.wiki._id,
+                            namespace: ns,
+                            path: name
+                        });
+                    },
+                    existingPages
+                });
+                page.html = rendered.html;
+                page.categories = rendered.categories;
+                page.tags = rendered.tags;
+            }
+        } catch (rfErr) {
+            console.error("Fallback render failed:", rfErr);
+        }
+
+        // --- Compute categoriesWithExists (after fallback rendering has populated categories) ---
+        if (Array.isArray(page.categories) && page.categories.length > 0) {
             // Normalize category names for DB lookup (replace spaces with underscores)
             const categoryPaths = page.categories.map(name => name.replace(/ /g, "_"));
 
@@ -442,36 +501,6 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             page.categoriesWithExists = [];
         }
 
-        // --- Handle redirects in view mode only ---
-        if (mode === "view" && page.redirectTarget && !page.isOldRevision) {
-            if (!req.query.noredirect) {
-                // Pass the original page in the query so the target page can show "Redirected from"
-                // Normalize target and preserve namespace
-                let target = page.redirectTarget.trim().replace(/ /g, "_");
-
-                // If target lacks an explicit namespace (no ':'), keep the same as current page
-                if (!target.includes(":") && page.namespace !== "Main") {
-                    target = `${page.namespace}:${target}`;
-                }
-
-                // Construct redirect URL with full "from" (namespace:path)
-                const fromFull = page.namespace === "Main"
-                ? page.path
-                : `${page.namespace}:${page.path}`;
-
-                return res.redirect(
-                    301,
-                    `/wikis/${wiki.name}/${target.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}?from=${fromFull.trim().replace(/ /g, "_").replace(/[?#]/g, encodeURIComponent)}`
-                );
-            }
-        }
-
-        // Sort revisions descending
-        if (page.revisions && Array.isArray(page.revisions)) {
-            page.revisions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        }
-
-        // Render page normally, show redirect notice if noredirect
         res.serve("wiki-page", {
             wiki,
             page,

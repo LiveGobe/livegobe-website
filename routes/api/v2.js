@@ -18,6 +18,7 @@ const User = require("../../models/user");
 const ModsPortalGame = require("../../models/modsportalGame");
 const Wiki = require("../../models/wiki");
 const WikiPage = require("../../models/wikiPage");
+const fileCache = require("../../bin/file-cache");
 
 router.route("/filestorage").get((req, res) => {
     if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
@@ -1145,6 +1146,8 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
                     console.warn(`Failed to delete file: ${filePath}`, err);
                     // do not block page deletion
                 }
+                // invalidate file cache for this wiki so renders update
+                try { fileCache.invalidate(wiki.name); } catch (e) { }
             }
 
             // Delete the wiki page itself
@@ -1297,6 +1300,9 @@ ${uploadFile.mimetype.startsWith("image/") ? `[[File:${safeFilename}]]` : "Previ
     await page.save();
 
     const populatedPage = await WikiPage.findById(page._id).populate("lastModifiedBy", "name");
+
+    // Invalidate file cache for this wiki so future renders see the new file
+    try { fileCache.invalidate(wiki.name); } catch (e) { }
 
     // Use staticLink utility for URL
     const fileUrl = utils.staticUrl(`wikis/${wiki.name}/uploads/${safeFilename}`);

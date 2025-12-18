@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const sanitize = require("isomorphic-dompurify").sanitize;
 const utils = require("../bin/utils");
 const { renderWikiText } = require("../bin/wiki-renderer");
+const pageCache = require("../bin/page-cache");
+const renderQueue = require("../bin/render-queue");
 
 // Schema for a single revision of a page
 const RevisionSchema = new mongoose.Schema({
@@ -115,6 +117,10 @@ const WikiPageSchema = new mongoose.Schema({
         default: false,
         select: false // optional, hide in queries by default
     },
+    purgeLock: {
+        by: { type: String, default: null },
+        expiresAt: { type: Date, default: null }
+    },
     pagesUsingCategory: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'WikiPage'
@@ -135,6 +141,10 @@ const WikiPageSchema = new mongoose.Schema({
 
 // Compound index for efficient page lookup
 WikiPageSchema.index({ wiki: 1, namespace: 1, path: 1 }, { unique: true });
+// Additional indexes for performance
+WikiPageSchema.index({ wiki: 1, lastModifiedAt: -1 });
+WikiPageSchema.index({ wiki: 1, categories: 1 });
+WikiPageSchema.index({ title: "text", content: "text", "meta.description": "text" });
 
 /* ---------------------------
    Template Extraction (for tracking dependencies)
@@ -169,63 +179,57 @@ WikiPageSchema.pre("save", async function (next) {
             wiki: this.wiki._id,
             namespace: "Template",
             path: { $in: templateNames }
-        });
+        }).select("_id");
 
         // 3. Update this.templatesUsed
         this.templatesUsed = templates.map(t => t._id);
 
-        // 4. Update templateUsedBy on each template page
-        for (const tpl of templates) {
-            await WikiPage.updateOne(
-                { _id: tpl._id },
-                { $addToSet: { templateUsedBy: this._id } }
-            );
+        // 4. Bulk update templateUsedBy on each template page (reduce round-trips)
+        if (templates.length) {
+            const ops = templates.map(tpl => ({
+                updateOne: {
+                    filter: { _id: tpl._id },
+                    update: { $addToSet: { templateUsedBy: this._id } }
+                }
+            }));
+            try {
+                await WikiPage.bulkWrite(ops, { ordered: false });
+            } catch (e) {
+                // ignore bulk write partial failures
+            }
         }
 
-        // 6. Store rendered HTML, categories, and tags
-        const { html, categories, tags } = await this.renderContent();
-        this.html = html;
-        this.categories = categories;
-        this.tags = tags;
+        // 6. Don't block save: enqueue background render instead of rendering synchronously
+        // Trim revisions to keep document size bounded
+        const MAX_REVISIONS = 50;
+        if (this.revisions && this.revisions.length > MAX_REVISIONS) {
+            this.revisions = this.revisions.slice(-MAX_REVISIONS);
+        }
 
         // 7. Update last modified timestamp and normalize path
         this.lastModifiedAt = new Date();
         this.path = this.path.trim().replace(/ /g, "_");
 
-        // 8. Add Metadata about the page
-        function extractFirstMeaningfulParagraph(htmlString) {
-            if (!htmlString) return null;
-
-            const paragraphRegex = /<p\b[^>]*>([\s\S]*?)<\/p>/gi;
-            let match;
-
-            while ((match = paragraphRegex.exec(htmlString)) !== null) {
-                const raw = match[1]
-                    .replace(/<[^>]+>/g, " ")
-                    .replace(/\s+/g, " ")
-                    .trim();
-
-                if (raw.length >= 20) {
-                    return raw;
-                }
-            }
-
-            return null;
-        }
-
-        function normalizeDescription(text, max = 160) {
-            if (!text) return null;
-            if (text.length <= max) return text;
-            return text.slice(0, max).replace(/\s+\S*$/, "") + "…";
-        }
-
-        const firstParagraph = extractFirstMeaningfulParagraph(this.html);
-        this.meta.description = normalizeDescription(firstParagraph);
+        // Mark for background render (handled in post save)
+        if (this.isModified("content")) this._needsBackgroundRender = true;
     }
 
     next();
 });
 
+// After save, enqueue background render job if needed
+WikiPageSchema.post('save', function (doc) {
+    if (doc._needsBackgroundRender) {
+        const WikiPage = this.constructor;
+        renderQueue.enqueue(async () => {
+            try {
+                await WikiPage.backgroundRender(doc._id);
+            } catch (e) {
+                console.error('[BackgroundRender] failed for', doc._id, e);
+            }
+        });
+    }
+});
 
 // Virtual for full title (namespace:path)
 WikiPageSchema.virtual("fullTitle").get(function () {
@@ -263,16 +267,16 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false } = 
     };
 
     try {
-        // ✅ Preload all existing page paths for red link detection
-        const allPages = await WikiPage.find({ wiki: this.wiki._id })
-            .select("namespace path")
-            .lean();
+        // Use cached page index when available to avoid heavy DB scan
+        let existingPages = pageCache.get(this.wiki._id);
+        if (!existingPages) {
+            const allPages = await WikiPage.find({ wiki: this.wiki._id })
+                .select("namespace path")
+                .lean();
 
-        const existingPages = new Set(
-            allPages.map(p =>
-                p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`
-            )
-        );
+            existingPages = new Set(allPages.map(p => p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`));
+            pageCache.set(this.wiki._id, existingPages);
+        }
 
         // --- Render LGWL content ---
         const { html, categories, tags, noIndex } = await renderWikiText(this.content, {
@@ -350,43 +354,43 @@ WikiPageSchema.methods.addRevision = function (content, author, comment = "", mi
 WikiPageSchema.methods.purgeCache = async function (visited = new Set()) {
     const WikiPage = this.constructor;
     const pageIdStr = this._id.toString();
+    // Iterative purge using an explicit queue to avoid deep recursion
+    const queue = [this._id.toString()];
+    const toVisit = new Set();
 
-    // Avoid infinite loops
-    if (visited.has(pageIdStr)) return;
-    visited.add(pageIdStr);
+    while (queue.length) {
+        const id = queue.shift();
+        if (toVisit.has(id)) continue;
+        toVisit.add(id);
 
-    // --- Attempt to claim lock ---
-    const locked = await WikiPage.findOneAndUpdate(
-        { _id: this._id, isPurging: { $ne: true } },
-        { $set: { isPurging: true } },
-        { new: true }
-    );
+        // Attempt to claim an expiring lock (purgeLock) atomically
+        const now = new Date();
+        const lock = await WikiPage.findOneAndUpdate(
+            { _id: id, $or: [{ 'purgeLock.expiresAt': { $lt: now } }, { 'purgeLock.expiresAt': null }, { purgeLock: { $exists: false } }] },
+            { $set: { 'purgeLock.by': process.pid + ':' + Date.now(), 'purgeLock.expiresAt': new Date(Date.now() + 60 * 1000) } },
+            { new: true }
+        );
 
-    if (!locked) return;
+        if (!lock) continue; // someone else is purging or lock held
 
-    try {
-        // Force re-render of this page
-        await this.renderContent();
-        await this.save();
+        try {
+            const page = await WikiPage.findById(id);
+            if (!page) continue;
 
-        // Recursively purge dependents
-        if (this.templateUsedBy?.length) {
-            const dependents = await WikiPage.find({
-                _id: { $in: this.templateUsedBy }
-            });
+            // Force re-render and persist with updateOne to avoid triggering hooks
+            const { html, categories, tags } = await page.renderContent();
+            await WikiPage.updateOne({ _id: id }, { $set: { html, categories, tags, lastModifiedAt: new Date() } });
 
-            for (const dep of dependents) {
-                await dep.purgeCache(visited);
+            // Queue dependents
+            if (page.templateUsedBy?.length) {
+                for (const depId of page.templateUsedBy) queue.push(String(depId));
             }
+        } catch (err) {
+            console.error(`[Purge] Error purging id=${id}:`, err);
+        } finally {
+            // Release lock
+            await WikiPage.updateOne({ _id: id }, { $set: { 'purgeLock.by': null, 'purgeLock.expiresAt': null } }).catch(() => { });
         }
-    } catch (err) {
-        console.error(`[Purge] Error purging ${this.fullTitle}:`, err);
-    } finally {
-        // Release lock
-        await WikiPage.updateOne(
-            { _id: this._id },
-            { $set: { isPurging: false } }
-        ).catch(() => { });
     }
 
     return { success: true };
@@ -404,7 +408,7 @@ WikiPageSchema.statics.purgeByTitle = async function (wikiId, namespace, path) {
 WikiPageSchema.statics.purgeAll = function (wikiId) {
     this.find({ wiki: wikiId }).then(pages => {
         for (const page of pages) {
-            page.purgeCache().catch(() => {});
+            page.purgeCache().catch(() => { });
         }
     });
 
@@ -451,5 +455,23 @@ WikiPageSchema.statics.listPages = function (wiki, namespace = "Main", limit = 1
         .populate("lastModifiedBy", "name");
 };
 
+// Background render helper used by the render queue
+WikiPageSchema.statics.backgroundRender = async function (id) {
+    const page = await this.findById(id);
+    if (!page) return false;
+
+    try {
+        const { html, categories, tags, noIndex } = await page.renderContent();
+        await this.updateOne({ _id: id }, { $set: { html, categories, tags, noIndex, lastModifiedAt: new Date() } });
+        // invalidate per-wiki page cache so redlink detection stays fresh
+        try { pageCache.invalidate(page.wiki._id); } catch (e) { }
+        return true;
+    } catch (e) {
+        console.error('[BackgroundRender] error', e);
+        return false;
+    }
+};
+
 // Export model
 module.exports = mongoose.model("WikiPage", WikiPageSchema);
+
