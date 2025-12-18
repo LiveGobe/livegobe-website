@@ -493,6 +493,16 @@ module.exports = function WikiPage(props) {
                                   {t("wiki.actions.purge")}
                                 </a>
 
+                                <a
+                                  href="#"
+                                  className="dropdown-item"
+                                  id="purge-all"
+                                  data-wiki={wiki.name}
+                                  data-confirm-prompt={t("wiki.purge.confirm_all") || "Are you sure you want to purge all pages on this wiki?"}
+                                >
+                                  {t("wiki.actions.purgeAll")}
+                                </a>
+
                                 {canDelete && (
                                   <a
                                     href={`/wikis/${wiki.name}/${fullTitle}?mode=delete`}

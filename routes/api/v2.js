@@ -867,6 +867,33 @@ router.post("/wikis/:wikiName/pages/:pageTitle*/purge", async (req, res) => {
   }
 });
 
+// Purge all pages cache (for admins or editors)
+router.post("/wikis/:wikiName/purge", async (req, res) => {
+  try {
+    const wikiName = req.params.wikiName;
+
+    // Find wiki
+    const wiki = await Wiki.findOne({ name: wikiName });
+    if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+
+    // Must be logged in
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+
+    // Must have edit permission or be admin
+    if (!wiki.canEdit(req.user) && !req.user.hasRole?.("admin")) {
+      return res.status(403).json({ message: req.t("api.nopermission") });
+    }
+
+    // Trigger purge all
+    await WikiPage.purgeAll(wiki.id);
+
+    return res.json({ message: req.t("api.wikis.all_purged") });
+  } catch (err) {
+    console.error("API: error purging wiki pages:", err);
+    res.status(500).json({ message: err.toString() });
+  }
+});
+
 // Page endpoints (get, create/update)
 router.route("/wikis/:wikiName/pages/:pageTitle*")
     .get(async (req, res) => {

@@ -489,6 +489,31 @@ $(function () {
         });
     }
 
+	// === Purge All button ===
+	const $purgeAll = $("#purge-all");
+    if ($purgeAll.length) {
+        $purgeAll.on("click", async function (e) {
+            e.preventDefault();
+            const $this = $(this);
+            const wiki = $this.data("wiki") || path?.wiki;
+            const promptText = $this.data("confirmPrompt") || "Are you sure you want to purge all pages on this wiki?";
+            if (!wiki || !window.confirm(promptText)) return;
+
+            try {
+                const resp = await fetch(`/api/v2/wikis/${encodeURIComponent(wiki)}/purge`, {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: { "Content-Type": "application/json" }
+                });
+                const json = await resp.json().catch(() => ({}));
+                if (json.message) alert(json.message);
+                window.location.reload();
+            } catch (err) {
+                alert("Error purging wiki cache: " + err);
+            }
+        });
+    }
+
     // === Delete button ===
     const $del = $("#confirm-delete");
     if ($del.length) {

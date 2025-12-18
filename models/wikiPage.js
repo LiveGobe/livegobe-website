@@ -367,7 +367,18 @@ WikiPageSchema.methods.purgeCache = async function (visited = new Set()) {
     try {
         // Force re-render of this page
         await this.renderContent();
-        await this.save();
+
+        // Atomic cache update (NO version check)
+        await WikiPage.updateOne(
+            { _id: locked._id },
+            {
+                $set: {
+                    html: locked.html,
+                    categories: locked.categories,
+                    lastModifiedAt: locked.lastModifiedAt
+                }
+            }
+        );
 
         // Recursively purge dependents
         if (this.templateUsedBy?.length) {
@@ -401,12 +412,14 @@ WikiPageSchema.statics.purgeByTitle = async function (wikiId, namespace, path) {
 };
 
 // Static: Purge all pages in the wiki
-WikiPageSchema.statics.purgeAll = async function (wikiId) {
-    const pages = await this.find({ wiki: wikiId });
-    for (const page of pages) {
-        await page.purgeCache();
-    }
-    console.log(`[Purge] All pages in wiki ${wikiId} re-rendered.`);
+WikiPageSchema.statics.purgeAll = function (wikiId) {
+    this.find({ wiki: wikiId }).then(pages => {
+        for (const page of pages) {
+            page.purgeCache().catch(() => {});
+        }
+    });
+
+    console.log(`[Purge] Purge scheduled for wiki ${wikiId}`);
 };
 
 // Static method to create a new page

@@ -39,6 +39,7 @@
       "no_change_detected": "Нет изменений",
       "page_rendered": "Страница обновлена",
       "page_purged": "Кэш страницы сброшен",
+      "all_purged": "Кэш вики сброшен",
       "search_term_required": "Требуется поисковый запрос",
       "search_results": "Найдено {0} результатов для '{1}'"
     },
@@ -619,7 +620,8 @@
       "create": "Создать",
       "delete": "Удалить",
       "more": "Действия",
-      "purge": "Обновить"
+      "purge": "Обновить",
+      "purgeAll": "Обновить Кэш"
     },
     "footer": {
       "text": "Вики Работает с Помощью LiveGobe Wiki System"

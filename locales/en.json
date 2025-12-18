@@ -39,6 +39,7 @@
       "no_change_detected": "No changes detected",
       "page_rendered": "Page rendered successfully",
       "page_purged": "Page cache purged successfully",
+      "all_purged": "Wiki cache purged successfully",
       "search_term_required": "Search term is required",
       "search_results": "{0} results found for '{1}'"
     },
@@ -619,7 +620,8 @@
       "create": "Create",
       "delete": "Delete",
       "more": "More",
-      "purge": "Purge"
+      "purge": "Purge",
+      "purgeAll": "Purge All"
     },
     "footer": {
       "text": "Powered by LiveGobe Wiki System"
@@ -687,7 +689,7 @@
     },
     "purge": {
       "confirm": "Are you sure you want to purge the cache for {page}?",
-      "confirm_all": "Are you sure you want to purge Ala pages?"
+      "confirm_all": "Are you sure you want to purge All pages?"
     },
     "allPages": {
       "selectNamespace": "Select Namespace",
