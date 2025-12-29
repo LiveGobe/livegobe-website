@@ -40,7 +40,7 @@ async function main() {
     app.disable("x-powered-by");
     app.set("trust proxy", app.get("env") == "production");
 
-    app.use(bodyParser.json({ limit: "10mb" }));
+    app.use(bodyParser.json({ limit: "50mb" }));
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(cookieParser());
     const sessionMiddleware = session({
