@@ -4,13 +4,10 @@ const utils = require("../bin/utils");
 const { renderWikiText } = require("../bin/wiki-renderer");
 const pageCache = require("../bin/page-cache");
 const renderQueue = require("../bin/render-queue");
+const fileStorage = require("../bin/wiki-file-storage");
 
-// Schema for a single revision of a page
+// Schema for a single revision metadata (content is stored in file storage)
 const RevisionSchema = new mongoose.Schema({
-    content: {
-        type: String,
-        required: true
-    },
     comment: {
         type: String,
         default: ""
@@ -55,17 +52,7 @@ const WikiPageSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    // Current content
-    content: {
-        type: String,
-        required: true,
-        default: ""
-    },
-    // Rendered HTML (generated from content)
-    html: {
-        type: String
-    },
-    // Revision history
+    // Revision metadata (actual revision text is stored on disk)
     revisions: [RevisionSchema],
     // Metadata
     createdAt: {
@@ -144,7 +131,7 @@ WikiPageSchema.index({ wiki: 1, namespace: 1, path: 1 }, { unique: true });
 // Additional indexes for performance
 WikiPageSchema.index({ wiki: 1, lastModifiedAt: -1 });
 WikiPageSchema.index({ wiki: 1, categories: 1 });
-WikiPageSchema.index({ title: "text", content: "text", "meta.description": "text" });
+WikiPageSchema.index({ title: "text", "meta.description": "text" });
 
 /* ---------------------------
    Template Extraction (for tracking dependencies)
@@ -167,51 +154,14 @@ WikiPageSchema.pre("save", async function (next) {
         await this.populate('wiki');
     }
 
-    const WikiPage = this.constructor;
+    // Normalize path and ensure lastModifiedAt is set
+    this.path = this.path.trim().replace(/ /g, "_");
+    if (!this.lastModifiedAt) this.lastModifiedAt = new Date();
 
-    // Only update templatesUsed, categories, tags if content changed
-    if (this.isModified("content") || this.isModified("categories") || this.isModified("tags")) {
-        // 1. Scan content for template names
-        const templateNames = extractTemplatesFromText(this.content);
-
-        // 2. Fetch template pages by name
-        const templates = await WikiPage.find({
-            wiki: this.wiki._id,
-            namespace: "Template",
-            path: { $in: templateNames }
-        }).select("_id");
-
-        // 3. Update this.templatesUsed
-        this.templatesUsed = templates.map(t => t._id);
-
-        // 4. Bulk update templateUsedBy on each template page (reduce round-trips)
-        if (templates.length) {
-            const ops = templates.map(tpl => ({
-                updateOne: {
-                    filter: { _id: tpl._id },
-                    update: { $addToSet: { templateUsedBy: this._id } }
-                }
-            }));
-            try {
-                await WikiPage.bulkWrite(ops, { ordered: false });
-            } catch (e) {
-                // ignore bulk write partial failures
-            }
-        }
-
-        // 6. Don't block save: enqueue background render instead of rendering synchronously
-        // Trim revisions to keep document size bounded
-        const MAX_REVISIONS = 50;
-        if (this.revisions && this.revisions.length > MAX_REVISIONS) {
-            this.revisions = this.revisions.slice(-MAX_REVISIONS);
-        }
-
-        // 7. Update last modified timestamp and normalize path
-        this.lastModifiedAt = new Date();
-        this.path = this.path.trim().replace(/ /g, "_");
-
-        // Mark for background render (handled in post save)
-        if (this.isModified("content")) this._needsBackgroundRender = true;
+    // Keep document-sized revisions metadata bounded
+    const MAX_REVISIONS = 200;
+    if (this.revisions && this.revisions.length > MAX_REVISIONS) {
+        this.revisions = this.revisions.slice(-MAX_REVISIONS);
     }
 
     next();
@@ -240,11 +190,14 @@ WikiPageSchema.virtual("fullTitle").get(function () {
 });
 
 // Instance method to render markdown content to sanitized HTML
-WikiPageSchema.methods.renderContent = async function ({ noredirect = false } = {}) {
+WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sourceContent = null } = {}) {
     if (!this.populated('wiki')) await this.populate('wiki');
 
+    // Determine source content: provided override or stored file
+    const currentContent = sourceContent != null ? sourceContent : await fileStorage.readContent(this.wiki._id, this.namespace, this.path);
+
     // --- Redirect detection ---
-    const redirectMatch = this.content.trim().match(/^#REDIRECT\s*\[\[([^\]]+)\]\]/i);
+    const redirectMatch = (currentContent || "").trim().match(/^#REDIRECT\s*\[\[([^\]]+)\]\]/i);
     if (redirectMatch) {
         this.redirectTarget = redirectMatch[1].trim();
 
@@ -279,7 +232,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false } = 
         }
 
         // --- Render LGWL content ---
-        const { html, categories, tags, noIndex } = await renderWikiText(this.content, {
+        const { html, categories, tags, noIndex } = await renderWikiText(currentContent, {
             wikiName: this.wiki.name,
             pageName: this.path,
             currentNamespace: this.namespace,
@@ -290,7 +243,9 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false } = 
         });
 
         this.noIndex = noIndex;
-        this.html = html;
+        // Persist rendered HTML to file storage
+        try { await fileStorage.writeHtml(this.wiki._id, this.namespace, this.path, html); } catch (e) { }
+        this.html = html; // in-memory for immediate response
         this.categories = categories;
         this.tags = tags;
 
@@ -309,7 +264,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false } = 
             this.categories.push("Redirect_Pages");
         }
     } catch (e) {
-        this.html = sanitize(this.content);
+        this.html = sanitize(currentContent || "");
         this.categories = [];
         this.tags = [];
     }
@@ -323,31 +278,43 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false } = 
     return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget };
 };
 
-// Instance method to add a new revision
-WikiPageSchema.methods.addRevision = function (content, author, comment = "", minor = false) {
-    // Add current content as a revision if this is a new page
-    if (this.revisions.length === 0) {
-        this.revisions.push({
-            content: this.content,
-            author: this.lastModifiedBy,
-            timestamp: this.lastModifiedAt,
-            comment: "Initial revision",
-            minor
-        });
+// Instance method to add a new revision (stores text on disk; keeps metadata in DB)
+WikiPageSchema.methods.addRevision = async function (content, author, comment = "", minor = false) {
+    // Read existing revisions from file storage
+    const stored = await fileStorage.readRevisions(this.wiki._id, this.namespace, this.path);
+
+    // On first-time, ensure an initial metadata entry exists matching DB state
+    if (!Array.isArray(stored) || stored.length === 0) {
+        const initial = {
+            content: content || "",
+            author: author || this.lastModifiedBy,
+            comment: comment || "Initial revision",
+            minor: !!minor,
+            timestamp: this.lastModifiedAt || new Date()
+        };
+        stored.push(initial);
     }
 
-    // Add the new revision
-    this.revisions.push({
-        content,
-        author,
-        comment,
-        minor,
-        timestamp: new Date()
-    });
+    // Append new revision to storage
+    const newRev = { content, author, comment, minor: !!minor, timestamp: new Date() };
+    stored.push(newRev);
 
-    // Update current content
-    this.content = content;
+    // Trim stored revisions to reasonable count
+    const MAX_REVISIONS = 200;
+    if (stored.length > MAX_REVISIONS) stored.splice(0, stored.length - MAX_REVISIONS);
+
+    // Persist revisions and current content
+    await fileStorage.writeRevisions(this.wiki._id, this.namespace, this.path, stored);
+    await fileStorage.writeContent(this.wiki._id, this.namespace, this.path, content);
+
+    // Push metadata into DB
+    this.revisions.push({ comment, author, minor: !!minor, timestamp: newRev.timestamp });
+    if (this.revisions.length > MAX_REVISIONS) this.revisions = this.revisions.slice(-MAX_REVISIONS);
+
     this.lastModifiedBy = author;
+    this.lastModifiedAt = newRev.timestamp;
+    this._needsBackgroundRender = true;
+    return this;
 };
 
 // Recursively purge and re-render a page and its dependents
@@ -373,24 +340,26 @@ WikiPageSchema.methods.purgeCache = async function (visited = new Set()) {
 
         if (!lock) continue; // someone else is purging or lock held
 
-        try {
-            const page = await WikiPage.findById(id);
-            if (!page) continue;
+            try {
+                const page = await WikiPage.findById(id);
+                if (!page) continue;
 
-            // Force re-render and persist with updateOne to avoid triggering hooks
-            const { html, categories, tags } = await page.renderContent();
-            await WikiPage.updateOne({ _id: id }, { $set: { html, categories, tags, lastModifiedAt: new Date() } });
+                // Force re-render and persist with updateOne to avoid triggering hooks
+                const { html, categories, tags } = await page.renderContent();
+                // write HTML to file and update DB metadata
+                try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
+                await WikiPage.updateOne({ _id: id }, { $set: { categories, tags, lastModifiedAt: new Date() } });
 
-            // Queue dependents
-            if (page.templateUsedBy?.length) {
-                for (const depId of page.templateUsedBy) queue.push(String(depId));
+                // Queue dependents
+                if (page.templateUsedBy?.length) {
+                    for (const depId of page.templateUsedBy) queue.push(String(depId));
+                }
+            } catch (err) {
+                console.error(`[Purge] Error purging id=${id}:`, err);
+            } finally {
+                // Release lock
+                await WikiPage.updateOne({ _id: id }, { $set: { 'purgeLock.by': null, 'purgeLock.expiresAt': null } }).catch(() => { });
             }
-        } catch (err) {
-            console.error(`[Purge] Error purging id=${id}:`, err);
-        } finally {
-            // Release lock
-            await WikiPage.updateOne({ _id: id }, { $set: { 'purgeLock.by': null, 'purgeLock.expiresAt': null } }).catch(() => { });
-        }
     }
 
     return { success: true };
@@ -422,12 +391,11 @@ WikiPageSchema.statics.createPage = async function (wiki, title, namespace, path
         title,
         namespace,
         path,
-        content,
         createdBy: author,
         lastModifiedBy: author,
+        lastModifiedAt: new Date(),
         revisions: [
             {
-                content,
                 author,
                 comment: "Initial Commit" + comment,
                 timestamp: new Date()
@@ -435,7 +403,21 @@ WikiPageSchema.statics.createPage = async function (wiki, title, namespace, path
         ]
     });
 
-    // ✅ Only save once — this creates the page and initial revision
+    // Persist page metadata first
+    await page.save();
+
+    // Store content and initial revision contents on disk
+    try {
+        await fileStorage.writeContent(wiki, namespace, path, content);
+        await fileStorage.writeRevisions(wiki, namespace, path, [
+            { content, author, comment: "Initial Commit" + comment, timestamp: new Date() }
+        ]);
+    } catch (e) {
+        console.error('[createPage] failed to write files for', wiki, namespace, path, e);
+    }
+
+    // Mark for async render
+    page._needsBackgroundRender = true;
     await page.save();
     return page;
 };
@@ -448,7 +430,7 @@ WikiPageSchema.statics.findByCategory = async function (wiki, category) {
 // Static method to list all pages in a namespace
 WikiPageSchema.statics.listPages = function (wiki, namespace = "Main", limit = 100, skip = 0) {
     return this.find({ wiki, namespace })
-        .select("title content path namespace lastModifiedAt lastModifiedBy")
+    .select("title path namespace lastModifiedAt lastModifiedBy")
         .sort("path")
         .skip(skip)
         .limit(limit)
@@ -462,7 +444,8 @@ WikiPageSchema.statics.backgroundRender = async function (id) {
 
     try {
         const { html, categories, tags, noIndex } = await page.renderContent();
-        await this.updateOne({ _id: id }, { $set: { html, categories, tags, noIndex, lastModifiedAt: new Date() } });
+        try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
+        await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, lastModifiedAt: new Date() } });
         // invalidate per-wiki page cache so redlink detection stays fresh
         try { pageCache.invalidate(page.wiki._id); } catch (e) { }
         return true;

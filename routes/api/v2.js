@@ -950,17 +950,27 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
             if (!wiki.canAccess(req.user)) return res.status(403).json({ message: req.t("api.nopermission") });
 
             const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
-            const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath }).populate("lastModifiedBy", "username");
+            const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath }).populate("lastModifiedBy", "username").lean();
 
             if (!page) {
                 return res.json({ exists: false, title: fullPath, namespace, path: fullPath });
             }
 
+            // Load stored content/html/revisions from disk
+            const fileStorage = require("../../bin/wiki-file-storage");
+            const storedContent = await fileStorage.readContent(page.wiki, page.namespace, page.path);
+            const storedHtml = await fileStorage.readHtml(page.wiki, page.namespace, page.path);
+            const storedRevs = await fileStorage.readRevisions(page.wiki, page.namespace, page.path);
+
             // include revisions only for editors when requested
             let revisions = undefined;
             const includeRevisions = req.body?.includeRevisions || req.query.includeRevisions === "1" || req.query.includeRevisions === "true";
             if (includeRevisions && wiki.canEdit(req.user)) {
-                revisions = page.revisions.map(r => ({ id: r._id, author: r.author, timestamp: r.timestamp, comment: r.comment, minor: r.minor, content: r.content }));
+                if (Array.isArray(storedRevs)) {
+                    revisions = storedRevs.map((r, idx) => ({ id: page.revisions[idx]?._id || null, author: page.revisions[idx]?.author || r.author, timestamp: r.timestamp || page.revisions[idx]?.timestamp, comment: r.comment || page.revisions[idx]?.comment, minor: r.minor || page.revisions[idx]?.minor, content: r.content }));
+                } else {
+                    revisions = page.revisions.map(r => ({ id: r._id, author: r.author, timestamp: r.timestamp, comment: r.comment, minor: r.minor, content: null }));
+                }
             }
 
             return res.json({
@@ -969,8 +979,8 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
                     title: page.title || page.path,
                     namespace: page.namespace,
                     path: page.path,
-                    content: page.content,
-                    html: page.html,
+                    content: storedContent || "",
+                    html: storedHtml || "",
                     lastModifiedAt: page.lastModifiedAt,
                     lastModifiedBy: page.lastModifiedBy,
                     categories: page.categories,
@@ -1040,16 +1050,20 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
                     });
                 }
 
+                // Load existing content from disk
+                const fileStorage = require("../../bin/wiki-file-storage");
+                const existingContent = await fileStorage.readContent(wiki._id, namespace, fullPath);
+
                 // ✅ Skip saving if content hasn't changed
-                if (page.content === content) {
+                if ((existingContent || "") === (content || "")) {
                     return res.status(400).json({
                         message: req.t("api.wikis.no_change_detected"),
                         page: {
                             title: page.title || page.path,
                             namespace: page.namespace,
                             path: page.path,
-                            content: page.content,
-                            html: page.html,
+                            content: existingContent,
+                            html: await fileStorage.readHtml(wiki._id, namespace, fullPath),
                             lastModifiedAt: page.lastModifiedAt,
                             lastModifiedBy: await User.findById(page.lastModifiedBy).select("username"),
                             categories: page.categories,
@@ -1059,8 +1073,8 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
                     });
                 }
 
-                // Update existing page
-                page.addRevision(content, req.user._id, summary, minor);
+                // Update existing page (store text on disk and metadata in DB)
+                await page.addRevision(content, req.user._id, summary, minor);
             } else {
                 // Create new page
                 page = await WikiPage.createPage(
@@ -1194,8 +1208,8 @@ router.post("/wikis/:wikiName/render", async (req, res) => {
         // Start performance timer
         const startTimer = performance.now();
 
-		// Render content (simple LGWL -> HTML)
-		await tempPage.renderContent();
+        // Render content (simple LGWL -> HTML) using provided source
+        await tempPage.renderContent({ sourceContent: content });
 
         // End timer
         const renderTimeMs = +(performance.now() - startTimer).toFixed(2);
@@ -1283,21 +1297,21 @@ router.post("/wikis/:wikiName/files", fileUpload({ defParamCharset: "utf-8" }), 
 ${uploadFile.mimetype.startsWith("image/") ? `[[File:${safeFilename}]]` : "Preview not available for this type."}
 `;
 
-    if (page) {
-      page.addRevision(filePageContent, req.user._id, "Updated file upload", false);
-    } else {
-      page = await WikiPage.createPage(
-        wiki._id,
-        pageTitle,
-        namespace,
-        pagePath,
-        filePageContent,
-        req.user._id,
-        "Initial file upload"
-      );
-    }
+        if (page) {
+            await page.addRevision(filePageContent, req.user._id, "Updated file upload", false);
+        } else {
+            page = await WikiPage.createPage(
+                wiki._id,
+                pageTitle,
+                namespace,
+                pagePath,
+                filePageContent,
+                req.user._id,
+                "Initial file upload"
+            );
+        }
 
-    await page.save();
+        await page.save();
 
     const populatedPage = await WikiPage.findById(page._id).populate("lastModifiedBy", "name");
 
@@ -1307,18 +1321,20 @@ ${uploadFile.mimetype.startsWith("image/") ? `[[File:${safeFilename}]]` : "Previ
     // Use staticLink utility for URL
     const fileUrl = utils.staticUrl(`wikis/${wiki.name}/uploads/${safeFilename}`);
 
-    return res.json({
-      message: req.t("api.files.upload_success"),
-      file: {
-        title: populatedPage.title,
-        namespace: populatedPage.namespace,
-        path: populatedPage.path,
-        html: populatedPage.html,
-        lastModifiedAt: populatedPage.lastModifiedAt,
-        lastModifiedBy: populatedPage.lastModifiedBy,
-        url: fileUrl
-      }
-    });
+        const fileHtml = await require("../../bin/wiki-file-storage").readHtml(populatedPage.wiki, populatedPage.namespace, populatedPage.path);
+
+        return res.json({
+            message: req.t("api.files.upload_success"),
+            file: {
+                title: populatedPage.title,
+                namespace: populatedPage.namespace,
+                path: populatedPage.path,
+                html: fileHtml || "",
+                lastModifiedAt: populatedPage.lastModifiedAt,
+                lastModifiedBy: populatedPage.lastModifiedBy,
+                url: fileUrl
+            }
+        });
   } catch (err) {
     console.error("API: error uploading file:", err);
     res.status(500).json({ message: err.toString() });
@@ -1414,25 +1430,9 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
 
                 // fuzzy
                 { title: fuzzy },
-                { path: fuzzy },
-
-                // redirect pages
-                {
-                    content: { $regex: redirectRegex },
-                    $or: [
-                        { title: exact },
-                        { path: exact },
-
-                        { title: fuzzy },
-                        { path: fuzzy },
-
-                        // redirect target match
-                        { content: { $regex: new RegExp(`\\[\\[${escaped}\\]\\]`, "i") } },
-                        { content: { $regex: new RegExp(escaped, "i") } }
-                    ]
-                }
+                { path: fuzzy }
             ]
-        }).limit(100);
+        }).limit(100).lean();
 
         // ================================
         // Ranking
@@ -1455,16 +1455,22 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
             return score;
         };
 
-        const ranked = pages
-            .map(page => ({ page, score: scorePage(page) }))
+        // Enrich candidates by checking stored content for redirect information
+        const fileStorage = require("../../bin/wiki-file-storage");
+        const enriched = await Promise.all(pages.map(async page => {
+            const content = await fileStorage.readContent(page.wiki, page.namespace, page.path);
+            return { page, score: scorePage(page), content: content || "" };
+        }));
+
+        const ranked = enriched
             .sort((a, b) => b.score - a.score)
             .slice(0, 50)
             .map(p => ({
                 title: p.page.title,
                 path: p.page.path,
                 namespace: p.page.namespace,
-                isRedirect: redirectRegex.test(p.page.content),
-                redirectTo: extractRedirectTarget(p.page.content)
+                isRedirect: redirectRegex.test(p.content),
+                redirectTo: extractRedirectTarget(p.content)
             }))
 
         return res.json({

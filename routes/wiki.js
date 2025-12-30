@@ -5,6 +5,7 @@ const { renderWikiText } = require("../bin/wiki-renderer");
 
 const Wiki = require("../models/wiki");
 const WikiPage = require("../models/wikiPage");
+const fileStorage = require("../bin/wiki-file-storage");
 
 // List all wikis
 router.get("/", async (req, res) => {
@@ -65,18 +66,33 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             // --- Handle Common.css / Common.js ---
             if (key === "common.css" || key === "common.js") {
                 const specialPage = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: pageTitle }).populate("revisions.author", "name");
+                let content = "";
+                let revisions = [];
+                if (specialPage) {
+                    content = await fileStorage.readContent(specialPage.wiki, specialPage.namespace, specialPage.path);
+                    revisions = await fileStorage.readRevisions(specialPage.wiki, specialPage.namespace, specialPage.path);
+                    // merge author names from DB metadata where possible
+                    if (Array.isArray(revisions) && Array.isArray(specialPage.revisions)) {
+                        // Attach author names to stored revisions using timestamp match (best-effort)
+                        for (let i = 0; i < revisions.length; i++) {
+                            if (specialPage.revisions[i] && specialPage.revisions[i].author) {
+                                revisions[i].author = specialPage.revisions[i].author;
+                            }
+                        }
+                    }
+                }
 
                 const safePage = {
                     exists: !!specialPage,
                     path: pageTitle,
                     title: pageTitle,
-                    content: specialPage?.content || "",
-                    revisions: specialPage.revisions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),
+                    content: content || "",
+                    revisions: (revisions || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),
                     html: "", // nothing to parse as HTML,
-                    lastModifiedAt: specialPage.revisions.at(0).timestamp,
-                    lastModifiedBy: specialPage.revisions.at(0).author.name,
-                    commonCss: key === "common.css" ? specialPage?.content || "" : "",
-                    commonJs: key === "common.js" ? specialPage?.content || "" : ""
+                    lastModifiedAt: specialPage?.lastModifiedAt || null,
+                    lastModifiedBy: specialPage?.lastModifiedBy?.name || null,
+                    commonCss: key === "common.css" ? (content || "") : "",
+                    commonJs: key === "common.js" ? (content || "") : ""
                 };
 
                 return res.serve("wiki-page", {
@@ -108,13 +124,22 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                         (pageNum - 1) * limit
                     );
 
-                    // Filter out redirect pages (#REDIRECT [[...]])
-                    const nonRedirectPages = pages.filter(p => !/^#redirect\s+\[\[.+?\]\]/i.test(p.content || ""));
+                    // Filter out redirect pages (#REDIRECT [[...]]) by reading stored content
+                    const fileStorage = require("../bin/wiki-file-storage");
+                    const nonRedirectPages = [];
+                    for (const p of pages) {
+                        const content = await fileStorage.readContent(p.wiki, p.namespace, p.path);
+                        if (!/^#redirect\s+\[\[.+?\]\]/i.test(content || "")) nonRedirectPages.push(p);
+                    }
 
-                    // Count total non-redirect pages (for pagination)
-                    const total = await WikiPage.countDocuments({ wiki: wiki._id, namespace });
-                    const totalNonRedirect = (await WikiPage.find({ wiki: wiki._id, namespace }, "content"))
-                        .filter(p => !/^#redirect\s+\[\[.+?\]\]/i.test(p.content || "")).length;
+                    // Count total non-redirect pages (for pagination) — this reads all page contents in the namespace
+                    const allPages = await WikiPage.find({ wiki: wiki._id, namespace }).lean();
+                    let totalNonRedirect = 0;
+                    for (const p of allPages) {
+                        const content = await fileStorage.readContent(p.wiki, p.namespace, p.path);
+                        if (!/^#redirect\s+\[\[.+?\]\]/i.test(content || "")) totalNonRedirect++;
+                    }
+                    const total = allPages.length;
 
                     return res.serve("wiki-page", {
                         wiki,
@@ -207,11 +232,11 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             .populate("revisions.author", "name")
             .lean();
 
-        const commonCssPage = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: "Common.css" });
-        const commonJsPage = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: "Common.js" });
+        const commonCssPage = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: "Common.css" }).lean();
+        const commonJsPage = await WikiPage.findOne({ wiki: wiki._id, namespace: "Special", path: "Common.js" }).lean();
 
-        const commonCss = commonCssPage?.content || "";
-        const commonJs = commonJsPage?.content || "";
+        const commonCss = commonCssPage ? await fileStorage.readContent(commonCssPage.wiki, commonCssPage.namespace, commonCssPage.path) : "";
+        const commonJs = commonJsPage ? await fileStorage.readContent(commonJsPage.wiki, commonJsPage.namespace, commonJsPage.path) : "";
 
         if (!page) {
             // --- Special: List all pages in this category ---
@@ -240,22 +265,37 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             };
         }
 
-        // --- Handle old revision if specified ---
-        if (oldid) {
-            const revision = page.revisions.find(rev => rev._id.toString() === oldid);
-            if (revision) {
-                page.content = revision.content;
+        // Load stored content/html/revisions from disk and merge into page
+        if (page) {
+            const storedContent = await fileStorage.readContent(page.wiki, page.namespace, page.path);
+            const storedHtml = await fileStorage.readHtml(page.wiki, page.namespace, page.path);
+            const storedRevs = await fileStorage.readRevisions(page.wiki, page.namespace, page.path);
+            page.content = storedContent || page.content || "";
+            page.html = storedHtml || page.html || "";
+            // Merge stored revision content into metadata revisions for display
+            if (Array.isArray(storedRevs) && Array.isArray(page.revisions)) {
+                for (let i = 0; i < page.revisions.length; i++) {
+                    page.revisions[i].content = storedRevs[i] ? storedRevs[i].content : "";
+                }
+            } else if (Array.isArray(storedRevs)) {
+                page.revisions = storedRevs.map(r => r);
+            }
 
-                // For old revisions show raw source instead of running the renderer
-                page.html = `<pre class="wiki-source"><code>${escapeHtml(revision.content)}</code></pre>`;
-                page.categories = [];
-                page.tags = [];
-                page.lastModifiedAt = revision.timestamp;
-                page.lastModifiedBy = revision.author;
-                page.isOldRevision = true;
-                page.commonCss = commonCss;
-                page.commonJs = commonJs;
-                page.noIndex = true;
+            // --- Handle old revision if specified ---
+            if (oldid) {
+                const revision = page.revisions.find(rev => String(rev._id || rev.timestamp) === String(oldid));
+                if (revision) {
+                    page.content = revision.content || page.content;
+                    page.html = `<pre class="wiki-source"><code>${escapeHtml(revision.content || page.content)}</code></pre>`;
+                    page.categories = [];
+                    page.tags = [];
+                    page.lastModifiedAt = revision.timestamp;
+                    page.lastModifiedBy = revision.author;
+                    page.isOldRevision = true;
+                    page.commonCss = commonCss;
+                    page.commonJs = commonJs;
+                    page.noIndex = true;
+                }
             }
         }
 
@@ -291,22 +331,28 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                     wiki: wiki._id,
                     namespace: "Module",
                     path: docPath
-                });
+                }).lean();
 
-                if (docPage && docPage.html) {
-                    page.docHtml = docPage.html;
-                } else if (docPage && docPage.content) {
-                    const renderedDoc = await renderWikiText(docPage.content, {
-                        wikiName: wiki.name,
-                        pageName: docPage.path,
-                        currentNamespace: "Module",
-                        WikiPage,
-                        currentPageId: docPage._id,
-                        getPage: async (ns, name) =>
-                            WikiPage.findOne({ wiki: wiki._id, namespace: ns, path: name }),
-                        existingPages: new Set((await WikiPage.find({ wiki: wiki._id }).select("namespace path").lean()).map(p => p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`))
-                    });
-                    page.docHtml = renderedDoc.html;
+                if (docPage) {
+                    const docHtml = await fileStorage.readHtml(docPage.wiki, docPage.namespace, docPage.path);
+                    if (docHtml) {
+                        page.docHtml = docHtml;
+                    } else {
+                        const docContent = await fileStorage.readContent(docPage.wiki, docPage.namespace, docPage.path);
+                        if (docContent) {
+                            const renderedDoc = await renderWikiText(docContent, {
+                                wikiName: wiki.name,
+                                pageName: docPage.path,
+                                currentNamespace: "Module",
+                                WikiPage,
+                                currentPageId: docPage._id,
+                                getPage: async (ns, name) =>
+                                    WikiPage.findOne({ wiki: wiki._id, namespace: ns, path: name }),
+                                existingPages: new Set((await WikiPage.find({ wiki: wiki._id }).select("namespace path").lean()).map(p => p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`))
+                            });
+                            page.docHtml = renderedDoc.html;
+                        }
+                    }
                 }
             }
 
@@ -344,7 +390,9 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                 page.categories = rendered.categories;
                 page.tags = rendered.tags;
                 page.noIndex = rendered.noIndex;
-                await page.save();
+                // Persist rendered HTML and metadata
+                try { await fileStorage.writeHtml(page.wiki, page.namespace, page.path, rendered.html); } catch (e) { }
+                await WikiPage.updateOne({ _id: page._id }, { $set: { categories: rendered.categories, tags: rendered.tags, noIndex: rendered.noIndex, lastModifiedAt: new Date() } });
             }
 
             // Attach common assets
