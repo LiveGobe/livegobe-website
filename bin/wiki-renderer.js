@@ -22,7 +22,7 @@ const ALLOWED_TAGS = [
   "section", "header", "footer", "article", "figure", "figcaption",
   "ul", "ol", "li", "table", "thead", "tbody", "tr", "td", "th",
   "blockquote", "pre", "code", "hr", "h1", "h2", "h3", "h4", "h5", "h6",
-  "img", "button", "video", "audio", "source"
+  "img", "button", "video", "audio", "source", "input"
 ];
 
 const ALLOWED_ATTR = [
