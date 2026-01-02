@@ -190,7 +190,7 @@ WikiPageSchema.virtual("fullTitle").get(function () {
 });
 
 // Instance method to render markdown content to sanitized HTML
-WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sourceContent = null } = {}) {
+WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sourceContent = null, dryRun = false } = {}) {
     if (!this.populated('wiki')) await this.populate('wiki');
 
     // Determine source content: provided override or stored file
@@ -244,7 +244,9 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
 
         this.noIndex = noIndex;
         // Persist rendered HTML to file storage
-        try { await fileStorage.writeHtml(this.wiki._id, this.namespace, this.path, html); } catch (e) { }
+        if (!dryRun) {
+            try { await fileStorage.writeHtml(this.wiki._id, this.namespace, this.path, html); } catch (e) { }
+        }
         this.html = html; // in-memory for immediate response
         this.categories = categories;
         this.tags = tags;

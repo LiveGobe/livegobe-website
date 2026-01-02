@@ -52,6 +52,22 @@ function getSupportedNamespaces() {
     return ["Main", "Help", "User", "File", "Category", "Template", "Module", "Special"];
 }
 
+function getAvailableLocales() {
+    const fs = require('fs');
+    const path = require('path');
+    try {
+        const localesDir = path.join(__dirname, '..', 'locales');
+        const files = fs.readdirSync(localesDir);
+        return files
+            .filter(f => f.endsWith('.json'))
+            .map(f => f.replace('.json', ''))
+            .sort();
+    } catch (e) {
+        console.warn('Failed to read locales directory:', e);
+        return ['en', 'ru']; // Fallback defaults
+    }
+}
+
 module.exports = {
     formatBytes,
     filenameValid,
@@ -60,5 +76,6 @@ module.exports = {
     bundleUrl,
     sanitizeFilename,
     versionValid,
-    getSupportedNamespaces
+    getSupportedNamespaces,
+    getAvailableLocales
 }

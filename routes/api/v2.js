@@ -1209,7 +1209,7 @@ router.post("/wikis/:wikiName/render", async (req, res) => {
         const startTimer = performance.now();
 
         // Render content (simple LGWL -> HTML) using provided source
-        await tempPage.renderContent({ sourceContent: content });
+        await tempPage.renderContent({ sourceContent: content, dryRun: true });
 
         // End timer
         const renderTimeMs = +(performance.now() - startTimer).toFixed(2);

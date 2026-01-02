@@ -7,6 +7,58 @@ const Wiki = require("../models/wiki");
 const WikiPage = require("../models/wikiPage");
 const fileStorage = require("../bin/wiki-file-storage");
 
+// Helper: Check if a string is a valid locale code (2 chars, in available locales)
+function isLocaleCode(str) {
+    if (!str || str.length !== 2) return false;
+    const availableLocales = utils.getAvailableLocales();
+    return availableLocales.includes(str.toLowerCase());
+}
+
+// Helper: Extract locale from page path if last segment is a locale code
+function extractLocaleFromPath(path) {
+    const parts = path.split('/');
+    if (parts.length === 0) return { basePath: path, locale: null };
+    const lastPart = parts[parts.length - 1];
+    if (isLocaleCode(lastPart)) {
+        return {
+            basePath: parts.slice(0, -1).join('/'),
+            locale: lastPart.toLowerCase()
+        };
+    }
+    return { basePath: path, locale: null };
+}
+
+// Helper: Get all available locale variants for a page
+async function getPageLocaleVariants(wiki, namespace, basePath) {
+    const availableLocales = utils.getAvailableLocales();
+    const variants = [];
+
+    // Check base page (no locale suffix)
+    const basePage = await WikiPage.findOne({
+        wiki: wiki._id,
+        namespace,
+        path: basePath
+    }).lean();
+    if (basePage) {
+        variants.push({ locale: null, path: basePath, exists: true });
+    }
+
+    // Check each locale variant
+    for (const locale of availableLocales) {
+        const localePath = `${basePath}/${locale}`;
+        const locPage = await WikiPage.findOne({
+            wiki: wiki._id,
+            namespace,
+            path: localePath
+        }).lean();
+        if (locPage) {
+            variants.push({ locale, path: localePath, exists: true });
+        }
+    }
+
+    return variants;
+}
+
 // List all wikis
 router.get("/", async (req, res) => {
     try {
@@ -456,8 +508,13 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             return res.status(403).serve("_403", { message: req.t("page.wiki.no_permission") });
         }
 
+        // --- Locale detection and fallback ---
+        const { basePath, locale } = extractLocaleFromPath(fullPagePath);
+        let pagePathToLoad = fullPagePath;
+        let requestedLocale = locale;
+
         // Get page content including redirect detection
-        let page = await getWikiPage(wiki, namespace, fullPagePath, req.query.oldid, !!req.query.noredirect);
+        let page = await getWikiPage(wiki, namespace, pagePathToLoad, req.query.oldid, !!req.query.noredirect);
 
         // --- Handle redirects in view mode only ---
         if (mode === "view" && page.redirectTarget && !page.isOldRevision) {
@@ -549,6 +606,9 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             page.categoriesWithExists = [];
         }
 
+        // --- Get available locale variants for language selector ---
+        const localeVariants = await getPageLocaleVariants(wiki, namespace, basePath || pagePathToLoad);
+
         res.serve("wiki-page", {
             wiki,
             page,
@@ -557,7 +617,9 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             mode,
             query: req.query,
             canEdit: canAccessMode(wiki, req.user, "edit"),
-            canDelete: canAccessMode(wiki, req.user, "delete")
+            canDelete: canAccessMode(wiki, req.user, "delete"),
+            currentLocale: requestedLocale,
+            localeVariants
         });
     } catch (err) {
         console.error("Error loading wiki page:", err);

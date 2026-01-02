@@ -3,6 +3,7 @@ const DOMPurify = require("isomorphic-dompurify");
 const { staticUrl } = require("./utils");
 const fs = require("fs");
 const path = require("path");
+const wikiFileStorage = require("./wiki-file-storage");
 
 // Helper to get existing uploaded files for a wiki
 function getExistingFiles(wikiName) {
@@ -148,6 +149,10 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
   } catch (err) {
     console.error(`[LGML] DB error fetching Module:${normalized}`, err);
     return `<span class="lgml-error">LGML: error loading module ${normalized}</span>`;
+  }
+
+  if (modulePage) {
+    modulePage.content = await wikiFileStorage.readContent(modulePage.wiki, "Module", normalized);
   }
 
   if (!modulePage || !modulePage.content) {
@@ -1681,6 +1686,11 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
     visited.add(templateKey);
 
     const templatePage = await getPage("Template", normalizedName);
+
+    if (templatePage) {
+      templatePage.content = await wikiFileStorage.readContent(templatePage.wiki, "Template", normalizedName);
+    }
+
     if (!templatePage || !templatePage.content) {
       visited.delete(templateKey);
       return `<span class="missing-template">{{${name}}}</span>`;
