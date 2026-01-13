@@ -45,6 +45,9 @@ module.exports = function(props) {
                                 <button type="button" id="back">{props.t("page.register.back")}</button>
                             </a>
                         </div>
+                        <div id="legal">
+                            By registering, you agree to our <a href="https://livegobe.ru/wikis/livegobe-wiki/Legal"> Terms of Service and Privacy Policy</a>.
+                        </div>
                     </form>
                     <div id="error-message" hidden />
                 </div>

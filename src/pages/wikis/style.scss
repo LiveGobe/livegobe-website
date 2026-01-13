@@ -26,6 +26,10 @@ body[data-theme="dark"] {
   --btn-secondary-hover: #5c636a;
 }
 
+html, body {
+  height: 100%;
+}
+
 body {
   margin: 0;
   font-family: "Inter", sans-serif;
@@ -37,6 +41,9 @@ body {
   max-width: 960px;
   margin: 0 auto;
   padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100% - 4rem);
 }
 
 /* Header */
@@ -65,6 +72,33 @@ body {
     &:hover {
       background-color: var(--btn-primary-hover);
     }
+  }
+}
+
+main a {
+  color: var(--link);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  /* make main take remaining space so contacts-block can sit at bottom */
+  main {
+    flex: 1 1 auto;
+  }
+}
+
+#contacts-block {
+  margin-top: 3rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+
+  /* push to bottom of page when container is full-height */
+  margin-top: auto;
+
+  p {
+    margin: 0.25rem 0;
   }
 }
 
@@ -220,6 +254,8 @@ body {
     padding: 1rem;
   }
 }
+
+
 
 /* --- Create Wiki Button --- */
 #create-wiki {

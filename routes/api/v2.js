@@ -18,6 +18,7 @@ const User = require("../../models/user");
 const ModsPortalGame = require("../../models/modsportalGame");
 const Wiki = require("../../models/wiki");
 const WikiPage = require("../../models/wikiPage");
+const fileCache = require("../../bin/file-cache");
 
 router.route("/filestorage").get((req, res) => {
     if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
@@ -785,9 +786,34 @@ router.route("/wikis").get((req, res) => {
 
         const wiki = new Wiki({ name: slug, title, description, language });
 
-        wiki.save().then(saved => {
-            // Return created wiki object
-            res.status(201).json({ message: req.t("api.wikis.created"), wiki: saved });
+        wiki.save().then(async saved => {
+            try {
+                // Create Special:Common.css
+                await WikiPage.createPage(
+                    saved._id,
+                    "Common.css",
+                    "Special",
+                    "Common.css",
+                    "/* Common CSS for this wiki */",
+                    req.user._id
+                );
+
+                // Create Special:Common.js
+                await WikiPage.createPage(
+                    saved._id,
+                    "Common.js",
+                    "Special",
+                    "Common.js",
+                    "// Common JS for this wiki",
+                    req.user._id
+                );
+
+                // Return created wiki object
+                res.status(201).json({ message: req.t("api.wikis.created"), wiki: saved });
+            } catch (err) {
+                console.error("Error creating Common pages:", err);
+                res.status(500).json({ message: req.t("api.wikis.create_failed_common") });
+            }
         }).catch(err => {
             console.error("Error creating wiki:", err);
             res.status(500).json({ message: req.t("api.wikis.create_failed") });
@@ -838,6 +864,33 @@ router.post("/wikis/:wikiName/pages/:pageTitle*/purge", async (req, res) => {
     return res.json({ message: req.t("api.wikis.page_purged", { page: fullPath }) });
   } catch (err) {
     console.error("API: error purging wiki page:", err);
+    res.status(500).json({ message: err.toString() });
+  }
+});
+
+// Purge all pages cache (for admins or editors)
+router.post("/wikis/:wikiName/purge", async (req, res) => {
+  try {
+    const wikiName = req.params.wikiName;
+
+    // Find wiki
+    const wiki = await Wiki.findOne({ name: wikiName });
+    if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+
+    // Must be logged in
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+
+    // Must have edit permission or be admin
+    if (!wiki.canEdit(req.user) && !req.user.hasRole?.("admin")) {
+      return res.status(403).json({ message: req.t("api.nopermission") });
+    }
+
+    // Trigger purge all
+    await WikiPage.purgeAll(wiki.id);
+
+    return res.json({ message: req.t("api.wikis.all_purged") });
+  } catch (err) {
+    console.error("API: error purging wiki pages:", err);
     res.status(500).json({ message: err.toString() });
   }
 });
@@ -897,17 +950,27 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
             if (!wiki.canAccess(req.user)) return res.status(403).json({ message: req.t("api.nopermission") });
 
             const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
-            const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath }).populate("lastModifiedBy", "username");
+            const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath }).populate("lastModifiedBy", "username").lean();
 
             if (!page) {
                 return res.json({ exists: false, title: fullPath, namespace, path: fullPath });
             }
 
+            // Load stored content/html/revisions from disk
+            const fileStorage = require("../../bin/wiki-file-storage");
+            const storedContent = await fileStorage.readContent(page.wiki, page.namespace, page.path);
+            const storedHtml = await fileStorage.readHtml(page.wiki, page.namespace, page.path);
+            const storedRevs = await fileStorage.readRevisions(page.wiki, page.namespace, page.path);
+
             // include revisions only for editors when requested
             let revisions = undefined;
-            const includeRevisions = req.query.includeRevisions === "1" || req.query.includeRevisions === "true";
+            const includeRevisions = req.body?.includeRevisions || req.query.includeRevisions === "1" || req.query.includeRevisions === "true";
             if (includeRevisions && wiki.canEdit(req.user)) {
-                revisions = page.revisions.map(r => ({ id: r._id, author: r.author, timestamp: r.timestamp, comment: r.comment, minor: r.minor }));
+                if (Array.isArray(storedRevs)) {
+                    revisions = storedRevs.map((r, idx) => ({ id: page.revisions[idx]?._id || null, author: page.revisions[idx]?.author || r.author, timestamp: r.timestamp || page.revisions[idx]?.timestamp, comment: r.comment || page.revisions[idx]?.comment, minor: r.minor || page.revisions[idx]?.minor, content: r.content }));
+                } else {
+                    revisions = page.revisions.map(r => ({ id: r._id, author: r.author, timestamp: r.timestamp, comment: r.comment, minor: r.minor, content: null }));
+                }
             }
 
             return res.json({
@@ -916,8 +979,8 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
                     title: page.title || page.path,
                     namespace: page.namespace,
                     path: page.path,
-                    content: page.content,
-                    html: page.html,
+                    content: storedContent || "",
+                    html: storedHtml || "",
                     lastModifiedAt: page.lastModifiedAt,
                     lastModifiedBy: page.lastModifiedBy,
                     categories: page.categories,
@@ -987,16 +1050,20 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
                     });
                 }
 
+                // Load existing content from disk
+                const fileStorage = require("../../bin/wiki-file-storage");
+                const existingContent = await fileStorage.readContent(wiki._id, namespace, fullPath);
+
                 // ✅ Skip saving if content hasn't changed
-                if (page.content === content) {
+                if ((existingContent || "") === (content || "")) {
                     return res.status(400).json({
                         message: req.t("api.wikis.no_change_detected"),
                         page: {
                             title: page.title || page.path,
                             namespace: page.namespace,
                             path: page.path,
-                            content: page.content,
-                            html: page.html,
+                            content: existingContent,
+                            html: await fileStorage.readHtml(wiki._id, namespace, fullPath),
                             lastModifiedAt: page.lastModifiedAt,
                             lastModifiedBy: await User.findById(page.lastModifiedBy).select("username"),
                             categories: page.categories,
@@ -1006,8 +1073,8 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
                     });
                 }
 
-                // Update existing page
-                page.addRevision(content, req.user._id, summary, minor);
+                // Update existing page (store text on disk and metadata in DB)
+                await page.addRevision(content, req.user._id, summary, minor);
             } else {
                 // Create new page
                 page = await WikiPage.createPage(
@@ -1093,6 +1160,8 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
                     console.warn(`Failed to delete file: ${filePath}`, err);
                     // do not block page deletion
                 }
+                // invalidate file cache for this wiki so renders update
+                try { fileCache.invalidate(wiki.name); } catch (e) { }
             }
 
             // Delete the wiki page itself
@@ -1136,13 +1205,20 @@ router.post("/wikis/:wikiName/render", async (req, res) => {
 			content
 		});
 
-		// Render content (simple LGWL -> HTML)
-		await tempPage.renderContent();
+        // Start performance timer
+        const startTimer = performance.now();
+
+        // Render content (simple LGWL -> HTML) using provided source
+        await tempPage.renderContent({ sourceContent: content, dryRun: true });
+
+        // End timer
+        const renderTimeMs = +(performance.now() - startTimer).toFixed(2);
 
 		return res.json({
 			message: req.t("api.wikis.page_rendered"),
 			html: tempPage.html,
-			categories: tempPage.categories || []
+			categories: tempPage.categories || [],
+            renderTimeMs
 		});
 	} catch (err) {
 		console.error("API: error rendering wiki preview:", err);
@@ -1221,43 +1297,194 @@ router.post("/wikis/:wikiName/files", fileUpload({ defParamCharset: "utf-8" }), 
 ${uploadFile.mimetype.startsWith("image/") ? `[[File:${safeFilename}]]` : "Preview not available for this type."}
 `;
 
-    if (page) {
-      page.addRevision(filePageContent, req.user._id, "Updated file upload", false);
-    } else {
-      page = await WikiPage.createPage(
-        wiki._id,
-        pageTitle,
-        namespace,
-        pagePath,
-        filePageContent,
-        req.user._id,
-        "Initial file upload"
-      );
-    }
+        if (page) {
+            await page.addRevision(filePageContent, req.user._id, "Updated file upload", false);
+        } else {
+            page = await WikiPage.createPage(
+                wiki._id,
+                pageTitle,
+                namespace,
+                pagePath,
+                filePageContent,
+                req.user._id,
+                "Initial file upload"
+            );
+        }
 
-    await page.save();
+        await page.save();
 
     const populatedPage = await WikiPage.findById(page._id).populate("lastModifiedBy", "name");
+
+    // Invalidate file cache for this wiki so future renders see the new file
+    try { fileCache.invalidate(wiki.name); } catch (e) { }
 
     // Use staticLink utility for URL
     const fileUrl = utils.staticUrl(`wikis/${wiki.name}/uploads/${safeFilename}`);
 
-    return res.json({
-      message: req.t("api.files.upload_success"),
-      file: {
-        title: populatedPage.title,
-        namespace: populatedPage.namespace,
-        path: populatedPage.path,
-        html: populatedPage.html,
-        lastModifiedAt: populatedPage.lastModifiedAt,
-        lastModifiedBy: populatedPage.lastModifiedBy,
-        url: fileUrl
-      }
-    });
+        const fileHtml = await require("../../bin/wiki-file-storage").readHtml(populatedPage.wiki, populatedPage.namespace, populatedPage.path);
+
+        return res.json({
+            message: req.t("api.files.upload_success"),
+            file: {
+                title: populatedPage.title,
+                namespace: populatedPage.namespace,
+                path: populatedPage.path,
+                html: fileHtml || "",
+                lastModifiedAt: populatedPage.lastModifiedAt,
+                lastModifiedBy: populatedPage.lastModifiedBy,
+                url: fileUrl
+            }
+        });
   } catch (err) {
     console.error("API: error uploading file:", err);
     res.status(500).json({ message: err.toString() });
   }
+});
+
+// GET /search - search wiki pages
+router.get("/wiki/:wikiName/search", async (req, res) => {
+    try {
+        const wikiName = req.params.wikiName;
+        const rawSearch = (req.body.search || req.query.search || "").trim();
+
+        if (!rawSearch) {
+            return res.status(400).json({
+                message: req.t("api.wikis.search_term_required")
+            });
+        }
+
+        const wiki = await Wiki.findOne({ name: wikiName });
+        if (!wiki) {
+            return res.status(404).json({
+                message: req.t("api.wikis.not_found")
+            });
+        }
+
+        if (!wiki.canAccess(req.user)) {
+            return res.status(403).json({
+                message: req.t("api.nopermission")
+            });
+        }
+
+        // ================================
+        // Namespace extraction
+        // ================================
+        let namespace = null;
+        let search = rawSearch;
+
+        const colonIndex = rawSearch.indexOf(":");
+        if (colonIndex !== -1) {
+            namespace = rawSearch.slice(0, colonIndex).trim();
+            search = rawSearch.slice(colonIndex + 1).trim();
+
+            if (!search) {
+                search = namespace;
+                namespace = null;
+            }
+        }
+
+        // ================================
+        // Namespace filter
+        // ================================
+        let namespaceFilter = {};
+
+        if (namespace === null) {
+            namespaceFilter = { namespace: "Main" };
+        } else {
+            namespaceFilter = { namespace };
+        }
+
+        // ================================
+        // Regex helpers
+        // ================================
+        const escapeRegex = (str) =>
+            str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+        const fuzzyRegex = (str) =>
+            str.split("").map(ch => escapeRegex(ch)).join(".*");
+
+        function extractRedirectTarget(content) {
+            const m = content.match(/^#redirect\s*\[\[(.+?)\]\]/i);
+            return m ? m[1] : null;
+        }
+
+        // Create reusable escaped value
+        const escaped = escapeRegex(search);
+
+        const exact = new RegExp(escaped, "i");
+        const fuzzy = new RegExp(fuzzyRegex(search), "i");
+
+        // Redirect syntax
+        const redirectRegex = /^#redirect\s*\[\[(.+?)\]\]/i;
+
+        // ================================
+        // Query
+        // ================================
+        const pages = await WikiPage.find({
+            wiki: wiki._id,
+            ...namespaceFilter,
+            $or: [
+                // direct matches
+                { title: exact },
+                { path: exact },
+
+                // fuzzy
+                { title: fuzzy },
+                { path: fuzzy }
+            ]
+        }).limit(100).lean();
+
+        // ================================
+        // Ranking
+        // ================================
+        const term = search.toLowerCase();
+        const scorePage = (p) => {
+            let score = 0;
+
+            const title = p.title.toLowerCase();
+            const path = p.path.toLowerCase();
+
+            if (title === term) score += 100;
+            if (title.startsWith(term)) score += 50;
+
+            if (title.match(exact)) score += 30;
+            if (path.match(exact)) score += 15;
+
+            if (title.match(fuzzy)) score += 5;
+
+            return score;
+        };
+
+        // Enrich candidates by checking stored content for redirect information
+        const fileStorage = require("../../bin/wiki-file-storage");
+        const enriched = await Promise.all(pages.map(async page => {
+            const content = await fileStorage.readContent(page.wiki, page.namespace, page.path);
+            return { page, score: scorePage(page), content: content || "" };
+        }));
+
+        const ranked = enriched
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 50)
+            .map(p => ({
+                title: p.page.title,
+                path: p.page.path,
+                namespace: p.page.namespace,
+                isRedirect: redirectRegex.test(p.content),
+                redirectTo: extractRedirectTarget(p.content)
+            }))
+
+        return res.json({
+            message: req.t("api.wikis.search_results", {
+                "0": ranked.length,
+                "1": rawSearch
+            }),
+            results: ranked
+        });
+
+    } catch (err) {
+        console.error("API: error searching wiki pages:", err);
+        return res.status(500).json({ message: err.toString() });
+    }
 });
 
 module.exports = router;

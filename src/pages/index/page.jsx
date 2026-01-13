@@ -24,9 +24,10 @@ function UserButton(props) {
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.index.name")}>
+            <Head title={props.t("page.index.name")} doIndex>
                 <Bundle name="index.js" />
                 <Bundle name="index.css" />
+                <meta name="description" content="LG Website is a collection of tools/apps hosted by LiveGobe" />
             </Head>
             <body data-theme={props.theme}>
                 <div id="user-card">
@@ -57,6 +58,7 @@ module.exports = function(props) {
                         <a href="/password_generator">{props.t("page.index.content.tools.passwordgenerator")}</a>
                         <a href="/mods_portal/browse">{props.t("page.index.content.tools.modsportal")}</a>
                         <a href="/albion_tools">{props.t("page.index.content.tools.albion")}</a>
+                        <a href="/wikis">{props.t("page.index.content.tools.wikis")}</a>
                     </div>
                     <footer>
                         <span id="copyright">{props.t("copyright")}</span>

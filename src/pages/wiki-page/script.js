@@ -33,113 +33,131 @@ $(function () {
 		};
 
 		// === LGWL Base Mode ===
-		CodeMirror.defineMode("lgwlBase", function(config) {
+		CodeMirror.defineMode("lgwlBase", function (config) {
+		return {
+			startState: function () {
 			return {
-				startState: function() {
-				return {
-					inNowiki: false,
-					inTemplate: 0,
-					inLink: 0,
-					inCodeBlock: false
-				};
-				},
-				token: function(stream, state) {
-
-				// --- Nowiki ---
-				if (!state.inNowiki && stream.match("<nowiki>", true)) {
-					state.inNowiki = true;
-					return "nowiki";
-				}
-				if (state.inNowiki) {
-					if (stream.match("</nowiki>", true)) { state.inNowiki = false; }
-					else { stream.next(); }
-					return "nowiki";
-				}
-
-				// --- Redirects ---
-				if (stream.match(/^#REDIRECT\b/i, true)) return "redirect";
-
-				// --- Code block ``` ---
-				if (!state.inCodeBlock && stream.match(/^```/, true)) {
-					state.inCodeBlock = true;
-					return "code-block";
-				}
-				if (state.inCodeBlock) {
-					if (stream.match(/^```/, true)) { state.inCodeBlock = false; }
-					else { stream.skipToEnd(); }
-					return "code-block";
-				}
-
-				// --- Template {{...}} ---
-				if (stream.match("{{", true)) {
-					state.inTemplate++;
-					return "template";
-				}
-				if (state.inTemplate > 0) {
-					// Built-in templates
-					const builtinMatch = stream.match(/(!|=|\(|\)|\[|\]|\{|\}|<|>|:)(?=}})/);
-					if (builtinMatch && BUILTIN_TEMPLATES[builtinMatch[1]]) return "template-builtin";
-
-					if (stream.match("}}", true)) {
-					state.inTemplate--;
-					return "template";
-					} else {
-					stream.next();
-					return "template";
-					}
-				}
-
-				// --- Link [[...]] ---
-				if (stream.match("[[", true)) {
-					state.inLink++;
-					return "link";
-				}
-				if (state.inLink > 0) {
-					// Category / Tag links
-					if (stream.match(/Category:/, true)) return "category-link";
-					if (stream.match(/(Tag|Tags?):/, true)) return "tag-link";
-
-					if (stream.match("]]", true)) {
-					state.inLink--;
-					return "link";
-					} else {
-					stream.next();
-					return "link";
-					}
-				}
-
-				// --- External link [http://...] ---
-				if (!state.inLink && stream.peek() === "[") {
-					const rest = stream.string.slice(stream.pos);
-					const match = rest.match(/^\[(https?:\/\/[^\s\]]+(\s[^\]]+)?)\]/);
-					if (match) {
-					stream.match(match[0]);
-					return "link";
-					}
-				}
-
-				// --- Tables ---
-				if (stream.match(/^\|\-/, true)) return "table-divider";
-				if (stream.match(/^\|\|/, true)) return "table-pipe";
-				if (stream.match(/^\|/, true)) return "table-pipe";
-				if (stream.match(/^!/, true)) return "table-header";
-
-				// --- Headings == ... == ---
-				if (stream.match(/^(={2,6})\s*(.*?)\s*\1$/, true)) return "heading";
-
-				// --- Lists *, #, - ---
-				if (stream.match(/^(\*+|\#+|\-+)\s+/, true)) return "list";
-
-				// --- Blockquote > ---
-				if (stream.match(/^>\s+/, true)) return "blockquote";
-
-				// --- Horizontal rule (---- or ***) ---
-				if (stream.match(/^(-{4,}|\*{3,})$/, true)) return "hr";
-
-				// --- HTML fallback ---
-				if (!stream.eol()) { stream.next(); return null; }
-				}
+				inNowiki: false,
+				inTemplate: 0,
+				inArg: 0,
+				inLink: 0,
+				inCodeBlock: false
 			};
+			},
+
+			token: function (stream, state) {
+			// --- Nowiki ---
+			if (!state.inNowiki && stream.match("<nowiki>", true)) {
+				state.inNowiki = true;
+				return "nowiki";
+			}
+			if (state.inNowiki) {
+				if (stream.match("</nowiki>", true)) state.inNowiki = false;
+				else stream.next();
+				return "nowiki";
+			}
+
+			// --- Redirects ---
+			if (stream.sol() && stream.match(/^#REDIRECT\b/i, true)) return "redirect";
+
+			// --- Code block ```
+			if (!state.inCodeBlock && stream.sol() && stream.match("```", true)) {
+				state.inCodeBlock = true;
+				return "code-block";
+			}
+			if (state.inCodeBlock) {
+				if (stream.match("```", true)) state.inCodeBlock = false;
+				else stream.skipToEnd();
+				return "code-block";
+			}
+
+			// --- Triple-brace {{{argument}}} ---
+			if (stream.match("{{{", true)) {
+				state.inArg++;
+				return "template-arg";
+			}
+			if (state.inArg > 0) {
+				if (stream.match("}}}", true)) {
+				state.inArg--;
+				return "template-arg";
+				} else {
+				stream.next();
+				return "template-arg";
+				}
+			}
+
+			// --- Template {{...}} ---
+			if (stream.match("{{", true)) {
+				state.inTemplate++;
+				return "template";
+			}
+			if (state.inTemplate > 0) {
+				if (stream.match("}}", true)) {
+				state.inTemplate--;
+				return "template";
+				} else {
+				// Optional: detect builtins like {{!}} or {{=}}
+				const ch = stream.peek();
+				if (ch && "!()[]{}<>:=|".includes(ch)) {
+					stream.next();
+					return "template-builtin";
+				}
+				stream.next();
+				return "template";
+				}
+			}
+
+			// --- Link [[...]] ---
+			if (stream.match("[[", true)) {
+				state.inLink++;
+				return "link";
+			}
+			if (state.inLink > 0) {
+				if (stream.match("]]", true)) {
+				state.inLink--;
+				return "link";
+				}
+				if (stream.match(/Category:/, true)) return "category-link";
+				if (stream.match(/(Tag|Tags?):/, true)) return "tag-link";
+				stream.next();
+				return "link";
+			}
+
+			// --- External link [http://...] ---
+			if (!state.inLink && stream.match(/\[(https?:\/\/[^\s\]]+)/, true)) {
+				stream.skipTo("]");
+				stream.next();
+				return "link";
+			}
+
+			// --- Tables ---
+			if (stream.sol()) {
+				if (stream.match("|-", true)) return "table-divider";
+				if (stream.match("||", true)) return "table-pipe";
+				if (stream.match("|", true)) return "table-pipe";
+				if (stream.match("!", true)) return "table-header";
+			}
+
+			// --- Headings == ... ==
+			if (stream.sol() && stream.match(/={2,6}(?=\s)/, true)) {
+				stream.skipToEnd();
+				return "heading";
+			}
+
+			// --- Lists *, #, - ---
+			if (stream.sol() && stream.match(/^(\*+|\#+|\-+)\s+/, true)) return "list";
+
+			// --- Blockquote > ---
+			if (stream.sol() && stream.match(/^>\s+/, true)) return "blockquote";
+
+			// --- Horizontal rule (---- or ***) ---
+			if (stream.sol() && stream.match(/^(-{4,}|\*{3,})/, true)) return "hr";
+
+			// --- Default ---
+			stream.next();
+			return null;
+			}
+		};
 		});
 
 		// === LGWL Inline Formatting Overlay ===
@@ -188,15 +206,21 @@ $(function () {
 		// Detect Module namespace but skip documentation subpages
 		if (pageName.startsWith("Module:") && !pageName.includes("/doc")) {
 			editorMode = "javascript";
+		} else if (pageName.endsWith(".css")) {
+			editorMode = "css";
 		}
 
 		// === Editor Initialization ===
+		const darkTheme = $("body").data("theme") == "dark";
 		const editor = CodeMirror.fromTextArea($editorTextarea[0], {
 			lineNumbers: true,
 			mode: editorMode,
-			theme: editorMode == "javascript" ? "eclipse" : "lgwl",
+			theme: editorMode == "javascript" || editorMode == "css" ? (darkTheme ? "monokai" : "eclipse") : "lgwl",
 			lineWrapping: true,
 			viewportMargin: Infinity,
+			smartIndent: false,
+			indentWithTabs: false,
+			indentUnit: 0,
 			extraKeys: {
 				"Ctrl-S": function(cm) {
 				const content = cm.getValue();
@@ -234,8 +258,8 @@ $(function () {
 			// Combine all lines into one string with newlines for global regex matching
 			const fullText = doc.getValue();
 
-			// Match {{ ... }} blocks that may span multiple lines, up to 1000 characters
-			const regex = /\{\{([\s\S]{0,1000}?)\}\}/g;
+			// Match {{ ... }} but NOT {{{ ... }}}
+			const regex = /(?<!\{)\{\{(?!\{)([\s\S]{0,1000}?)(?<!\})\}\}(?!\})/g;
 			let match;
 
 			while ((match = regex.exec(fullText)) !== null) {
@@ -417,9 +441,22 @@ $(function () {
         })
         .then(resp => resp.json())
         .then(json => {
-            if (json.html) $body.html(`<div class='wiki-preview'>${json.html}</div>`);
-            else $body.html(`<div class='error'>${json.message || "Preview unavailable"}</div>`);
-        })
+			if (json.html) {
+				// Build preview HTML + render time footer
+				const renderTime = json.renderTimeMs
+					? `<div class='preview-render-time'>Rendered in ${json.renderTimeMs} ms</div>`
+					: "";
+
+				$body.html(`
+					${renderTime}
+					<div class='wiki-preview'>
+						${json.html}
+					</div>
+				`);
+			} else {
+				$body.html(`<div class='error'>${json.message || "Preview unavailable"}</div>`);
+			}
+		})
         .catch(err => {
             console.error(err);
             $body.html(`<div class='error'>Failed to load preview: ${err.message}</div>`);
@@ -448,6 +485,31 @@ $(function () {
                 window.location.reload();
             } catch (err) {
                 alert("Error purging page: " + err);
+            }
+        });
+    }
+
+	// === Purge All button ===
+	const $purgeAll = $("#purge-all");
+    if ($purgeAll.length) {
+        $purgeAll.on("click", async function (e) {
+            e.preventDefault();
+            const $this = $(this);
+            const wiki = $this.data("wiki") || path?.wiki;
+            const promptText = $this.data("confirmPrompt") || "Are you sure you want to purge all pages on this wiki?";
+            if (!wiki || !window.confirm(promptText)) return;
+
+            try {
+                const resp = await fetch(`/api/v2/wikis/${encodeURIComponent(wiki)}/purge`, {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: { "Content-Type": "application/json" }
+                });
+                const json = await resp.json().catch(() => ({}));
+                if (json.message) alert(json.message);
+                window.location.reload();
+            } catch (err) {
+                alert("Error purging wiki cache: " + err);
             }
         });
     }
@@ -561,4 +623,127 @@ $(function () {
             });
         });
     }
+
+	$(document).on("click", ".revert-button", async function (e) {
+		e.preventDefault();
+		const $btn = $(this);
+		const revisionId = $btn.data("revision") || $btn.val();
+		const wiki = $btn.data("wiki") || $("meta[name=wiki]").attr("content");
+		const page = $btn.data("page") || $("meta[name=page]").attr("content");
+
+		if (!revisionId || !wiki || !page) return alert("Missing revision, wiki, or page info.");
+
+		if (!confirm(i18n.t ? i18n.t("wiki.history.revert_confirm") : "Are you sure you want to revert to this revision?")) return;
+
+		try {
+			$btn.prop("disabled", true).text(i18n.t ? i18n.t("wiki.history.reverting") : "Reverting...");
+
+			// 1️⃣ Fetch the current page with all revisions
+			const pageResp = await $.getJSON(`/api/v2/wikis/${encodeURIComponent(wiki)}/pages/${page.replace(/ /g, "_")}?includeRevisions=1`);
+			console.log(pageResp)
+			if (!pageResp.exists) {
+				throw new Error("Failed to fetch page or revisions.");
+			}
+
+			// 2️⃣ Find the revision content
+			const revision = pageResp.page.revisions.find(r => r.id === revisionId);
+			if (!revision) throw new Error("Revision not found.");
+
+			// 3️⃣ POST the revision content to update the page
+			const resp = await $.ajax({
+				url: `/api/v2/wikis/${encodeURIComponent(wiki)}/pages/${page.replace(/ /g, "_")}`,
+				method: "POST",
+				contentType: "application/json",
+				dataType: "json",
+				data: JSON.stringify({
+					content: revision.content,
+					summary: i18n.t ? i18n.t("wiki.history.revert_summary", { rev: revisionId }) : `Reverted to revision ${revisionId}`,
+					minor: false
+				})
+			});
+
+			if (resp && resp.message) alert(resp.message);
+			window.location.reload();
+
+		} catch (err) {
+			console.error(err);
+			alert(err.responseJSON?.error || err.statusText || err.message || "Failed to revert page.");
+			$btn.prop("disabled", false).text(i18n.t ? i18n.t("wiki.history.revert") : "Revert");
+		}
+	});
+
+	const $searchInput = $("#wiki-search");
+	const $results = $("#wiki-search-results");
+	let searchTimer;
+
+	// Input debounce + search
+	$searchInput.on("input", function () {
+		clearTimeout(searchTimer);
+		const query = $(this).val().trim();
+
+		searchTimer = setTimeout(function () {
+			if (!query) {
+				$results.hide().empty();
+				return;
+			}
+
+			$.ajax({
+				url: `/api/v2/wiki/${encodeURIComponent(wikiName)}/search`,
+				method: "GET",
+				data: { search: query },
+				dataType: "json"
+			}).done(function (data) {
+				renderResults(data.results);
+			});
+		}, 250);
+	});
+
+	// Hide results when clicking outside the search wrapper
+	$(document).on("click", function (e) {
+		if (!$(e.target).closest(".wiki-search").length) {
+			$results.hide();
+		}
+	});
+
+	// Optional: show results if input has value on focus
+	$searchInput.on("focus", function () {
+		if ($(this).val().trim() && $results.children().length) {
+			$results.show();
+		}
+	});
+
+    function renderResults(results) {
+		const container = $("#wiki-search-results");
+		container.empty();
+
+		if (!results.length) {
+			container
+				.html('<div class="wiki-search-empty">No results</div>')
+				.show();
+			return;
+		}
+
+		results.forEach(r => {
+			const isMain = r.namespace === "Main";
+			const title = isMain ? r.title : `${r.namespace}:${r.title}`;
+
+			// Final target: If it's a redirect, show redirectTo, else show normal path
+			const finalTarget = r.isRedirect && r.redirectTo
+				? r.redirectTo
+				: (isMain ? r.path : `${r.namespace}:${r.path}`);
+
+			const href = `/wikis/${wikiName}/${encodeURIComponent(finalTarget.replace(/ /g, "_"))}`;
+
+			container.append(`
+				<a class="wiki-search-item" href="${href}">
+					<div class="wiki-search-title">
+						${title}
+						${r.isRedirect ? `<span class="wiki-search-redirect">→ ${r.redirectTo.replace(/_/g, " ")}</span>` : ""}
+					</div>
+				</a>
+			`);
+		});
+
+		container.show();
+	}
 });

@@ -75,21 +75,36 @@ router.post("/register", (req, res) => {
 
         RegisterKey.findOne({ key: key }).then(registerKey => {
             if (!registerKey) return res.status(400).json({ message: req.t("api.register.keymismatch") });
-    
-            registerKey.deleteOne().then(() => {
-                const user = new User({ username, name, password: bcrypt.hashSync(password, 10) });
-    
-                user.save().then(user => {
-                    res.json({ message: req.t("api.register.success") })
+
+            if (registerKey.count <= 0) {
+                return res.status(400).json({ message: req.t("api.register.keyusedup") });
+            }
+
+            const newUser = new User({
+                username,
+                name,
+                password: bcrypt.hashSync(password, 10)
+            });
+
+            newUser.save().then(() => {
+                registerKey.count -= 1;
+
+                // Delete key if used up, otherwise just save
+                const keyAction = registerKey.count <= 0
+                    ? registerKey.deleteOne()
+                    : registerKey.save();
+
+                keyAction.then(() => {
+                    res.json({ message: req.t("api.register.success") });
                 }).catch(err => {
                     res.status(500).json({ message: err.toString() });
-                })
+                });
             }).catch(err => {
                 res.status(500).json({ message: err.toString() });
             });
         }).catch(err => {
             res.status(500).json({ message: err.toString() });
-        })
+        });
     }).catch(err => {
         res.status(500).json({ message: err.toString() });
     });

@@ -7,13 +7,14 @@ const utils = require("../../../bin/utils");
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.modsportal.pagename")}>
+            <Head title={props.t("page.modsportal.pagename")} doIndex>
                 <Bundle name="modsportal.js" />
                 <Bundle name="modsportal.css" />
                 <meta property="og:title" content="LG Mods Portal" />
                 <meta property="og:image" content={utils.staticUrl("images/home.png")} />
                 <meta property="og:description" content="A mods portal for different games" />
                 <meta property="og:url" content={`https://${config.domainName}${props.link}`} />
+                <meta name="description" content="A collection of mods made by LiveGobe" />
             </Head>
             <body data-theme={props.theme}>
                 <header>

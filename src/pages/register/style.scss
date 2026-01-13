@@ -146,3 +146,15 @@ input[type="submit"]:hover {
         width: 100%;
     }
 }
+
+#legal {
+    font-size: 12px;
+    color: var(--text-color);
+    margin-top: 10px;
+    text-align: center;
+
+    a {
+        color: var(--text-color);
+        text-decoration: underline;
+    }
+}
