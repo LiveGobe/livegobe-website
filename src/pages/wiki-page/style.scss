@@ -2575,6 +2575,16 @@ body {
   .wiki-header .wiki-top-nav {
     display: none;
   }
+
+  .wiki-search {
+    width: 100%;
+    margin: 1rem 0;
+  }
+
+  .wiki-header-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 /* ===========================
