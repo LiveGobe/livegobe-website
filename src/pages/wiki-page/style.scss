@@ -1,5 +1,9 @@
 /* Auto-generated color variables */
 :root {
+  --revert-button-color: #fff;
+  --revert-button-bg: #e74c3c;
+  --revert-button-hover-bg: #c0392b;
+  --revert-button-disabled-bg: #bdc3c7;
   --body-background: #fafafa;
   --body-color: #222;
   --HEADER_wiki-header-background: #2c3e50;
@@ -112,6 +116,8 @@
   --cm-s-lgwl_cm-link-color: #1a0dab;
   --cm-s-lgwl_cm-template-color: #9534a1;
   --cm-s-lgwl_cm-template-background-color: rgba(245, 242, 240, 0.6);
+  --cm-s-lgwl_cm-template-arg-color: rgba(176, 48, 96, 0.6);
+  --cm-s-lgwl_cm-template-arg-background-color: rgba(255, 48, 96, 0.1);
   --cm-s-lgwl_cm-heading-color: #d14;
   --cm-s-lgwl_cm-list-color: #008000;
   --cm-s-lgwl_cm-hr-color: #999;
@@ -270,6 +276,16 @@
   --wiki-content_awiki-linkwiki-missinghover-color: #d00;
   --wiki-content_awiki-linkhref-color: #00695c;
   --wiki-content_awiki-linkhrefhover-color: #004d40;
+
+  /* Missing Category link */
+  --wiki-page-meta_categories_ul_li_awiki-missing-category-background: #ffe6e6;
+  /* light red background */
+  --wiki-page-meta_categories_ul_li_awiki-missing-category-color: #c33;
+  /* red text */
+
+  /* Hover state for Missing Category link */
+  --wiki-page-meta_categories_ul_li_awiki-missing-categoryhover-background: #ffcccc;
+  /* slightly darker red */
 }
 
 body[data-theme="dark"] {
@@ -334,7 +350,7 @@ body[data-theme="dark"] {
   --OLD_REVISION_wiki-revision-warning-background: #5a4b00;
   --OLD_REVISION_wiki-revision-warning-color: #fff3cd;
   --wiki-revision-warning_a-color: #fff3cd;
-  --EDITOR_PREVIEW_MODAL_modalpreview-modal-background: rgba(0,0,0,0.8);
+  --EDITOR_PREVIEW_MODAL_modalpreview-modal-background: rgba(0, 0, 0, 0.8);
   --modalpreview-modal_modal-inner-background: #1e1e1e;
   --modalpreview-modal_modal-inner-box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
   --modalpreview-modal_modal-inner_modal-header-background: #4e4e4e;
@@ -372,7 +388,7 @@ body[data-theme="dark"] {
   --draft-banner-background-color: #5a4b00;
   --draft-banner-border: 1px solid #7a5e00;
   --draft-banner-color: #fff3cd;
-  --draft-banner-box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  --draft-banner-box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   --draft-banner_draft-buttons_button-background-color: #2a2a2a;
   --draft-banner_draft-buttons_button-border: 1px solid #7a5e00;
   --draft-banner_draft-buttons_button-color: #fff3cd;
@@ -386,15 +402,17 @@ body[data-theme="dark"] {
   --cm-s-lgwl_cm-link-color: #4da6ff;
   --cm-s-lgwl_cm-template-color: #d4b27a;
   --cm-s-lgwl_cm-template-background-color: rgba(50, 50, 50, 0.6);
+  --cm-s-lgwl_cm-template-arg-color: rgba(255, 122, 162, 0.6);
+  --cm-s-lgwl_cm-template-arg-background-color: rgba(255, 122, 162, 0.15);
   --cm-s-lgwl_cm-heading-color: #ff8b72;
   --cm-s-lgwl_cm-list-color: #66ff66;
   --cm-s-lgwl_cm-hr-color: #888;
-  --cm-s-lgwl_cm-code-block-background-color: rgba(40,40,40,0.6);
+  --cm-s-lgwl_cm-code-block-background-color: rgba(40, 40, 40, 0.6);
   --cm-s-lgwl_cm-code-block-color: #e0e0e0;
-  --cm-s-lgwl_cm-inline-code-background: rgba(50,50,50,0.7);
+  --cm-s-lgwl_cm-inline-code-background: rgba(50, 50, 50, 0.7);
   --cm-s-lgwl_cm-inline-code-color: #fff;
   --cm-s-lgwl_cm-blockquote-color: #bbb;
-  --cm-s-lgwl_cm-blockquote-background-color: rgba(30,30,30,0.7);
+  --cm-s-lgwl_cm-blockquote-background-color: rgba(30, 30, 30, 0.7);
   --cm-s-lgwl_cm-tag-color: #66ff99;
   --cm-s-lgwl_cm-bracket-color: #66ff99;
   --cm-s-lgwl_cm-attribute-color: #4da6ff;
@@ -404,7 +422,7 @@ body[data-theme="dark"] {
   --cm-s-lgwl_cm-template-link-color: #4da6ff;
   --cm-s-lgwl_cm-redirect-color: #ff6f6f;
   --cm-s-lgwl_cm-template-builtin-color: #ffa500;
-  --cm-s-lgwl_cm-template-builtin-background-color: rgba(50,50,50,0.5);
+  --cm-s-lgwl_cm-template-builtin-background-color: rgba(50, 50, 50, 0.5);
   --cm-s-lgwl_cm-table-pipe-color: #4da6ff;
   --cm-s-lgwl_cm-table-header-color: #e0e0e0;
   --cm-s-lgwl_cm-table-divider-color: #888;
@@ -422,20 +440,20 @@ body[data-theme="dark"] {
   --wiki-content_wiki-mediawiki-thumb-background: #2a2a2a;
   --wiki-content_wiki-mediawiki-thumb-border: 1px solid #333;
   --wiki-content_wiki-mediawiki-thumb_figcaption-color: #bbb;
-  --wiki-content_wiki-mediawiki-image-background: rgba(255,255,255,0.05);
-  --wiki-content_wiki-mediawiki-image-border: 1px solid rgba(255,255,255,0.1);
+  --wiki-content_wiki-mediawiki-image-background: rgba(255, 255, 255, 0.05);
+  --wiki-content_wiki-mediawiki-image-border: 1px solid rgba(255, 255, 255, 0.1);
   --wiki-content_wiki-mediawiki-image_figcaption-color: #bbb;
-  --wiki-content_wiki-mediawiki-audio_wiki-content_wiki-mediawiki-video-background: rgba(255,255,255,0.03);
-  --wiki-content_wiki-mediawiki-audio_wiki-content_wiki-mediawiki-video-border: 1px solid rgba(255,255,255,0.05);
+  --wiki-content_wiki-mediawiki-audio_wiki-content_wiki-mediawiki-video-background: rgba(255, 255, 255, 0.03);
+  --wiki-content_wiki-mediawiki-audio_wiki-content_wiki-mediawiki-video-border: 1px solid rgba(255, 255, 255, 0.05);
   --wiki-content_wiki-mediawiki-audio_audio_wiki-content_wiki-mediawiki-audio_video_wiki-content_wiki-mediawiki-video_audio_wiki-content_wiki-mediawiki-video_video-outline: none;
-  --wiki-content_wiki-gallery-background: rgba(255,255,255,0.03);
-  --wiki-content_wiki-gallery-border: 1px solid rgba(255,255,255,0.05);
+  --wiki-content_wiki-gallery-background: rgba(255, 255, 255, 0.03);
+  --wiki-content_wiki-gallery-border: 1px solid rgba(255, 255, 255, 0.05);
   --wiki-content_wiki-gallery_wiki-gallery-item-background: #1e1e1e;
-  --wiki-content_wiki-gallery_wiki-gallery-item-box-shadow: 0 0 3px rgba(0,0,0,0.5);
-  --wiki-content_wiki-gallery_wiki-gallery-itemhover-box-shadow: 0 0 8px rgba(0,0,0,0.8);
-  --wiki-content_wiki-gallery_wiki-gallery-item_caption-background: rgba(0,0,0,0.6);
+  --wiki-content_wiki-gallery_wiki-gallery-item-box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+  --wiki-content_wiki-gallery_wiki-gallery-itemhover-box-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+  --wiki-content_wiki-gallery_wiki-gallery-item_caption-background: rgba(0, 0, 0, 0.6);
   --wiki-content_wiki-gallery_wiki-gallery-item_caption-color: #e0e0e0;
-  
+
   /* Tables - lighter dark mode */
   --Default_Wiki_Table_Styles_wiki-table-background-color: #2b2b2b;
   --Default_Wiki_Table_Styles_wiki-table-border: 1px solid #444;
@@ -472,7 +490,7 @@ body[data-theme="dark"] {
   /* Modules */
   --Module_Page_Styling_Light_Theme_wiki-module-background: #1a1a1a;
   --Module_Page_Styling_Light_Theme_wiki-module-border: 1px solid #333;
-  --Module_Page_Styling_Light_Theme_wiki-module-box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  --Module_Page_Styling_Light_Theme_wiki-module-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   --wiki-module_wiki-module-doc-background: #1a1a1a;
   --wiki-module_wiki-module-doc_wiki-module-doc-title-color: #e0e0e0;
   --wiki-module_wiki-module-doc_p-color: #e0e0e0;
@@ -556,19 +574,33 @@ body[data-theme="dark"] {
   --wiki-special-upload_upload-form_upload-progress_progress-inner-background: linear-gradient(90deg, #4da6ff, #2ecc71);
 
   --wiki-special-upload_upload-hint-background: #2b2b2b;
+
+  --revert-button-color: #fff;
+  --revert-button-bg: #e74c3c;
+  --revert-button-hover-bg: #ff5c5c;
+  --revert-button-disabled-bg: #555;
+
+  --wiki-category-list-border: 1px solid #383838;
+  --wiki-category-list-background-color: #2a2a2a;
+  --wiki-category-list_h3-color: #ddd;
+  /* light neutral heading */
+  --wiki-category-list_ul_li_a-color: #8ab4f8;
+  /* soft blue link (like Wikipedia dark) */
+  --wiki-category-list_ul_li_ahover-color: #a8c7fa;
+  /* slightly brighter hover */
 }
 
 body {
   font-family: system-ui, sans-serif;
   background: var(--body-background);
-color: var(--body-color);
+  color: var(--body-color);
   margin: 0;
 }
 
 /* === HEADER === */
 .wiki-header {
-background: var(--HEADER_wiki-header-background);
-color: var(--HEADER_wiki-header-color);
+  background: var(--HEADER_wiki-header-background);
+  color: var(--HEADER_wiki-header-color);
   padding: 0.75rem 1rem;
   box-shadow: var(--HEADER_wiki-header-box-shadow);
 }
@@ -585,7 +617,7 @@ color: var(--HEADER_wiki-header-color);
 }
 
 .wiki-header .wiki-site-title a {
-color: var(--wiki-header_wiki-site-title_a-color);
+  color: var(--wiki-header_wiki-site-title_a-color);
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
 }
 
@@ -599,13 +631,13 @@ color: var(--wiki-header_wiki-site-title_a-color);
 }
 
 .wiki-header .wiki-top-nav a {
-color: var(--wiki-header_wiki-top-nav_a-color);
+  color: var(--wiki-header_wiki-top-nav_a-color);
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
   font-size: 0.9rem;
 }
 
 .wiki-header .wiki-top-nav a:hover {
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 /* === LAYOUT === */
@@ -620,7 +652,7 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 /* === SIDEBAR === */
 .wiki-sidebar {
   flex: 0 0 200px;
-background: var(--SIDEBAR_wiki-sidebar-background);
+  background: var(--SIDEBAR_wiki-sidebar-background);
   border: var(--SIDEBAR_wiki-sidebar-border);
   padding: 1rem;
   border-radius: 6px;
@@ -656,7 +688,7 @@ background: var(--SIDEBAR_wiki-sidebar-background);
 /* === CONTENT AREA === */
 .wiki-content-area {
   flex: 1;
-background: var(--CONTENT_AREA_wiki-content-area-background);
+  background: var(--CONTENT_AREA_wiki-content-area-background);
   border: var(--CONTENT_AREA_wiki-content-area-border);
   border-radius: 6px;
   padding: 1.25rem;
@@ -688,17 +720,18 @@ background: var(--CONTENT_AREA_wiki-content-area-background);
 
 .wiki-content-area .wiki-page-header .wiki-breadcrumbs .current {
   font-weight: 600;
-color: var(--wiki-content_pre_wiki-content_code-color);
+  color: var(--wiki-content_pre_wiki-content_code-color);
 }
 
 .wiki-content-area .wiki-page-header .wiki-page-title {
   margin: 0.25rem 0 0 0;
   font-size: 1.5rem;
   font-weight: 600;
-color: var(--wiki-content_pre_wiki-content_code-color);
+  color: var(--wiki-content_pre_wiki-content_code-color);
 }
 
 .wiki-content-area .wiki-page-header .wiki-actions a {
+  margin-left: .5rem;
   font-size: 0.9rem;
   color: var(--wiki-redirected-from_a-color);
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
@@ -711,6 +744,10 @@ color: var(--wiki-content_pre_wiki-content_code-color);
 .wiki-content-area .wiki-page-header .wiki-actions a.active {
   font-weight: 600;
   color: var(--wiki-content-area_wiki-page-header_wiki-actions_aactive-color);
+}
+
+.wiki-content-area .wiki-page-header .wiki-actions .dropdown-menu a {
+  margin-left: 0;
 }
 
 .wiki-content-area .wiki-page-content {
@@ -755,12 +792,12 @@ color: var(--wiki-content_pre_wiki-content_code-color);
 
 .protection-badge.protection-full {
   background: var(--wiki-delete-confirm_delete-buttons_buttondanger-background);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .protection-badge.protection-semi {
   background: var(--protection-badgeprotection-semi-background);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .protection-badge.protection-none {
@@ -827,7 +864,7 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 
 .wiki-edit-form .edit-buttons a.button {
   background: var(--wiki-edit-form_edit-buttons_abutton-background);
-color: var(--wiki-edit-form_edit-buttons_abutton-color);
+  color: var(--wiki-edit-form_edit-buttons_abutton-color);
   border: var(--wiki-edit-form_edit-buttons_abutton-border);
   border-radius: 4px;
   padding: 0.45rem 0.9rem;
@@ -878,8 +915,8 @@ color: var(--wiki-edit-form_edit-buttons_abutton-color);
 
 .wiki-history .history-table .minor-flag {
   display: inline-block;
-background: var(--wiki-content_pre_wiki-content_code-color);
-  color: var(--wiki-recent-changes_ul_li_small-color);
+  background: var(--wiki-history_history-table_minor-flag-background);
+  color: var(--wiki-history_history-table_minor-flag-color);
   border-radius: 4px;
   font-size: 0.75rem;
   padding: 0.1rem 0.35rem;
@@ -911,7 +948,7 @@ background: var(--wiki-content_pre_wiki-content_code-color);
 
 .wiki-delete-confirm .delete-buttons button.danger {
   background: var(--wiki-delete-confirm_delete-buttons_buttondanger-background);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   border: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
   border-radius: 4px;
   padding: 0.5rem 1rem;
@@ -925,7 +962,7 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 
 .wiki-delete-confirm .delete-buttons a.button {
   background: var(--wiki-delete-confirm_delete-buttons_abutton-background);
-color: var(--wiki-delete-confirm_delete-buttons_abutton-color);
+  color: var(--wiki-delete-confirm_delete-buttons_abutton-color);
   border: var(--wiki-delete-confirm_delete-buttons_abutton-border);
   border-radius: 4px;
   padding: 0.5rem 1rem;
@@ -942,7 +979,7 @@ color: var(--wiki-delete-confirm_delete-buttons_abutton-color);
   margin-top: 2rem;
   border-top: 1px solid #eee;
   padding-top: 0.75rem;
-color: var(--PAGE_META_wiki-page-meta-color);
+  color: var(--PAGE_META_wiki-page-meta-color);
   font-size: 0.9rem;
 }
 
@@ -972,6 +1009,15 @@ color: var(--PAGE_META_wiki-page-meta-color);
   background: var(--wiki-page-meta_categories_ul_li_ahover-background);
 }
 
+.wiki-page-meta .categories ul li a.wiki-missing-category {
+  background: var(--wiki-page-meta_categories_ul_li_awiki-missing-category-background);
+  color: var(--wiki-page-meta_categories_ul_li_awiki-missing-category-color);
+}
+
+.wiki-page-meta .categories ul li a.wiki-missing-category:hover {
+  background: var(--wiki-page-meta_categories_ul_li_awiki-missing-categoryhover-background);
+}
+
 .wiki-content-area .wiki-page-header {
   display: flex;
   flex-direction: column;
@@ -998,13 +1044,14 @@ color: var(--PAGE_META_wiki-page-meta-color);
 
 .wiki-content-area .wiki-page-header .wiki-breadcrumbs .current {
   font-weight: 600;
-color: var(--wiki-content_pre_wiki-content_code-color);
+  color: var(--wiki-content_pre_wiki-content_code-color);
 }
 
 .wiki-content-area .wiki-page-header .wiki-page-header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  align-items: flex-end;
   width: 100%;
 }
 
@@ -1012,18 +1059,7 @@ color: var(--wiki-content_pre_wiki-content_code-color);
   margin: 0.25rem 0 0 0;
   font-size: 1.5rem;
   font-weight: 600;
-color: var(--wiki-content_pre_wiki-content_code-color);
-}
-
-.wiki-content-area .wiki-page-header .wiki-actions a {
-  margin-left: 0.5rem;
-  font-size: 0.9rem;
-  color: var(--wiki-redirected-from_a-color);
-  text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
-}
-
-.wiki-content-area .wiki-page-header .wiki-actions a:hover {
-  text-decoration: underline;
+  color: var(--wiki-content_pre_wiki-content_code-color);
 }
 
 /* === OLD REVISION === */
@@ -1062,7 +1098,7 @@ color: var(--wiki-content_pre_wiki-content_code-color);
 }
 
 .modal.preview-modal .modal-inner {
-background: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   border-radius: 0.5rem;
   box-shadow: var(--modalpreview-modal_modal-inner-box-shadow);
   max-width: 900px;
@@ -1075,8 +1111,8 @@ background: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .modal.preview-modal .modal-inner .modal-header {
-background: var(--modalpreview-modal_modal-inner_modal-header-background);
-color: var(--modalpreview-modal_modal-inner_modal-header-color);
+  background: var(--modalpreview-modal_modal-inner_modal-header-background);
+  color: var(--modalpreview-modal_modal-inner_modal-header-color);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1087,7 +1123,7 @@ color: var(--modalpreview-modal_modal-inner_modal-header-color);
 .modal.preview-modal .modal-inner .modal-header .modal-close {
   background: var(--modalpreview-modal_modal-inner_modal-header_modal-close-background);
   border: var(--modalpreview-modal_modal-inner_modal-header_modal-close-border);
-color: var(--modalpreview-modal_modal-inner_modal-header_modal-close-color);
+  color: var(--modalpreview-modal_modal-inner_modal-header_modal-close-color);
   font-size: 1.5rem;
   cursor: pointer;
   line-height: 1;
@@ -1111,17 +1147,22 @@ color: var(--modalpreview-modal_modal-inner_modal-header_modal-close-color);
 }
 
 .modal.preview-modal .modal-inner .preview-body .wiki-preview {
-color: var(--modalpreview-modal_modal-inner_preview-body_wiki-preview-color);
+  color: var(--modalpreview-modal_modal-inner_preview-body_wiki-preview-color);
   line-height: 1.6;
 }
 
-.modal.preview-modal .modal-inner .preview-body .wiki-preview h1, .modal.preview-modal .modal-inner .preview-body .wiki-preview h2, .modal.preview-modal .modal-inner .preview-body .wiki-preview h3, .modal.preview-modal .modal-inner .preview-body .wiki-preview h4, .modal.preview-modal .modal-inner .preview-body .wiki-preview h5 {
+.modal.preview-modal .modal-inner .preview-body .wiki-preview h1,
+.modal.preview-modal .modal-inner .preview-body .wiki-preview h2,
+.modal.preview-modal .modal-inner .preview-body .wiki-preview h3,
+.modal.preview-modal .modal-inner .preview-body .wiki-preview h4,
+.modal.preview-modal .modal-inner .preview-body .wiki-preview h5 {
   border-bottom: var(--modalpreview-modal_modal-inner_preview-body_wiki-preview_pre_modalpreview-modal_modal-inner_preview-body_wiki-preview_code-background);
   padding-bottom: 0.25rem;
   margin-top: 1rem;
 }
 
-.modal.preview-modal .modal-inner .preview-body .wiki-preview pre, .modal.preview-modal .modal-inner .preview-body .wiki-preview code {
+.modal.preview-modal .modal-inner .preview-body .wiki-preview pre,
+.modal.preview-modal .modal-inner .preview-body .wiki-preview code {
   background: var(--modalpreview-modal_modal-inner_preview-body_wiki-preview_pre_modalpreview-modal_modal-inner_preview-body_wiki-preview_code-background);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
@@ -1133,6 +1174,7 @@ color: var(--modalpreview-modal_modal-inner_preview-body_wiki-preview-color);
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -1194,7 +1236,7 @@ color: var(--modalpreview-modal_modal-inner_preview-body_wiki-preview-color);
 .wiki-content blockquote {
   border-left: 3px solid #ccc;
   padding-left: 1em;
-color: var(--BLOCKQUOTES_HR_CODE_BLOCKS_wiki-content_blockquote-color);
+  color: var(--BLOCKQUOTES_HR_CODE_BLOCKS_wiki-content_blockquote-color);
   font-style: italic;
   background: var(--BLOCKQUOTES_HR_CODE_BLOCKS_wiki-content_blockquote-background);
   margin: 0.5em 0;
@@ -1204,7 +1246,7 @@ color: var(--BLOCKQUOTES_HR_CODE_BLOCKS_wiki-content_blockquote-color);
 .wiki-content code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   background: var(--wiki-content_pre_wiki-content_code-background);
-color: var(--wiki-content_pre_wiki-content_code-color);
+  color: var(--wiki-content_pre_wiki-content_code-color);
   border: var(--wiki-category-list-border);
   border-radius: 6px;
 }
@@ -1253,10 +1295,10 @@ color: var(--wiki-content_pre_wiki-content_code-color);
   display: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
   position: absolute;
   top: 100%;
-  left: 0;
+  left: -100%;
   min-width: auto;
   max-width: 180px;
-background: var(--wiki-more-actions_dropdown-menu-background);
+  background: var(--wiki-more-actions_dropdown-menu-background);
   box-shadow: var(--wiki-more-actions_dropdown-menu-box-shadow);
   z-index: 100;
   border-radius: 4px;
@@ -1264,7 +1306,14 @@ background: var(--wiki-more-actions_dropdown-menu-background);
   white-space: normal;
 }
 
+@media (max-width: 600px) {
+  .wiki-more-actions .dropdown-menu {
+    left: 0;
+  }
+}
+
 .wiki-more-actions .dropdown-menu .dropdown-item {
+  margin-left: 0;
   display: block;
   padding: 0.4rem 0.8rem;
   background: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
@@ -1276,7 +1325,7 @@ background: var(--wiki-more-actions_dropdown-menu-background);
 
 .wiki-more-actions .dropdown-menu .dropdown-item:hover {
   background-color: #f0f0f0;
-background-color: var(--wiki-more-actions_dropdown-menu_dropdown-itemhover-background-color);
+  background-color: var(--wiki-more-actions_dropdown-menu_dropdown-itemhover-background-color);
 }
 
 .wiki-more-actions:hover .dropdown-menu {
@@ -1296,7 +1345,7 @@ background-color: var(--wiki-more-actions_dropdown-menu_dropdown-itemhover-backg
   bottom: 20px;
   right: 20px;
   background: var(--save-toast-background);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   padding: 0.5rem 1rem;
   border-radius: 5px;
   font-size: 0.85rem;
@@ -1338,8 +1387,7 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .draft-banner .draft-buttons button {
-  background-color: #fff;
-background-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background-color: var(--draft-banner_draft-buttons_button-background-color);
   border: var(--draft-banner_draft-buttons_button-border);
   border-radius: 4px;
   padding: 0.3rem 0.6rem;
@@ -1356,21 +1404,26 @@ background-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .cm-s-lgwl {
-background: var(--cm-s-lgwl-background);
-color: var(--cm-s-lgwl-color);
+  background: var(--cm-s-lgwl-background);
+  color: var(--cm-s-lgwl-color);
   font-family: "JetBrains Mono", monospace;
   font-size: 0.9rem;
   line-height: 1.4;
 }
 
 .cm-s-lgwl .cm-link {
-color: var(--cm-s-lgwl_cm-link-color);
+  color: var(--cm-s-lgwl_cm-link-color);
   text-decoration: underline;
 }
 
 .cm-s-lgwl .cm-template {
   color: var(--cm-s-lgwl_cm-template-color);
   background-color: var(--cm-s-lgwl_cm-template-background-color);
+}
+
+.cm-s-lgwl .cm-template-arg {
+  color: var(--cm-s-lgwl_cm-template-arg-color);
+  background-color: var(--cm-s-lgwl_cm-template-arg-background-color);
 }
 
 .cm-s-lgwl .cm-heading {
@@ -1388,7 +1441,7 @@ color: var(--cm-s-lgwl_cm-link-color);
 
 .cm-s-lgwl .cm-code-block {
   background-color: var(--cm-s-lgwl_cm-code-block-background-color);
-color: var(--cm-s-lgwl_cm-code-block-color);
+  color: var(--cm-s-lgwl_cm-code-block-color);
   font-family: monospace;
   padding: 2px 4px;
   border-radius: 2px;
@@ -1471,7 +1524,7 @@ color: var(--cm-s-lgwl_cm-code-block-color);
 }
 
 .cm-s-lgwl .cm-table-header {
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
   font-weight: bold;
 }
 
@@ -1489,7 +1542,9 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
   font-weight: 600;
 }
 
-.cm-s-lgwl .CodeMirror-selected, .cm-s-lgwl ::selection, .cm-s-lgwl *::selection {
+.cm-s-lgwl .CodeMirror-selected,
+.cm-s-lgwl ::selection,
+.cm-s-lgwl *::selection {
   background: var(--cm-s-lgwl_cm-template-moz-selection_cm-s-lgwl_cm-code-block-moz-selection_cm-s-lgwl_cm-inline-code-moz-selection_cm-s-lgwl_cm-blockquote-moz-selection-background);
   color: var(--wiki-module_wiki-module-code_code-color);
 }
@@ -1571,7 +1626,7 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
 
 .wiki-content .wiki-media.wiki-thumb figcaption {
   font-size: 0.8rem;
-color: var(--wiki-content_wiki-mediawiki-thumb_figcaption-color);
+  color: var(--wiki-content_wiki-mediawiki-thumb_figcaption-color);
   margin-top: 0.3rem;
 }
 
@@ -1597,11 +1652,12 @@ color: var(--wiki-content_wiki-mediawiki-thumb_figcaption-color);
 
 .wiki-content .wiki-media.wiki-image figcaption {
   font-size: 0.85rem;
-color: var(--wiki-content_wiki-mediawiki-image_figcaption-color);
+  color: var(--wiki-content_wiki-mediawiki-image_figcaption-color);
   margin-top: 0.25rem;
 }
 
-.wiki-content .wiki-media.wiki-audio, .wiki-content .wiki-media.wiki-video {
+.wiki-content .wiki-media.wiki-audio,
+.wiki-content .wiki-media.wiki-video {
   display: flex;
   justify-content: center;
   margin: 1rem auto;
@@ -1612,7 +1668,8 @@ color: var(--wiki-content_wiki-mediawiki-image_figcaption-color);
 }
 
 .wiki-content .wiki-media.wiki-audio audio,
-.wiki-content .wiki-media.wiki-audio video, .wiki-content .wiki-media.wiki-video audio,
+.wiki-content .wiki-media.wiki-audio video,
+.wiki-content .wiki-media.wiki-video audio,
 .wiki-content .wiki-media.wiki-video video {
   outline: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
   border-radius: 0.5rem;
@@ -1633,7 +1690,7 @@ color: var(--wiki-content_wiki-mediawiki-image_figcaption-color);
   position: relative;
   overflow: hidden;
   border-radius: 0.5rem;
-background: var(--wiki-content_wiki-gallery_wiki-gallery-item-background);
+  background: var(--wiki-content_wiki-gallery_wiki-gallery-item-background);
   box-shadow: var(--wiki-content_wiki-gallery_wiki-gallery-item-box-shadow);
   transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
@@ -1656,10 +1713,15 @@ background: var(--wiki-content_wiki-gallery_wiki-gallery-item-background);
   left: 0;
   right: 0;
   background: var(--wiki-content_wiki-gallery_wiki-gallery-item_caption-background);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   font-size: 0.8rem;
   text-align: center;
   padding: 0.25rem 0.5rem;
+}
+
+.wiki-content img.wiki-media-inline {
+  display: inline-block;
+  margin: 0 0.2rem;
 }
 
 /* ============================
@@ -1671,7 +1733,7 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   margin: 1rem 0;
   font-size: 0.95rem;
   line-height: 1.4;
-background-color: var(--Default_Wiki_Table_Styles_wiki-table-background-color);
+  background-color: var(--Default_Wiki_Table_Styles_wiki-table-background-color);
   border: var(--Default_Wiki_Table_Styles_wiki-table-border);
   /* Zebra striping */
   /* Hover highlight */
@@ -1685,9 +1747,9 @@ background-color: var(--Default_Wiki_Table_Styles_wiki-table-background-color);
   font-weight: 600;
   text-align: left;
   padding: 0.5rem 0.75rem;
-background: var(--wiki-table_caption-background);
+  background: var(--wiki-table_caption-background);
   border-bottom: var(--wiki-special-upload_upload-form_form-group_inputtypetext_wiki-special-upload_upload-form_form-group_inputtypefile-border);
-color: var(--wiki-category-list_h3-color);
+  color: var(--wiki-category-list_h3-color);
 }
 
 .wiki-table th,
@@ -1704,7 +1766,7 @@ color: var(--wiki-category-list_h3-color);
 }
 
 .wiki-table td {
-background-color: var(--wiki-table_td-background-color);
+  background-color: var(--wiki-table_td-background-color);
 }
 
 .wiki-table tr:nth-child(even) td {
@@ -1817,7 +1879,7 @@ background-color: var(--wiki-table_td-background-color);
   padding: 0.5rem 1rem;
   margin-bottom: 1rem;
   font-size: 0.95rem;
-color: var(--wiki-special-upload_upload-form_form-group_file-name-display-color);
+  color: var(--wiki-special-upload_upload-form_form-group_file-name-display-color);
   border-radius: 4px;
 }
 
@@ -1836,7 +1898,7 @@ color: var(--wiki-special-upload_upload-form_form-group_file-name-display-color)
    ====================== */
 .wiki-module {
   margin: 1.5rem auto;
-background: var(--Module_Page_Styling_Light_Theme_wiki-module-background);
+  background: var(--Module_Page_Styling_Light_Theme_wiki-module-background);
   border: var(--Module_Page_Styling_Light_Theme_wiki-module-border);
   border-radius: 8px;
   box-shadow: var(--Module_Page_Styling_Light_Theme_wiki-module-box-shadow);
@@ -1924,7 +1986,7 @@ background: var(--Module_Page_Styling_Light_Theme_wiki-module-background);
 /* Special page <pre> styles for Common.css and Common.js (light theme) */
 .wiki-common-page pre {
   background: var(--Special_page_pre_styles_for_Commoncss_and_Commonjs_light_theme_wiki-common-page_pre-background);
-color: var(--wiki-category-list_h3-color);
+  color: var(--Special_page_pre_styles_for_Commoncss_and_Commonjs_light_theme_wiki-common-page_pre-color);
   font-family: "Fira Code", monospace;
   font-size: 0.95rem;
   padding: 1rem;
@@ -1964,7 +2026,7 @@ color: var(--wiki-category-list_h3-color);
 /* ===== RecentChanges styles ===== */
 .wiki-recent-changes {
   padding: 1rem;
-background: var(--RecentChanges_styles_wiki-recent-changes-background);
+  background: var(--RecentChanges_styles_wiki-recent-changes-background);
   border: var(--RecentChanges_styles_wiki-recent-changes-border);
   border-radius: 6px;
   margin-bottom: 2rem;
@@ -1994,13 +2056,13 @@ background: var(--RecentChanges_styles_wiki-recent-changes-background);
   padding: 0.25rem 0.5rem;
   border: var(--wiki-special-upload_upload-form_form-group_inputtypetext_wiki-special-upload_upload-form_form-group_inputtypefile-border);
   border-radius: 4px;
-background: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .wiki-recent-changes .recentchanges-days-selector form.days-form button {
   padding: 0.25rem 0.75rem;
-background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   border: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
   border-radius: 4px;
   cursor: pointer;
@@ -2022,7 +2084,7 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .wiki-recent-changes ul li a {
-color: var(--wiki-recent-changes_ul_li_a-color);
+  color: var(--wiki-recent-changes_ul_li_a-color);
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
 }
 
@@ -2047,26 +2109,26 @@ color: var(--wiki-recent-changes_ul_li_a-color);
   border: var(--wiki-special-upload_upload-form_form-group_inputtypetext_wiki-special-upload_upload-form_form-group_inputtypefile-border);
   border-radius: 4px;
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
   transition: background 0.2s, color 0.2s;
 }
 
 .wiki-recent-changes .wiki-pagination a:hover {
-background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .wiki-recent-changes .wiki-pagination a.active {
-background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   border-color: #2c3e50;
-border-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  border-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
 }
 
 /* ===== AllPages styles ===== */
 .wiki-all-pages {
   padding: 1rem;
-background: var(--AllPages_styles_wiki-all-pages-background);
+  background: var(--AllPages_styles_wiki-all-pages-background);
   border: var(--AllPages_styles_wiki-all-pages-border);
   border-radius: 6px;
   margin-bottom: 2rem;
@@ -2090,13 +2152,13 @@ background: var(--AllPages_styles_wiki-all-pages-background);
   padding: 0.25rem 0.5rem;
   border: var(--wiki-special-upload_upload-form_form-group_inputtypetext_wiki-special-upload_upload-form_form-group_inputtypefile-border);
   border-radius: 4px;
-background: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .wiki-all-pages .allpages-namespace-selector form.namespace-form button {
   padding: 0.25rem 0.75rem;
-background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   border: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
   border-radius: 4px;
   cursor: pointer;
@@ -2118,7 +2180,7 @@ color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .wiki-all-pages ul li a {
-color: var(--wiki-all-pages_ul_li_a-color);
+  color: var(--wiki-all-pages_ul_li_a-color);
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
 }
 
@@ -2139,20 +2201,20 @@ color: var(--wiki-all-pages_ul_li_a-color);
   border: var(--wiki-special-upload_upload-form_form-group_inputtypetext_wiki-special-upload_upload-form_form-group_inputtypefile-border);
   border-radius: 4px;
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
   transition: background 0.2s, color 0.2s;
 }
 
 .wiki-all-pages .wiki-pagination a:hover {
-background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
 }
 
 .wiki-all-pages .wiki-pagination a.active {
-background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  background: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   border-color: #2c3e50;
-border-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  border-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
 }
 
 /* ===== SpecialUpload page styles ===== */
@@ -2160,7 +2222,7 @@ border-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-
   max-width: 600px;
   margin: 2rem auto;
   padding: 1.5rem;
-background: var(--SpecialUpload_page_styles_wiki-special-upload-background);
+  background: var(--SpecialUpload_page_styles_wiki-special-upload-background);
   border-radius: 8px;
   box-shadow: var(--SpecialUpload_page_styles_wiki-special-upload-box-shadow);
   /* Mobile responsiveness */
@@ -2203,7 +2265,7 @@ background: var(--SpecialUpload_page_styles_wiki-special-upload-background);
 
 .wiki-special-upload .upload-form .form-group .file-name-display {
   font-size: 0.875rem;
-color: var(--wiki-special-upload_upload-form_form-group_file-name-display-color);
+  color: var(--wiki-special-upload_upload-form_form-group_file-name-display-color);
   margin-top: 0.25rem;
 }
 
@@ -2211,9 +2273,9 @@ color: var(--wiki-special-upload_upload-form_form-group_file-name-display-color)
   padding: 0.6rem 1.2rem;
   font-size: 1rem;
   font-weight: 500;
-color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
+  color: var(--wiki-special-upload_upload-form_buttontypesubmit-color);
   background-color: #2c3e50;
-background-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
+  background-color: var(--wiki-special-upload_upload-form_buttontypesubmit-background-color);
   border: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
   border-radius: 4px;
   cursor: pointer;
@@ -2274,10 +2336,12 @@ background-color: var(--wiki-special-upload_upload-form_buttontypesubmit-backgro
     margin: 1rem;
     padding: 1rem;
   }
+
   .wiki-special-upload .upload-form .form-group input[type="text"],
-.wiki-special-upload .upload-form .form-group input[type="file"] {
+  .wiki-special-upload .upload-form .form-group input[type="file"] {
     font-size: 0.95rem;
   }
+
   .wiki-special-upload .upload-form button[type="submit"] {
     width: 100%;
   }
@@ -2294,7 +2358,7 @@ background-color: var(--wiki-special-upload_upload-form_buttontypesubmit-backgro
 .wiki-category-list h3 {
   margin-bottom: 0.75rem;
   font-size: 1.25rem;
-color: var(--wiki-category-list_h3-color);
+  color: var(--wiki-category-list_h3-color);
   border-bottom: var(--wiki-special-upload_upload-form_form-group_inputtypetext_wiki-special-upload_upload-form_form-group_inputtypefile-border);
   padding-bottom: 0.25rem;
 }
@@ -2311,7 +2375,7 @@ color: var(--wiki-category-list_h3-color);
 }
 
 .wiki-category-list ul li a {
-color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
+  color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
   text-decoration: var(--wiki-special-upload_upload-form_buttontypesubmit-border);
   transition: color 0.2s;
 }
@@ -2326,7 +2390,7 @@ color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
    ============================= */
 
 .wiki-content a.wiki-link {
-color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
+  color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   transition: color 0.2s ease;
@@ -2364,4 +2428,250 @@ color: var(--Wiki_Link_Styles_wiki-content_awiki-link-color);
 .wiki-content a.wiki-link[href^="#"]:hover {
   color: var(--wiki-content_awiki-linkhrefhover-color);
   text-decoration: underline;
+}
+
+.CodeMirror-cursor {
+  border-left-color: var(--body-color)
+}
+
+.revert-button {
+  display: inline-block;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--revert-button-color, #fff);
+  /* text color */
+  background-color: var(--revert-button-bg, #e74c3c);
+  /* button bg */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.revert-button:hover {
+  background-color: var(--revert-button-hover-bg, #c0392b);
+}
+
+.revert-button:disabled {
+  background-color: var(--revert-button-disabled-bg, #bdc3c7);
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.revert-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.lgml-error {
+  color: darkred;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+/* --- Layout --- */
+.wiki-container {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+  /* Required for sticky to work */
+}
+
+/* If there is NO TOC, make the content full width */
+.wiki-container:not(:has(> .toc)) {
+  grid-template-columns: 1fr;
+}
+
+/* --- TOC Sidebar --- */
+.wiki-container>.toc {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  height: fit-content;
+  max-height: calc(76vh - 2rem);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 0.5rem;
+}
+
+/* --- Mobile Layout --- */
+@media (max-width: 768px) {
+  .wiki-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .wiki-container {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-container>.toc {
+    position: relative;
+    top: 0;
+    max-height: none;
+    overflow: visible;
+    margin-bottom: 1rem;
+  }
+
+  .wiki-layout {
+    flex-direction: column;
+  }
+
+  .wiki-layout aside.wiki-sidebar {
+    order: -1;
+    width: auto;
+    margin-bottom: 1rem;
+  }
+
+  .wiki-layout .wiki-content {
+    width: 100%;
+  }
+}
+
+/* Legal */
+.wiki-footer a {
+  color: yellow;
+  background-color: grey;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-decoration: none;
+}
+
+.wiki-search {
+  position: relative;
+  width: 40%;
+  margin-right: 1rem;
+  margin-left: 1rem;
+}
+
+.wiki-search::before {
+  content: "🔍";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+#wiki-search {
+  width: 100%;
+  padding: 10px 14px 10px 40px;
+  border-radius: 50px;
+  border: 1px solid var(--border-color, #444);
+  background: var(--bg, rgba(0, 0, 0, 0.1));
+  color: var(--text-color);
+  font-size: 15px;
+}
+
+@media (max-width: 768px) {
+
+  // Hide navigation links on small screens
+  .wiki-header .wiki-top-nav {
+    display: none;
+  }
+
+  .wiki-search {
+    width: 100%;
+    margin: 1rem 0;
+  }
+
+  .wiki-header-inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+/* ===========================
+   SEARCH DROPDOWN CONTAINER
+   =========================== */
+#wiki-search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  max-height: 280px;
+
+  margin-top: 6px;
+  background: var(--bg, rgba(255, 255, 255, 0.95));
+  border-radius: 8px;
+  padding: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+
+  overflow-y: auto;
+  display: none;
+  z-index: 9999;
+}
+
+body[data-theme="dark"] #wiki-search-results {
+  --bg: rgba(30, 30, 30, 0.95);
+}
+
+/* ===========================
+   EMPTY STATE
+   =========================== */
+.wiki-search-empty {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--wiki-muted, #666);
+}
+
+body[data-theme="dark"] .wiki-search-empty {
+  --wiki-muted: #aaa;
+}
+
+/* ===========================
+   SEARCH RESULT ITEM
+   =========================== */
+.search-result,
+.wiki-search-item {
+  display: block;
+  padding: 6px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, padding-left 0.1s;
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: 2px;
+}
+
+.search-result:last-child,
+.wiki-search-item:last-child {
+  margin-bottom: 0;
+}
+
+.search-result:hover,
+.wiki-search-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+  padding-left: 12px;
+}
+
+body[data-theme="dark"] .search-result:hover,
+body[data-theme="dark"] .wiki-search-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ===========================
+   TITLE AND NAMESPACE
+   =========================== */
+.wiki-search-title {
+  font-weight: 600;
+  line-height: 1.3;
+  font-size: 14px;
+  color: var(--wiki-title-color, #111);
+}
+
+body[data-theme="dark"] .wiki-search-title {
+  --wiki-title-color: #eee;
+}
+
+.wiki-search-namespace,
+.search-result span {
+  font-size: 12px;
+  opacity: 0.8;
+  display: block;
 }

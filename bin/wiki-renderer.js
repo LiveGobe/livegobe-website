@@ -3,6 +3,7 @@ const DOMPurify = require("isomorphic-dompurify");
 const { staticUrl } = require("./utils");
 const fs = require("fs");
 const path = require("path");
+const wikiFileStorage = require("./wiki-file-storage");
 
 // Helper to get existing uploaded files for a wiki
 function getExistingFiles(wikiName) {
@@ -21,7 +22,7 @@ const ALLOWED_TAGS = [
   "section", "header", "footer", "article", "figure", "figcaption",
   "ul", "ol", "li", "table", "thead", "tbody", "tr", "td", "th",
   "blockquote", "pre", "code", "hr", "h1", "h2", "h3", "h4", "h5", "h6",
-  "img", "button", "video", "audio", "source"
+  "img", "button", "video", "audio", "source", "input", "select", "option"
 ];
 
 const ALLOWED_ATTR = [
@@ -31,18 +32,33 @@ const ALLOWED_ATTR = [
 ];
 
 const BUILTIN_TEMPLATES = {
-  "!": "|",
-  "=": "=",
-  "(": "(",
-  ")": ")",
-  "[": "[",
-  "]": "]",
-  "{": "{",
-  "}": "}",
-  "<": "<",
-  ">": ">",
-  ":": ":"
+  "!": "&#33;", // !
+  "=": "&#61;",
+  "(": "&#40;",
+  ")": "&#41;",
+  "[": "&#91;", // [
+  "]": "&#93;", // ]
+  "{": "&#123;",
+  "}": "&#125;",
+  "<": "&lt;",
+  ">": "&gt;",
+  ":": "&#58;"
 };
+
+// Matches:
+//  1) Internal link [[Target|Label]]
+//  2) External link [URL Label]
+const LINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\[([a-z]+:\/\/[^\]\s]+)(?:\s+([^\]]+))?\]/gi;
+
+
+const BLOCK_TAGS = [
+  "div", "section", "article", "aside", "nav",
+  "header", "footer",
+  "figure", "figcaption",
+  "blockquote",
+  "pre"
+];
+const BLOCK_TAG_RE = new RegExp(`<(?:${BLOCK_TAGS.join("|")})(\\s|>|/>)`, "i");
 
 const PURIFY_CONFIG = {
   ALLOWED_TAGS,
@@ -63,7 +79,7 @@ const sanitize = DOMPurify.sanitize;
    - Executes module code in a small vm sandbox (no require/process)
    - Supports async module functions (awaits returned promises)
 ----------------------------*/
-const vm = require("vm");
+const VM = require("vm2");
 
 /**
  * Execute a module function, e.g. {{#invoke:ModuleName|funcName|arg1|arg2}}
@@ -77,12 +93,56 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
   const normalized = (moduleName || "").trim().replace(/\s+/g, "_");
   if (!normalized) return `<span class="lgml-error">LGML: missing module name</span>`;
 
-  // Track recursion depth
   const depth = options._depth || 0;
   if (depth > 5) {
     return `<span class="lgml-error">LGML: nested module limit exceeded</span>`;
   }
 
+  // --- Per-request module cache (so multiple requires in same render reuse compiled exports)
+  // options._moduleCache is a Map keyed by normalized module name -> exported object
+  if (!options._moduleCache) options._moduleCache = new Map();
+  const moduleCache = options._moduleCache;
+
+  // If we've already loaded this module for this request, reuse it
+  if (moduleCache.has(normalized)) {
+    const cachedExport = moduleCache.get(normalized);
+    // If caller asked for __default__, return exports container
+    if (functionName === "__default__") return { __exports__: cachedExport };
+    // Otherwise, try to call requested function on cached export.
+    // Reconstruct named/positional args locally (same logic as below) so we can
+    // invoke the cached function without depending on later variables.
+    const localNamed = {};
+    const localPos = [];
+    for (const a of args) {
+      const trimmed = (a || "").trim();
+      const eqIndex = trimmed.indexOf("=");
+      if (eqIndex > 0) {
+        const key = trimmed.slice(0, eqIndex).trim();
+        const value = trimmed.slice(eqIndex + 1).trim();
+        localNamed[key] = value;
+      } else {
+        if (trimmed !== "") localPos.push(trimmed);
+      }
+    }
+
+    const fn = cachedExport && cachedExport[functionName];
+    if (!fn || typeof fn !== "function") {
+      return `<span class="lgml-error">LGML: function "${functionName}" not found in Module:${normalized}</span>`;
+    }
+
+    try {
+      if (localPos.length === 0 && Object.keys(localNamed).length > 0)
+        return await fn(localNamed);
+      return await fn.apply(null, localPos.length ? localPos : [localNamed]);
+    } catch (fnErr) {
+      const lineInfo = fnErr.stack?.match(new RegExp(`${normalized}:(\\d+):(\\d+)`));
+      const line = lineInfo ? ` at line ${lineInfo[1]}, column ${lineInfo[2]}` : "";
+      const message = fnErr.message ? `: ${fnErr.message}` : "";
+      return sanitize(`<span class="lgml-error">LGML: error in ${normalized}.${functionName}${line}${message}</span>`, PURIFY_CONFIG);
+    }
+  }
+
+  // --- Load module page ---
   let modulePage;
   try {
     modulePage = await options.getPage("Module", normalized);
@@ -91,11 +151,15 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     return `<span class="lgml-error">LGML: error loading module ${normalized}</span>`;
   }
 
+  if (modulePage) {
+    modulePage.content = await wikiFileStorage.readContent(modulePage.wiki, "Module", normalized);
+  }
+
   if (!modulePage || !modulePage.content) {
     return `<span class="lgml-error">LGML: Module "${normalized}" not found</span>`;
   }
 
-  // --- Parse arguments ---
+  // --- Parse LGML args ---
   const namedArgs = {};
   const positionalArgs = [];
   for (const arg of args) {
@@ -110,26 +174,275 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
   }
 
+  /* Padreramnt1 Implementations */
+  function pipe(value, ...functions) {
+    return functions.reduce((res, fn) => fn(res), value)
+  }
+
+  function flow(...functions) {
+    return (value) => pipe(value, ...functions)
+  }
+
+  const Either = {
+    is(it) {
+      return typeof it === 'object' && null != it && 'Either' === it._type
+    },
+    error(error) {
+      return {
+        _type: 'Either',
+        ok: false,
+        error,
+      }
+    },
+    ok(value) {
+      return {
+        _type: 'Either',
+        ok: true,
+        value,
+      }
+    },
+    assert(condition, error) {
+      return (value) => {
+        return !condition
+          ? Either.ok(value)
+          : Either.error(error)
+      }
+    },
+    map(fn) {
+      return (either) => {
+        if (either.ok) {
+          return Either.ok(fn(either.value))
+        }
+        return either
+      }
+    },
+    flattern(either) {
+      if (!either.ok) {
+        return either
+      }
+      if (!either.value.ok) {
+        return either.value
+      }
+      return Either.ok(either.value.value)
+    },
+    chain(fn) {
+      return (either) => {
+        return pipe(
+          either,
+          Either.map(fn),
+          Either.flattern,
+        )
+      }
+    },
+    unwrap(either) {
+      if (!either.ok) {
+        if (either.error instanceof Error) {
+          throw either.error
+        }
+        throw new Error(either.error)
+      }
+      return either.value
+    },
+    tryCatch(fn) {
+      return (it) => {
+        try {
+          return Either.ok(fn(it))
+        } catch (error) {
+          return Either.error(error)
+        }
+      }
+    },
+  }
+
+  const Decode = {
+    default(fallback) {
+      return Either.chain(value => null == value ? fallback : value)
+    },
+    number: (() => {
+      function convert(value) {
+        if (typeof value === 'string') {
+          value = value.trim()
+        }
+        if ('' === value) {
+          return Either.ok(null)
+        }
+        const valueOf = value.valueOf()
+        const asNumber = typeof valueOf === 'number' ? valueOf : Number(valueOf)
+        if (isNaN(asNumber)) {
+          return Either.error(new TypeError(`not a number`, { cause: { value } }))
+        }
+        return Either.ok(asNumber)
+      }
+
+      const decoder = (value, ...asserts) => {
+        return pipe(
+          value,
+          convert,
+          Either.chain(Assert.required),
+          ...asserts.map(Either.chain),
+          Either.unwrap
+        )
+      }
+      decoder.optional = (value, ...asserts) => {
+        return pipe(
+          value,
+          convert,
+          ...asserts.map(Either.chain),
+          Either.unwrap
+        )
+      }
+      return decoder
+    })(),
+    string: (() => {
+      const convert = (value) => {
+        if (null == value) {
+          return Either.ok(value)
+        }
+        return Either.ok(typeof value === 'string' ? value : value.toString())
+      }
+      const decoder = (value, ...asserts) => {
+        return pipe(
+          value,
+          convert,
+          Either.chain(Assert.required),
+          ...asserts.map(Either.chain),
+          Either.unwrap,
+        )
+      }
+      decoder.optional = (value, ...asserts) => {
+        return pipe(
+          value,
+          ...asserts.map(Either.chain),
+          Either.unwrap,
+        )
+      }
+      return decoder
+    })(),
+    object: (() => {
+      const decoder = (scheme, value, ...asserts) => {
+        return pipe(
+          value,
+          Assert.required,
+          Either.chain(Assert.scheme(scheme)),
+          ...asserts.map(Either.chain),
+          Either.unwrap,
+        )
+      }
+      decoder.optional = (scheme, value, ...asserts) => {
+        return pipe(
+          value,
+          Either.chain(Assert.scheme(scheme)),
+          ...asserts.map(Either.chain),
+          Either.unwrap,
+        )
+      }
+      return decoder
+    })()
+  }
+
+  const Assert = {
+    required(it) {
+      return Either.assert(null == it || '' == it, new TypeError('required', {
+        cause: {
+          value: it
+        }
+      }))(it)
+    },
+    number(it) {
+      return Either.assert(typeof it !== 'number' || isNaN(it), new TypeError('not a number', {
+        cause: {
+          value: it
+        }
+      }))(it)
+    },
+    string(it) {
+      return Either.assert(typeof it !== 'string', new TypeError(`not a string`, {
+        cause: {
+          value: it
+        }
+      }))(it)
+    },
+    object(it) {
+      return Either.assert(typeof it !== 'object' || null == it, new TypeError(`not a object`, {
+        cause: {
+          value: it
+        }
+      }))(it)
+    },
+    range(min, max) {
+      return (it) => {
+        return pipe(
+          it,
+          Assert.number,
+          Either.chain(Either.assert(it < min || max < it), new Error(`out of range [${min}, ${max}]`, {
+            cause: {
+              value: it,
+              min,
+              max,
+              range: [min, max]
+            }
+          })),
+        )
+      }
+    },
+    oneOf(entries) {
+      return (it) => {
+        return Either.assert(!entries.includes(it), new Error(`expected to be one of`, {
+          cause: {
+            value: it,
+            entries
+          }
+        }))(it)
+      }
+    },
+    keyOf(obj) {
+      const keys = Object.keys(obj)
+      return Assert.oneOf(keys)
+    },
+    scheme(obj) {
+      const keys = Object.keys(obj)
+      return (it) => {
+        let failed = false;
+        let out = {};
+        let errors = {}
+        keys.forEach(key => {
+          const value = it[key]
+          const check = obj[key]
+          const res = pipe(value, Either.tryCatch(check))
+          if (res.ok) {
+            out[key] = res.value
+          } else {
+            failed = true
+            errors[key] = res.error
+          }
+        })
+        return Either.assert(failed, new Error(`object assert exeption`, {
+          cause: {
+            value: it,
+            errors
+          }
+        }))(out)
+      }
+    }
+  }
+
+  const Enum = {
+    create(obj) {
+      return Object.keys(obj).reduce((a, c) => (a[c] = c, a), {})
+    }
+  }
+  /* END of Padreramnt1 Implementation */
+
   // --- Sandbox setup ---
   const sandbox = {
     module: { exports: {} },
     exports: {},
-    Math,
-    Date,
-    JSON,
-    String,
-    Number,
-    Boolean,
-    Array,
-    Object,
-
-    // Safe "require" for LGML modules
+    Math, Date, JSON, String, Number, Boolean, Array, Object, Promise, pipe, flow, Either, Decode, Assert,
     require: async function (name) {
       try {
         const mod = String(name || "").trim().replace(/\s+/g, "_");
         if (!mod) throw new Error("Empty module name");
         if (mod === normalized) throw new Error(`Recursive require: Module:${mod}`);
-
         const subOptions = { ...options, _depth: depth + 1 };
         const subResult = await executeWikiModule(subOptions, mod, "__default__");
         return subResult?.__exports__ || {};
@@ -138,7 +451,6 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
         return {};
       }
     },
-
     __resolveLink(target) {
       try {
         const wikiName = options.wikiName || "";
@@ -148,26 +460,47 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
       }
     }
   };
+  sandbox.exports = sandbox.module.exports;
+  //vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
+  const vm = new VM.VM({ timeout: 2000, sandbox, allowAsync: true });
 
   try {
-    vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
+    // --- Wrap module in async IIFE to support top-level await ---
+    const wrapped = `
+(async (module, exports) => {
+  try {
+    ${modulePage.content}
+  } catch (e) {
+    console.error("LGML module error:", e);
+    throw e;
+  }
+  // Merge top-level returned object into module.exports
+  if (typeof exports === "object" && exports !== module.exports) {
+    Object.assign(module.exports, exports);
+  }
+})(module, module.exports)
+`;
 
-    const script = new vm.Script(modulePage.content, {
-      filename: `Module:${normalized}`,
-      displayErrors: false,
-      timeout: 1000
-    });
+    // --- Execute module code ---
+    await vm.run(wrapped, `LGML:Module:${normalized}`);
 
-    script.runInContext(sandbox, { timeout: 1000 });
+    // --- Determine exports ---
+    let exported = sandbox.module.exports || sandbox.exports;
+    if (sandbox.exports !== sandbox.module.exports) exported = sandbox.exports;
 
-    const exported = sandbox.module.exports && Object.keys(sandbox.module.exports).length
-      ? sandbox.module.exports
-      : sandbox.exports || {};
-
-    // Internal mode (used by require)
-    if (functionName === "__default__") {
-      return { __exports__: exported };
+    // Cache module exports for this request so subsequent requires reuse it
+    try {
+      if (options && options._moduleCache && typeof options._moduleCache.set === 'function') {
+        options._moduleCache.set(normalized, exported);
+      }
+    } catch (e) {
+      // ignore cache set errors
     }
+
+    const isPlainExport =
+      exported && typeof exported === "object" && !Object.values(exported).some(v => typeof v === "function");
+
+    if (functionName === "__default__" || isPlainExport) return { __exports__: exported };
 
     const fn = exported[functionName];
     if (!fn || typeof fn !== "function") {
@@ -176,14 +509,15 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 
     let result;
     try {
-      if (positionalArgs.length === 0 && Object.keys(namedArgs).length > 0) {
+      if (positionalArgs.length === 0 && Object.keys(namedArgs).length > 0)
         result = await fn(namedArgs);
-      } else {
+      else
         result = await fn.apply(null, positionalArgs.length ? positionalArgs : [namedArgs]);
-      }
     } catch (fnErr) {
-      console.error(`[LGML] Error running ${normalized}.${functionName}:`, fnErr);
-      return `<span class="lgml-error">LGML: error in ${normalized}.${functionName}</span>`;
+      const lineInfo = fnErr.stack?.match(new RegExp(`${normalized}:(\\d+):(\\d+)`));
+      const line = lineInfo ? ` at line ${lineInfo[1]}, column ${lineInfo[2]}` : "";
+      const message = fnErr.message ? `: ${fnErr.message}` : "";
+      return sanitize(`<span class="lgml-error">LGML: error in ${normalized}.${functionName}${line}${message}</span>`, PURIFY_CONFIG);
     }
 
     if (result == null) return "";
@@ -191,8 +525,13 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     try { return String(result); } catch { return JSON.stringify(result); }
 
   } catch (err) {
-    console.error(`[LGML] Failed to execute Module:${normalized}:`, err);
-    return `<span class="lgml-error">LGML: execution error in ${normalized}</span>`;
+    const stack = err.stack || "";
+    const lineInfo =
+      stack.match(new RegExp(`Module:${normalized}:(\\d+):(\\d+)`)) ||
+      stack.match(new RegExp(`Module:${normalized}:(\\d+)`));
+    const line = lineInfo ? ` at line ${lineInfo[1]}${lineInfo[2] ? `, column ${lineInfo[2]}` : ""}` : "";
+    const message = err.message ? `: ${err.message}` : "";
+    return sanitize(`<span class="lgml-error">LGML: execution error in ${normalized}${line}${message}</span>`, PURIFY_CONFIG);
   }
 }
 
@@ -239,15 +578,12 @@ function tokenize(text, options = {}) {
   const tokens = [];
   const lines = text.split(/\r?\n/);
 
-  const linkRegex =
-    /(\[\[([^\]|]+)(?:\|([^\]]+))?\]\])|(\[([a-zA-Z]+:\/\/[^\]\s]+)(?:\s+([^\]]+))?\])/g;
-
   let inCodeBlock = false;
   let codeBuffer = [];
 
   function tokenizeTables(startIndex) {
-    const table = { 
-      type: "tableBlock", 
+    const table = {
+      type: "tableBlock",
       attrs: lines[startIndex].replace(/^\{\|\s*/, "").trim(),
       caption: null,
       rows: []
@@ -258,7 +594,6 @@ function tokenize(text, options = {}) {
     while (i < lines.length && !/^\|\}/.test(lines[i])) {
       const l = lines[i];
 
-      // --- New row ---
       if (/^\|-$/.test(l.trim())) {
         if (currentRow.length > 0) {
           table.rows.push(currentRow);
@@ -268,14 +603,12 @@ function tokenize(text, options = {}) {
         continue;
       }
 
-      // --- Caption ---
       if (/^\|\+/.test(l)) {
         table.caption = l.replace(/^\|\+\s*/, "");
         i++;
         continue;
       }
 
-      // --- Header cells (start with !) ---
       if (/^!/.test(l)) {
         const parts = l.split(/!!/);
         for (const part of parts) {
@@ -283,7 +616,6 @@ function tokenize(text, options = {}) {
           let align = null;
           let text = raw;
 
-          // Detect alignment markers
           if (/^:.*:$/.test(raw)) {
             align = "center";
             text = raw.slice(1, -1).trim();
@@ -305,7 +637,6 @@ function tokenize(text, options = {}) {
         continue;
       }
 
-      // --- Data cells (start with |) ---
       if (/^\|/.test(l)) {
         const parts = l.split(/\|\|/);
         for (const part of parts) {
@@ -338,8 +669,6 @@ function tokenize(text, options = {}) {
     }
 
     if (currentRow.length > 0) table.rows.push(currentRow);
-
-    // Skip closing |}
     return { table, nextIndex: i + 1 };
   }
 
@@ -347,15 +676,13 @@ function tokenize(text, options = {}) {
     const rawLine = lines[i];
     const line = rawLine.replace(/\r$/, "");
 
-    // --- Table start ---
     if (/^\{\|/.test(line)) {
       const { table, nextIndex } = tokenizeTables(i);
       tokens.push(table);
-      i = nextIndex - 1; // skip past the table
+      i = nextIndex - 1;
       continue;
     }
 
-    // --- Multiline code block (``` ... ```) ---
     if (/^```/.test(line.trim())) {
       if (!inCodeBlock) {
         inCodeBlock = true;
@@ -375,25 +702,21 @@ function tokenize(text, options = {}) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // --- Horizontal rule ---
     if (/^(?:-{4,}|\*{3,})$/.test(trimmed)) {
       tokens.push({ type: "hr" });
       continue;
     }
 
-    // --- Blockquote ---
     if (/^>\s?/.test(trimmed)) {
       tokens.push({ type: "blockquote", content: trimmed.replace(/^>\s?/, "") });
       continue;
     }
 
-    // --- Indented code block (4 spaces or tab) ---
     if (/^(?:\t| {4})/.test(rawLine)) {
       tokens.push({ type: "codeBlock", content: rawLine.replace(/^(?:\t| {4})/, "") });
       continue;
     }
 
-    // --- Headings ===
     const headingMatch = trimmed.match(/^(={2,6})\s*(.+?)\s*\1$/);
     if (headingMatch) {
       const level = headingMatch[1].length;
@@ -403,18 +726,16 @@ function tokenize(text, options = {}) {
       continue;
     }
 
-    // --- List items ---
     const listMatch = trimmed.match(/^([*#-]+)\s+(.*)$/);
     if (listMatch) {
       const markers = listMatch[1];
       const level = markers.length;
       const ordered = markers[0] === "#";
-      const content = tokenizeInline(listMatch[2], linkRegex, options);
+      const content = tokenizeInline(listMatch[2], LINK_REGEX, options);
       tokens.push({ type: "listItem", ordered, level, content });
       continue;
     }
 
-    // --- Gallery block ---
     if (/^<gallery/i.test(trimmed)) {
       const galleryLines = [];
 
@@ -437,14 +758,62 @@ function tokenize(text, options = {}) {
       continue;
     }
 
-    // --- Regular text or inline ---
-    const parts = tokenizeInline(trimmed, linkRegex, options);
-    const isHtmlBlock = /^<\s*\w+[^>]*>/.test(trimmed) && /<\/\s*\w+\s*>$/.test(trimmed);
-    tokens.push({ type: isHtmlBlock ? "htmlBlock" : "textBlock", content: parts });
+    const parts = tokenizeInline(trimmed, LINK_REGEX, options);
+
+    /* -------------------------------------------------------------
+       FIXED: Safe HTML block detection (no greediness)
+    ------------------------------------------------------------- */
+    // Detect start of a block-level HTML element
+    const htmlOpen = trimmed.match(/^<([a-zA-Z][\w-]*)\b[^>]*>\s*$/);
+
+    if (htmlOpen) {
+      const tag = htmlOpen[1].toLowerCase();
+
+      // Only treat known block-level elements as htmlBlock
+      if (BLOCK_TAGS.includes(tag)) {
+        const blockLines = [trimmed];
+        const stack = [tag];
+
+        while (i + 1 < lines.length && stack.length > 0) {
+          const nextLine = lines[++i];
+
+          // A line containing ONLY "<tag ...>"
+          const nextOpen = nextLine.trim().match(/^<([a-zA-Z][\w-]*)\b[^>]*>\s*$/);
+          // A line containing ONLY "</tag>"
+          const nextClose = nextLine.trim().match(/^<\/([a-zA-Z][\w-]*)>\s*$/);
+
+          if (nextOpen) {
+            const t = nextOpen[1].toLowerCase();
+            if (BLOCK_TAGS.includes(t)) stack.push(t);
+          } else if (nextClose) {
+            const t = nextClose[1].toLowerCase();
+            if (stack[stack.length - 1] === t) {
+              stack.pop();
+            } else {
+              const idx = stack.lastIndexOf(t);
+              if (idx !== -1) stack.splice(idx);
+            }
+          }
+
+          blockLines.push(nextLine);
+        }
+
+        tokens.push({
+          type: "htmlBlock",
+          content: blockLines.join("\n")
+        });
+
+        continue;
+      }
+    }
+
+    // default text
+    tokens.push({ type: "textBlock", content: Array.isArray(parts) ? parts : [parts] });
   }
 
   return tokens;
 }
+
 
 // Helper to tokenize inline text (links + text)
 function tokenizeInline(line, linkRegex, options = {}) {
@@ -452,42 +821,47 @@ function tokenizeInline(line, linkRegex, options = {}) {
   let lastIndex = 0;
   let match;
 
+  options.categories ||= new Set();
+  options.tags ||= new Set();
+
   while ((match = linkRegex.exec(line)) !== null) {
-    // Push preceding text
+
     if (match.index > lastIndex) {
       parts.push({ type: "text", value: line.slice(lastIndex, match.index) });
     }
 
-    // Internal link [[Page|Label]] or [[Category:Name]]
+    // Internal [[Target|Label]]
     if (match[1]) {
-      const target = match[2];
-      const label = match[3] || target;
+      const target = match[1];
+      const label = match[2] || target;
 
-      // Detect category
       if (/^Category:/i.test(target)) {
         const categoryName = target.replace(/^Category:/i, "").trim();
         parts.push({ type: "category", name: categoryName });
-        options.categories = options.categories || new Set();
         options.categories.add(categoryName);
+
       } else if (/^Tag:/i.test(target)) {
         const tagName = target.replace(/^Tag:/i, "").trim();
         parts.push({ type: "tag", name: tagName });
         options.tags.add(tagName);
-        options.tags = options.tags || new Set();
-        options.tags.add(tagName);
+
       } else {
         parts.push({ type: "link", target, label });
       }
     }
-    // External link [https://example.com Label]
-    else if (match[4]) {
-      parts.push({ type: "externalLink", url: match[5], label: match[6] || match[5] });
+
+    // External link
+    else if (match[3]) {
+      parts.push({
+        type: "externalLink",
+        url: match[3],
+        label: match[4] || match[3]
+      });
     }
 
     lastIndex = linkRegex.lastIndex;
   }
 
-  // Push remaining text
   if (lastIndex < line.length) {
     parts.push({ type: "text", value: line.slice(lastIndex) });
   }
@@ -499,6 +873,15 @@ function tokenizeInline(line, linkRegex, options = {}) {
    Inline Renderer (with Media + link= support)
 ---------------------------- */
 function renderInline(parts, { wikiName, currentNamespace, existingFiles = new Set(), existingPages = new Set() }) {
+  // ✅ Normalize input to always be an array
+  if (!Array.isArray(parts)) {
+    if (typeof parts === "string" && parts.trim() !== "") {
+      parts = [{ type: "text", value: parts }];
+    } else {
+      return "";
+    }
+  }
+
   return parts.map(part => {
     if (part.type === "text") return formatText(part.value);
 
@@ -643,29 +1026,30 @@ function renderInline(parts, { wikiName, currentNamespace, existingFiles = new S
       }
 
       // Normalize for consistent lookups
+      // Also remove starting colon (:) if present
+      if (pageOnly.startsWith(":")) {
+        pageOnly = pageOnly.slice(1);
+      }
+
       const normalized = pageOnly.replace(/\s+/g, "_");
 
       // Check page existence
       const pageExists = existingPages.has(normalized);
 
       // --- Build final href (resolveLink handles anchors properly) ---
-      const href = resolveLink(target, { wikiName, currentNamespace });
+      const href = resolveLink(target, { wikiName });
       const finalHref = pageExists ? href : `${href}?mode=edit`;
 
       // --- Choose link class ---
       const linkClass = pageExists ? "wiki-link" : "wiki-link wiki-missing";
 
       // --- Return full link ---
-      return `<a href="${finalHref}" class="${linkClass}">
-                ${label}
-              </a>`;
+      return `<a href="${finalHref}" class="${linkClass}">${label}</a>`;
     }
 
     if (part.type === "externalLink") {
       const safeUrl = encodeURI(part.url.trim());
-      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">
-                ${sanitize(part.label || safeUrl, PURIFY_CONFIG)}
-              </a>`;
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${sanitize(part.label || safeUrl, PURIFY_CONFIG)}</a>`;
     }
 
     return "";
@@ -676,130 +1060,172 @@ function renderInline(parts, { wikiName, currentNamespace, existingFiles = new S
    Table Parser (Enhanced)
    - Supports rowspan, colspan, style, alignment (:---:), and escape templates
 ---------------------------- */
-function parseTables(text, expandTemplatesFn) {
-  // Match `{| ... |}` blocks
+async function parseTables(text, expandTemplatesFn, options = {}) {
   const tableRegex = /\{\|([\s\S]*?)\|\}/g;
+  const matches = [...text.matchAll(tableRegex)];
+  if (matches.length === 0) return text;
 
-  return text.replace(tableRegex, (match, content) => {
-    const lines = content.trim().split(/\r?\n/);
-    let html = "";
+  let result = text;
 
-    // Extract table-level attributes
-    let firstLine = lines[0]?.trim();
-    let tableAttrs = "";
-    if (firstLine && !firstLine.startsWith("|") && !firstLine.startsWith("!")) {
-      tableAttrs = firstLine;
-      lines.shift();
-    }
-
-    html += `<table ${tableAttrs || 'class="wiki-table"'}>`;
-
-    let currentRow = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      let line = lines[i].trim();
-      if (!line) continue;
-
-      // --- Caption ---
-      if (line.startsWith("|+")) {
-        html += `<caption>${line.substring(2).trim()}</caption>`;
-        continue;
-      }
-
-      // --- Row separator ---
-      if (line.startsWith("|-")) {
-        if (currentRow.length > 0) {
-          html += `<tr>${currentRow.join("")}</tr>`;
-          currentRow = [];
-        }
-        continue;
-      }
-
-      // --- Header row ---
-      if (line.startsWith("!")) {
-        const parts = line.substring(1).split("!!");
-        currentRow.push(...parts.map((h) => renderCell(h, true, expandTemplatesFn)));
-        continue;
-      }
-
-      // --- Data row ---
-      if (line.startsWith("|")) {
-        const parts = line.substring(1).split("||");
-        currentRow.push(...parts.map((c) => renderCell(c, false, expandTemplatesFn)));
-        continue;
-      }
-
-      // --- Continuation line (multi-line cell) ---
-      if (currentRow.length > 0) {
-        const last = currentRow.pop();
-        const updated = last.replace(/(<\/t[dh]>)/, " " + line + "$1");
-        currentRow.push(updated);
-      }
-    }
-
-    if (currentRow.length > 0) html += `<tr>${currentRow.join("")}</tr>`;
-    html += "</table>";
-    return html;
-  });
-
-  // --- Helper: render individual cell ---
-  function renderCell(cell, isHeader, expandTemplatesFn) {
-    let attr = "";
-    let text = cell.trim();
-
-    // --- Expand escape templates inside the cell if function provided ---
-    if (expandTemplatesFn) text = expandTemplatesFn(text);
-
-    // --- Split inline attributes before first "|" ---
-    const attrMatch = text.match(/^([^|]+?)\s*\|\s*(.+)$/);
-    if (attrMatch) {
-      attr = attrMatch[1].trim();
-      text = attrMatch[2].trim();
-    }
-
-    // --- Extract rowspan / colspan from attributes ---
-    const spanMatch = attr.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/gi);
-    let rowspan = "", colspan = "";
-    if (spanMatch) {
-      for (const m of spanMatch) {
-        const [, key,, val] = m.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/);
-        if (key.toLowerCase() === "rowspan") rowspan = val;
-        if (key.toLowerCase() === "colspan") colspan = val;
-      }
-    }
-    attr = attr.replace(/\b(rowspan|colspan)\s*=\s*(['"]?).*?\2/gi, "").trim();
-
-    // --- Alignment markers ---
-    let align = "";
-    if (/^:.*:$/.test(text)) {
-      align = "center";
-      text = text.slice(1, -1).trim();
-    } else if (/^:/.test(text)) {
-      align = "left";
-      text = text.slice(1).trim();
-    } else if (/:$/.test(text)) {
-      align = "right";
-      text = text.slice(0, -1).trim();
-    }
-
-    const alignStyle = align ? `text-align:${align};` : "";
-    const hasStyle = /style\s*=/.test(attr);
-    const tag = isHeader ? "th" : "td";
-
-    // --- Merge alignment into existing style ---
-    if (alignStyle && hasStyle) {
-      attr = attr.replace(/style\s*=\s*(['"])(.*?)\1/, (_, q, val) => `style=${q}${val.trim()} ${alignStyle}${q}`);
-    } else if (alignStyle && !hasStyle) {
-      attr = attr ? `${attr} style="${alignStyle}"` : `style="${alignStyle}"`;
-    }
-
-    // --- Append rowspan / colspan ---
-    if (rowspan) attr += ` rowspan="${rowspan}"`;
-    if (colspan) attr += ` colspan="${colspan}"`;
-
-    attr = attr.trim();
-    return `<${tag}${attr ? " " + attr : ""}>${text}</${tag}>`;
+  for (const match of matches) {
+    const fullMatch = match[0];
+    const content = match[1];
+    const html = await renderTable(content, expandTemplatesFn, options);
+    result = result.replace(fullMatch, html);
   }
+
+  return result;
+}
+
+async function renderTable(content, expandTemplatesFn, options = {}) {
+  const lines = content.trim().split(/\r?\n/);
+  let html = "";
+
+  // --- Extract table-level attributes ---
+  let firstLine = lines[0]?.trim();
+  let tableAttrs = "";
+  if (firstLine && !firstLine.startsWith("|") && !firstLine.startsWith("!")) {
+    tableAttrs = firstLine;
+    lines.shift();
+  }
+
+  html += `<table ${tableAttrs || 'class="wiki-table"'}>`;
+  let currentRow = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    if (!line) continue;
+
+    // --- Caption ---
+    if (line.startsWith("|+")) {
+      html += `<caption>${sanitize(renderInline(
+        tokenizeInline(line.substring(2).trim(), LINK_REGEX, {
+          wikiName: options.wikiName,
+          currentNamespace: options.currentNamespace,
+          existingFiles: options.existingFiles,
+          existingPages: options.existingPages
+        }),
+        {
+          wikiName: options.wikiName,
+          currentNamespace: options.currentNamespace,
+          existingFiles: options.existingFiles,
+          existingPages: options.existingPages
+        }
+      ), PURIFY_CONFIG)}</caption>`;
+      continue;
+    }
+
+    // --- Row separator ---
+    if (line.startsWith("|-")) {
+      if (currentRow.length > 0) {
+        html += `<tr>${currentRow.join("")}</tr>`;
+        currentRow = [];
+      }
+      continue;
+    }
+
+    // --- Header row ---
+    if (line.startsWith("!")) {
+      const parts = line.substring(1).split("!!");
+      const renderedCells = await Promise.all(
+        parts.map(h => renderCell(h, true, expandTemplatesFn, options))
+      );
+      currentRow.push(...renderedCells);
+      continue;
+    }
+
+    // --- Data row ---
+    if (line.startsWith("|")) {
+      const parts = line.substring(1).split("||");
+      const renderedCells = await Promise.all(
+        parts.map(c => renderCell(c, false, expandTemplatesFn, options))
+      );
+      currentRow.push(...renderedCells);
+      continue;
+    }
+
+    // --- Continuation line (multi-line cell) ---
+    if (currentRow.length > 0) {
+      const last = currentRow.pop();
+      const updated = last.replace(/(<\/t[dh]>)/, " " + line + "$1");
+      currentRow.push(updated);
+    }
+  }
+
+  if (currentRow.length > 0) html += `<tr>${currentRow.join("")}</tr>`;
+  html += "</table>";
+  return html;
+}
+
+async function renderCell(cell, isHeader, expandTemplatesFn, options = {}) {
+  let attr = "";
+  let text = cell.trim();
+
+  // --- Expand escape templates inside the cell if function provided ---
+  if (expandTemplatesFn) text = await expandTemplatesFn(text, { ...options });
+
+  // --- Split inline attributes before first "|" ---
+  const attrMatch = text.match(/^([^|]+?)\s*\|\s*(.+)$/);
+  if (attrMatch) {
+    attr = attrMatch[1].trim();
+    text = attrMatch[2].trim();
+  }
+
+  // --- Extract rowspan / colspan from attributes ---
+  const spanMatch = attr.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/gi);
+  let rowspan = "", colspan = "";
+  if (spanMatch) {
+    for (const m of spanMatch) {
+      const [, key, , val] = m.match(/(rowspan|colspan)\s*=\s*(['"]?)(\d+)\2/);
+      if (key.toLowerCase() === "rowspan") rowspan = val;
+      if (key.toLowerCase() === "colspan") colspan = val;
+    }
+  }
+  attr = attr.replace(/\b(rowspan|colspan)\s*=\s*(['"]?).*?\2/gi, "").trim();
+
+  // --- Alignment markers ---
+  let align = "";
+  if (/^:.*:$/.test(text)) {
+    align = "center";
+    text = text.slice(1, -1).trim();
+  } else if (/^:/.test(text)) {
+    align = "left";
+    text = text.slice(1).trim();
+  } else if (/:$/.test(text)) {
+    align = "right";
+    text = text.slice(0, -1).trim();
+  }
+
+  const alignStyle = align ? `text-align:${align};` : "";
+  const hasStyle = /style\s*=/.test(attr);
+  const tag = isHeader ? "th" : "td";
+
+  // --- Merge alignment into existing style ---
+  if (alignStyle && hasStyle) {
+    attr = attr.replace(/style\s*=\s*(['"])(.*?)\1/, (_, q, val) => `style=${q}${val.trim()} ${alignStyle}${q}`);
+  } else if (alignStyle && !hasStyle) {
+    attr = attr ? `${attr} style="${alignStyle}"` : `style="${alignStyle}"`;
+  }
+
+  // --- Append rowspan / colspan ---
+  if (rowspan) attr += ` rowspan="${rowspan}"`;
+  if (colspan) attr += ` colspan="${colspan}"`;
+
+  attr = attr.trim();
+  return `<${tag}${attr ? " " + attr : ""}>${sanitize(renderInline(
+    tokenizeInline(text, LINK_REGEX, {
+      wikiName: options.wikiName,
+      currentNamespace: options.currentNamespace,
+      existingFiles: options.existingFiles,
+      existingPages: options.existingPages
+    }),
+    {
+      wikiName: options.wikiName,
+      currentNamespace: options.currentNamespace,
+      existingFiles: options.existingFiles,
+      existingPages: options.existingPages
+    }
+  ), PURIFY_CONFIG)}</${tag}>`;
 }
 
 /* ---------------------------
@@ -914,10 +1340,57 @@ function parse(tokens, options = {}) {
       continue;
     }
 
-    const inner = renderInline(t.content, { wikiName, currentNamespace, existingFiles, existingPages: options.existingPages });
+    const inner = renderInline(t.content, {
+      wikiName,
+      currentNamespace,
+      existingFiles,
+      existingPages: options.existingPages
+    });
 
-    if (t.type === "htmlBlock") html += sanitize(inner, PURIFY_CONFIG) + "\n";
-    else html += `<p>${sanitize(inner, PURIFY_CONFIG)}</p>\n`;
+    if (t.type === "htmlBlock") {
+      // Ignore <table> blocks completely
+      if (/^<table\b/i.test(t.content.trim())) {
+        // just output the raw HTML (sanitized)
+        html += sanitize(t.content, PURIFY_CONFIG) + "\n";
+      } else {
+        // Parse the inner text of other HTML blocks
+        const htmlMatch = t.content.match(/^<([a-zA-Z][\w-]*)([^>]*)>([\s\S]*?)<\/\1>$/i);
+
+        if (htmlMatch) {
+          const tag = htmlMatch[1];
+          const attrs = htmlMatch[2]; // keep original attributes
+          const innerText = htmlMatch[3]; // the text inside the HTML block
+
+          // 1️⃣ Tokenize/parse the inner text
+          const innerTokens = tokenizeInline(innerText, LINK_REGEX, {
+            wikiName,
+            currentNamespace,
+            existingFiles,
+            existingPages: options.existingPages,
+          });
+
+          // 2️⃣ Render parsed tokens
+          const parsedInner = renderInline(innerTokens, {
+            wikiName,
+            currentNamespace,
+            existingFiles,
+            existingPages: options.existingPages,
+          });
+
+          // 3️⃣ Sanitize and wrap with original tag/attributes
+          html += `<${tag}${attrs}>${sanitize(parsedInner, PURIFY_CONFIG)}</${tag}>\n`;
+        } else {
+          // fallback: treat as raw HTML
+          html += sanitize(t.content, PURIFY_CONFIG) + "\n";
+        }
+      }
+    } else if (BLOCK_TAG_RE.test(inner.trim())) {
+      // Skip wrapping if inline HTML already contains a block element
+      html += sanitize(inner, PURIFY_CONFIG) + "\n";
+    } else if (inner.trim()) {
+      // Normal paragraph
+      html += `<p>${sanitize(inner, PURIFY_CONFIG)}</p>\n`;
+    }
   }
 
   closeListsTo(0);
@@ -966,6 +1439,8 @@ function resolveLink(target, { wikiName, currentNamespace = "Main" } = {}) {
     anchor = sanitizeAnchor(anchorPart);
   }
 
+  if (page.startsWith(":")) page = page.slice(1);
+
   if (page.includes(":")) {
     const parts = page.split(":");
     namespace = parts.shift();
@@ -995,123 +1470,292 @@ function sanitizeAnchor(name) {
   return name.replace(/[^a-zA-Z0-9_\-:.]/g, "");
 }
 
+// Helper to detect block-level HTML
+function isBlockHTML(chunk) {
+  const trimmed = chunk.trim();
+  return BLOCK_TAGS.some(tag =>
+    trimmed.startsWith(`<${tag}`) || trimmed.startsWith(`</${tag}`)
+  );
+}
+
 /* ---------------------------
    Nowiki Helper
 ---------------------------- */
 function wrapNowiki(content) {
-    if (!content) return "";
-    // Escape any nested <nowiki> tags to prevent breaking
-    return `<nowiki>${content.replace(/<\/?nowiki>/g, m => m === '<nowiki>' ? '&lt;nowiki&gt;' : '&lt;/nowiki&gt;')}</nowiki>`;
+  if (!content) return "";
+  // Escape any nested <nowiki> tags to prevent breaking
+  return `<nowiki>${content.replace(/<\/?nowiki>/g, m => m === '<nowiki>' ? '&lt;nowiki&gt;' : '&lt;/nowiki&gt;')}</nowiki>`;
 }
 
 /* ---------------------------
-   Template Expansion
+   Template Expansion (Patched - async param fallback)
 ---------------------------- */
 const MAX_TEMPLATE_DEPTH = 10;
 
 async function expandTemplates(text, options = {}, depth = 0, visited = new Set()) {
-    const { getPage, pageName, currentNamespace, currentPageId, WikiPage } = options;
-    if (!getPage || depth > MAX_TEMPLATE_DEPTH) return text;
+  const { getPage, pageName, currentNamespace } = options;
+  if (!getPage || depth > MAX_TEMPLATE_DEPTH) return text;
 
-    // Match any double-brace block (including #invoke)
-    const templateRegex = /\{\{([^{}]+?)\}\}(?!\})/g;
+  /* ---------------------------
+     Helper: robust triple-brace replacement
+  ---------------------------- */
+  async function replaceTripleBracesAsync(str, asyncReplacer) {
+    let out = "";
+    let i = 0;
 
-    async function replaceTemplate(match, inner) {
-        const trimmed = inner.trim();
+    while (i < str.length) {
+      const start = str.indexOf("{{{", i);
+      if (start === -1) {
+        out += str.slice(i);
+        break;
+      }
 
-        // === LGML: #invoke ===
-        // Syntax: {{#invoke:ModuleName|functionName|arg1|arg2|...}}
-        if (/^#invoke:/i.test(trimmed)) {
-            const invokeParts = trimmed.split("|");
-            const invokeHeader = invokeParts.shift(); // "#invoke:ModuleName"
-            const moduleName = invokeHeader.split(":")[1]?.trim();
-            const functionName = (invokeParts.shift() || "").trim();
-            const args = invokeParts.map(p => p.trim());
+      out += str.slice(i, start);
 
-            if (!moduleName || !functionName)
-                return `<span class="error">[Invalid #invoke syntax]</span>`;
+      let depth = 1;
+      let j = start + 3;
 
-            // --- Skip if /doc page ---
-            if (moduleName.endsWith("/doc")) {
-                return `<span class="error">[Cannot invoke documentation page: ${moduleName}]</span>`;
-            }
-
-            try {
-                const result = await executeWikiModule(options, moduleName, functionName, args);
-                return result ?? "";
-            } catch (err) {
-                console.error(`[LGML] Error in #invoke ${moduleName}.${functionName}:`, err);
-                return `<span class="error">[LGML execution error]</span>`;
-            }
+      while (j < str.length && depth > 0) {
+        if (str.slice(j, j + 3) === "{{{") {
+          depth++;
+          j += 3;
+        } else if (str.slice(j, j + 3) === "}}}") {
+          depth--;
+          j += 3;
+        } else if (str.slice(j, j + 2) === "{{") {
+          // skip nested double-braces inside triple-braces
+          j += 2;
+          let innerDepth = 1;
+          while (j < str.length && innerDepth > 0) {
+            if (str.slice(j, j + 2) === "{{") innerDepth++, j += 2;
+            else if (str.slice(j, j + 2) === "}}") innerDepth--, j += 2;
+            else j++;
+          }
+        } else {
+          j++;
         }
+      }
 
-        // === Normal Template Handling ===
-        const parts = trimmed.split("|");
-        const name = parts.shift().trim();
-        const normalizedName = name.replace(/ /g, "_");
+      if (depth > 0) {
+        // no closing triple-brace found
+        out += str.slice(start);
+        break;
+      }
 
-        // === Magic words ===
-        const upperName = normalizedName.toUpperCase();
-        switch (upperName) {
-            case "PAGENAME": return pageName?.replace(/_/g, " ") || "";
-            case "NAMESPACE": return currentNamespace || "";
-            case "FULLPAGENAME":
-                return currentNamespace
-                    ? `${currentNamespace}:${pageName?.replace(/_/g, " ")}`
-                    : pageName?.replace(/_/g, " ");
-        }
-
-        // === Built-in templates ===
-        if (BUILTIN_TEMPLATES.hasOwnProperty(normalizedName)) {
-            return BUILTIN_TEMPLATES[normalizedName];
-        }
-
-        // === Prevent recursion ===
-        const templateKey = `Template:${normalizedName}`;
-        if (visited.has(templateKey))
-            return `<span class="error">[Recursive template: ${normalizedName}]</span>`;
-        visited.add(templateKey);
-
-        // === Fetch template ===
-        const templatePage = await getPage("Template", normalizedName);
-        if (!templatePage || !templatePage.content) {
-            return `<span class="missing-template">{{${name}}}</span>`;
-        }
-
-        // === Process includeonly/noinclude/onlyinclude ===
-        let content = processIncludeBlocks(templatePage.content, false);
-
-        // === Replace parameters ===
-        content = content.replace(/\{\{\{([^{}]+)\}\}\}/g, (_, key) => {
-            key = key.trim();
-            const named = parts.find(p => p.startsWith(key + "="));
-            if (named) return named.split("=").slice(1).join("=").trim();
-
-            const index = parseInt(key);
-            if (!isNaN(index) && parts[index - 1]) return parts[index - 1].trim();
-
-            return `{{{${key}}}}`;
-        });
-
-        // === Recursively expand nested templates ===
-        const expanded = await expandTemplates(content, options, depth + 1, visited);
-
-        visited.delete(templateKey);
-        return expanded;
+      const inner = str.slice(start + 3, j - 3);
+      const replaced = await asyncReplacer("{{{" + inner + "}}}", inner);
+      out += replaced;
+      i = j;
     }
 
-    let result = "";
-    let lastIndex = 0;
-    let match;
+    return out;
+  }
 
-    while ((match = templateRegex.exec(text)) !== null) {
-        result += text.slice(lastIndex, match.index);
-        result += await replaceTemplate(match[0], match[1]);
-        lastIndex = templateRegex.lastIndex;
+  /* ---------------------------
+     Safe top-level pipe splitter
+  ---------------------------- */
+  function splitTemplateArgs(str) {
+    const parts = [];
+    let current = "";
+    let depth2 = 0, depth3 = 0, depthL = 0;
+    for (let i = 0; i < str.length; i++) {
+      const c = str[i];
+      const n = str[i + 1];
+
+      if (c === '{' && n === '{') {
+        if (str[i + 2] === '{') { depth3++; current += "{{{"; i += 2; continue; }
+        depth2++; current += "{{"; i++; continue;
+      }
+      if (c === '}' && n === '}') {
+        if (str[i + 2] === '}') { depth3--; current += "}}}"; i += 2; continue; }
+        depth2--; current += "}}"; i++; continue;
+      }
+      if (c === '[' && n === '[') { depthL++; current += "[["; i++; continue; }
+      if (c === ']' && n === ']') { depthL--; current += "]]"; i++; continue; }
+
+      if (c === '|' && depth2 === 0 && depth3 === 0 && depthL === 0) {
+        parts.push(current.trim());
+        current = "";
+        continue;
+      }
+      current += c;
+    }
+    if (current.trim() !== "") parts.push(current.trim());
+    return parts;
+  }
+
+  /* ---------------------------
+     Magic-word expansion
+  ---------------------------- */
+  function expandMagicWords(str) {
+    return str.replace(/{{\s*(PAGENAME|NAMESPACE|FULLPAGENAME)\s*}}/gi, (_, word) => {
+      const W = word.toUpperCase();
+      if (W === "PAGENAME") return pageName?.replace(/_/g, " ") || "";
+      if (W === "NAMESPACE") return currentNamespace || "";
+      if (W === "FULLPAGENAME") {
+        const base = pageName?.replace(/_/g, " ") || "";
+        return currentNamespace ? `${currentNamespace}:${base}` : base;
+      }
+      return _;
+    });
+  }
+
+  text = expandMagicWords(text);
+
+  /* ---------------------------
+     Built-in templates
+  ---------------------------- */
+  for (const [name, entity] of Object.entries(BUILTIN_TEMPLATES)) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`\\{\\{${escaped}\\}\\}`, "g");
+    text = text.replace(regex, entity);
+  }
+
+  const templateRegex = /\{\{([^{}]+?)\}\}(?!\})/g;
+
+  async function replaceTemplate(match, inner) {
+    const trimmed = inner.trim();
+
+    /* ---------------------------
+       #invoke handling
+    ---------------------------- */
+    if (/^#invoke:/i.test(trimmed)) {
+      const firstPipe = trimmed.indexOf("|");
+      if (firstPipe === -1) return `<span class="error">[Invalid #invoke syntax]</span>`;
+
+      const invokeHeader = trimmed.slice(0, firstPipe).trim();
+      const remainder = trimmed.slice(firstPipe + 1);
+
+      const headerBits = invokeHeader.split(":");
+      const moduleName = headerBits[1]?.trim();
+      if (!moduleName) return `<span class="error">[Invalid #invoke syntax]</span>`;
+
+      const secondPipeIndex = remainder.indexOf("|");
+      let functionName, rawArgString;
+      if (secondPipeIndex === -1) {
+        functionName = remainder.trim();
+        rawArgString = "";
+      } else {
+        functionName = remainder.slice(0, secondPipeIndex).trim();
+        rawArgString = remainder.slice(secondPipeIndex + 1);
+      }
+
+      // Split arguments by top-level pipes
+      const rawArgs = rawArgString ? splitTemplateArgs(rawArgString) : [];
+
+      // Process each argument: expand magic words and nested templates
+      const args = [];
+      for (const arg of rawArgs) {
+        const trimmedArg = arg.trim();
+        const withMagic = expandMagicWords(trimmedArg);
+        const expanded = await expandTemplates(withMagic, options, depth + 1, visited);
+        args.push(expanded);
+      }
+
+      if (!functionName)
+        return `<span class="error">[Invalid #invoke syntax]</span>`;
+      if (moduleName.endsWith("/doc"))
+        return `<span class="error">[Cannot invoke documentation page: ${moduleName}]</span>`;
+
+      try {
+        return await executeWikiModule(options, moduleName, functionName, args) ?? "";
+      } catch (err) {
+        console.error(`[LGML] Error in #invoke ${moduleName}.${functionName}:`, err);
+        return `<span class="error">[LGML execution error]</span>`;
+      }
     }
 
-    result += text.slice(lastIndex);
-    return result;
+    /* ---------------------------
+       Normal template handling
+    ---------------------------- */
+    const parts = splitTemplateArgs(trimmed);
+    const name = parts.shift()?.trim() || "";
+    const normalizedName = name.replace(/ /g, "_");
+
+    const upper = normalizedName.toUpperCase();
+    if (upper === "PAGENAME") return pageName?.replace(/_/g, " ") || "";
+    if (upper === "NAMESPACE") return currentNamespace || "";
+    if (upper === "FULLPAGENAME") {
+      const base = pageName?.replace(/_/g, " ") || "";
+      return currentNamespace ? `${currentNamespace}:${base}` : base;
+    }
+    if (BUILTIN_TEMPLATES.hasOwnProperty(normalizedName)) return BUILTIN_TEMPLATES[normalizedName];
+
+    const templateKey = `Template:${normalizedName}`;
+    if (visited.has(templateKey)) return `<span class="error">[Recursive template: ${normalizedName}]</span>`;
+    visited.add(templateKey);
+
+    const templatePage = await getPage("Template", normalizedName);
+
+    if (templatePage) {
+      templatePage.content = await wikiFileStorage.readContent(templatePage.wiki, "Template", normalizedName);
+    }
+
+    if (!templatePage || !templatePage.content) {
+      visited.delete(templateKey);
+      return `<span class="missing-template">{{${name}}}</span>`;
+    }
+
+    let content = processIncludeBlocks(templatePage.content, false);
+
+    // Helper to expand triple-brace parameters
+    async function RTB(whole, key) {
+      key = key.trim();
+
+      // Extract parameters and fallback, if the latter exists
+      const pIdx = key.indexOf("|");
+      let paramKey = key;
+      if (pIdx !== -1) {
+        paramKey = key.slice(0, pIdx).trim();
+      }
+
+      // Named parameter
+      for (const p of parts) {
+        if (p.includes("=")) {
+          const [k, v] = p.split("=", 2).map(s => s.trim());
+          if (k === paramKey) {
+            return expandMagicWords(v);
+          }
+        }
+      }
+
+      // Positional parameter
+      const idx = Number(paramKey);
+      if (!isNaN(idx) && idx > 0 && parts[idx - 1]) {
+        return expandMagicWords(parts[idx - 1].trim());
+      }
+
+      // Fallback
+      const pipeIdx = key.indexOf("|");
+      if (pipeIdx !== -1) {
+        const fallback = key.slice(pIdx + 1).trim();
+        return replaceTripleBracesAsync(fallback, RTB);
+      }
+
+      return "";
+    }
+
+    // Expand triple-braces inside template body
+    content = await replaceTripleBracesAsync(content, RTB);
+
+    const expanded = await expandTemplates(content, options, depth + 1, visited);
+    visited.delete(templateKey);
+    return expanded;
+  }
+
+  /* ---------------------------
+     Main loop
+  ---------------------------- */
+  let result = "";
+  let lastIndex = 0;
+  let match;
+  while ((match = templateRegex.exec(text)) !== null) {
+    result += text.slice(lastIndex, match.index);
+    result += await replaceTemplate(match[0], match[1]);
+    lastIndex = templateRegex.lastIndex;
+  }
+  result += text.slice(lastIndex);
+  return result;
 }
 
 function processIncludeBlocks(content, isTemplateView) {
@@ -1181,6 +1825,11 @@ function restoreNowikiBlocks(text, nowikiBlocks) {
 async function renderWikiText(text, options = {}) {
   if (!text) return { html: "", categories: [] };
 
+  // Ensure a per-request module cache exists. This Map stores module exports
+  // keyed by module name so repeated `require`/#invoke calls reuse the same
+  // compiled module during a single render request.
+  if (!options._moduleCache) options._moduleCache = new Map();
+
   const { wikiName, pageName, currentNamespace, WikiPage, currentPageId } = options;
 
   // --- Skip parser for Special pages ---
@@ -1188,7 +1837,7 @@ async function renderWikiText(text, options = {}) {
   if (isSpecial) {
     return { html: text, categories: [] }; // return raw content unparsed
   }
-  
+
   const pageCategories = new Set(); // collect categories
   const pageTags = new Set();       // collect tags
 
@@ -1213,19 +1862,26 @@ async function renderWikiText(text, options = {}) {
     await WikiPage.updateOne(
       { _id: currentPageId },
       { $set: { templatesUsed: [] } } // optional: track templates
-    ).catch(() => {});
+    ).catch(() => { });
   }
 
   // --- Tokenize and parse normally ---
-  working = parseTables(working);
+  working = await parseTables(working, expandTemplates, { ...options });
   const tokens = tokenize(working, { categories: pageCategories, tags: pageTags });
-  const html = parse(tokens, options); // parse now returns object
+  let html = parse(tokens, options); // parse now returns object
+
+  // Detect and strip __NOINDEX__
+  let noIndex = false;
+  if (/__NOINDEX__/i.test(html)) {
+    noIndex = true;
+    html = html.replace(/__NOINDEX__/gi, "");
+  }
 
   // --- Restore <nowiki> after parsing ---
   const restoredHtml = restoreNowikiBlocks(html, nowikiBlocks);
 
   // Return both HTML and categories
-  return { html: restoredHtml, categories: Array.from(pageCategories), tags: Array.from(pageTags) };
+  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex };
 }
 
 module.exports = { renderWikiText, resolveLink };

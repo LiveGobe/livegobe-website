@@ -38,7 +38,10 @@
       "create_failed": "Failed to create wiki",
       "no_change_detected": "No changes detected",
       "page_rendered": "Page rendered successfully",
-      "page_purged": "Page cache purged successfully"
+      "page_purged": "Page cache purged successfully",
+      "all_purged": "Wiki cache purged successfully",
+      "search_term_required": "Search term is required",
+      "search_results": "{0} results found for '{1}'"
     },
     "filestorage": {
       "exists": "Filestorage already exists",
@@ -93,7 +96,8 @@
       "keymissing": "Registration key is required",
       "userexist": "Selected username is already taken",
       "keymismatch": "Registration key has expired",
-      "success": "Registration successfull"
+      "success": "Registration successfull",
+      "keyusedup": "Registration key no longer available"
     },
     "users": {
       "invalidid": "User id is invalid",
@@ -149,7 +153,8 @@
           "gallery": "Gallery",
           "settings": "Settings",
           "modsportal": "Mods Portal",
-          "albion": "Albion Online Tools"
+          "albion": "Albion Online Tools",
+          "wikis": "List of Hosted Wikis"
         },
         "language": "Lang",
         "theme": {
@@ -448,11 +453,13 @@
         "name_required": "Wiki name is required",
         "failed": "Failed to create wiki"
       },
-      "lastUpdated": "Updated on: {0}"
+      "lastUpdated": "Created on: {0}",
+      "contact": "To request a new wiki, please contact me:",
+      "contacts": "Discord - livegobe (LiveGobe) | X - @LiveGobe | Email - pax01012000@gmail.com"
     },
     "wiki": {
       "not_found": "Wiki not found",
-      "title": "{0}: {1}",
+      "title": "{0} - {1}",
       "page": {
         "draft_saved": "Draft saved",
         "draft_restored": "Draft restored",
@@ -575,7 +582,8 @@
   },
   "common": {
     "cancel": "Cancel",
-    "create": "Create"
+    "create": "Create",
+    "backtomain": "Back to Main Page"
   },
   "wiki": {
     "protected": {
@@ -598,7 +606,12 @@
       "settings": "Wiki Settings",
       "recentChanges": "Recent Changes",
       "tools": "Wiki Tools",
-      "help": "Help"
+      "help": "Help",
+      "website": "LG Website",
+      "backToMain": "Back to Main Page",
+      "allWikis": "All Wikis",
+      "sourceCode": "Source Code",
+      "supportMe": "Support Me"
     },
     "actions": {
       "view": "View",
@@ -607,7 +620,8 @@
       "create": "Create",
       "delete": "Delete",
       "more": "More",
-      "purge": "Purge"
+      "purge": "Purge",
+      "purgeAll": "Purge All"
     },
     "footer": {
       "text": "Powered by LiveGobe Wiki System"
@@ -662,7 +676,11 @@
       "diff": "Diff",
       "minor": "Minor Edit",
       "current": "Current",
-      "unknownAuthor": "Unknown Author"
+      "unknownAuthor": "Unknown Author",
+      "revert": "Revert",
+      "revert_confirm": "Are you sure you want to revert to this revision?",
+      "reverting": "Reverting...",
+      "revert_summary": "Revert to {rev}"
     },
     "revision": {
       "oldRevisionTitle": "Viewing old revision of {page}",
@@ -671,7 +689,7 @@
     },
     "purge": {
       "confirm": "Are you sure you want to purge the cache for {page}?",
-      "confirm_all": "Are you sure you want to purge Ala pages?"
+      "confirm_all": "Are you sure you want to purge All pages?"
     },
     "allPages": {
       "selectNamespace": "Select Namespace",
@@ -696,6 +714,7 @@
     },
     "category": {
       "pagesInCategory": "Pages in category -"
-    }
+    },
+    "supported_languages": "Available Languages"
   }
 }

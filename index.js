@@ -13,6 +13,7 @@ const config = require("./config");
 const JSXEngine = require("express-react-views").createEngine({ doctype: config.render.doctype });
 
 const routes = require("./routes");
+const WikiPage = require("./models/wikiPage")
 
 async function main() {
     // Connet to DB
@@ -22,6 +23,10 @@ async function main() {
         console.error(e);
         process.exit(1);
     }
+
+    // Clear WikiPage isPurging flag
+    await WikiPage.updateMany({}, { $set: { isPurging: false } });
+
     // Initialize passport
     require("./passport")(passport);
     
@@ -35,7 +40,7 @@ async function main() {
     app.disable("x-powered-by");
     app.set("trust proxy", app.get("env") == "production");
 
-    app.use(bodyParser.json());
+    app.use(bodyParser.json({ limit: "50mb" }));
     app.use(bodyParser.urlencoded({ extended: true }));
     app.use(cookieParser());
     const sessionMiddleware = session({
@@ -123,7 +128,7 @@ async function main() {
     io.use(wrap(passport.session()));
     require("./bin/socket-handler")(io);
 
-    const server = httpServer.listen(config.port, () => {
+    const server = httpServer.listen(config.port, "0.0.0.0", () => {
         console.log(`Server started on port ${config.port} in ${app.get("env")} mode`);
     });
 

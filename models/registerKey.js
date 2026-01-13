@@ -5,6 +5,10 @@ const RegisterKeySchema = new mongoose.Schema({
     key: {
         type: String,
         default: uuid.v4()
+    },
+    count: {
+        type: Number,
+        default: 1
     }
 });
 

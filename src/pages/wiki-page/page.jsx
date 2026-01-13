@@ -2,104 +2,146 @@ const React = require("react");
 const Head = require("../../components/head");
 const Bundle = require("../../components/bundle");
 const utils = require("../../../bin/utils");
+const config = require("../../../config");
 
 // Helper to format page title with namespace
 function formatPageTitle(namespace, path) {
-    return namespace === "Main" ? path : `${namespace}:${path}`;
+  return namespace === "Main" ? path : `${namespace}:${path}`;
+}
+
+// Language selector component
+function LanguageSelector({ wiki, namespace, basePath, currentLocale, variants = [], t }) {
+  return (
+    <div className="language-selector">
+      {/* Show a list of available languages (for each variant add a link) */}
+      {variants && variants.length > 1 && (
+        <>
+          <h3>{t("wiki.supported_languages")}</h3>
+          <ul>
+            <li>
+              {currentLocale != null ? (<a href={`/wikis/${wiki.name}/${namespace === "Main" ? basePath : `${namespace}:${basePath}`}`}>
+                {wiki.language.toUpperCase() || t("wiki.language.default")}
+              </a>) : (wiki.language.toUpperCase() || t("wiki.language.default"))}
+            </li>
+            {variants.map(variant => (
+              <li key={variant.locale}>
+                {currentLocale !== variant.locale ? (<a href={`/wikis/${wiki.name}/${namespace === "Main" ? variant.path : `${namespace}:${variant.path}`}`}>
+                  {variant.locale?.toUpperCase()}
+                </a>) : (variant.locale?.toUpperCase())}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
 }
 
 // Renders the edit form
 function EditForm({ wiki, page, namespace, path, t }) {
-    return (
-        <form
-            method="POST"
-            className="wiki-edit-form"
-            action={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}`}
-        >
-            <div className="edit-area">
-                <textarea
-                    id="wiki-editor"
-                    name="content"
-                    className="wiki-editor"
-                    defaultValue={page?.content || ""}
-                    rows="20"
-                />
-            </div>
-            <div className="edit-options">
-                <div className="edit-summary">
-                    <label>
-                        {t("wiki.edit.summary")}:
-                        <input type="text" name="summary" maxLength="200" />
-                    </label>
-                    <label className="minor-edit">
-                        <input type="checkbox" name="minor" />
-                        {t("wiki.edit.minor")}
-                    </label>
-                </div>
-                <div className="edit-buttons">
-                    <button type="submit" className="primary">
-                        {page?.exists ? t("wiki.edit.save") : t("wiki.edit.create")}
-                    </button>
-                    <a
-                        href={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}`}
-                        className="button"
-                    >
-                        {t("wiki.edit.cancel")}
-                    </a>
-                </div>
-            </div>
-        </form>
-    );
+  return (
+    <form
+      method="POST"
+      className="wiki-edit-form"
+      action={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}`}
+    >
+      <div className="edit-area">
+        <textarea
+          id="wiki-editor"
+          name="content"
+          className="wiki-editor"
+          defaultValue={page?.content || ""}
+          rows="20"
+        />
+      </div>
+      <div className="edit-options">
+        <div className="edit-summary">
+          <label>
+            {t("wiki.edit.summary")}:
+            <input type="text" name="summary" maxLength="200" />
+          </label>
+          <label className="minor-edit">
+            <input type="checkbox" name="minor" />
+            {t("wiki.edit.minor")}
+          </label>
+        </div>
+        <div className="edit-buttons">
+          <button type="submit" className="primary">
+            {page?.exists ? t("wiki.edit.save") : t("wiki.edit.create")}
+          </button>
+          <a
+            href={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}`}
+            className="button"
+          >
+            {t("wiki.edit.cancel")}
+          </a>
+        </div>
+      </div>
+    </form>
+  );
 }
 
 // Renders revision history
 function PageHistory({ wiki, page, namespace, path, t }) {
-    return (
-        <div className="wiki-history">
-            <table className="history-table">
-                <thead>
-                    <tr>
-                        <th>{t("wiki.history.date")}</th>
-                        <th>{t("wiki.history.author")}</th>
-                        <th>{t("wiki.history.comment")}</th>
-                        <th>{t("wiki.history.actions")}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {page.revisions.map((rev, index) => {
-                        const authorName =
-                            rev.author?.name || rev.author?.username || t("wiki.history.unknownAuthor");
-                        const isMinor = Boolean(rev.minor);
+  return (
+    <div className="wiki-history">
+      <table className="history-table">
+        <thead>
+          <tr>
+            <th>{t("wiki.history.date")}</th>
+            <th>{t("wiki.history.author")}</th>
+            <th>{t("wiki.history.comment")}</th>
+            <th>{t("wiki.history.actions")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {page.revisions.map((rev, index) => {
+            const authorName =
+              rev.author?.name || rev.author?.username || t("wiki.history.unknownAuthor");
+            const isMinor = Boolean(rev.minor);
 
-                        return (
-                            <tr key={rev._id} className={isMinor ? "minor-edit" : ""}>
-                                <td>{new Date(rev.timestamp).toLocaleString()}</td>
-                                <td>{authorName}</td>
-                                <td>
-                                    {isMinor && (
-                                        <span className="minor-flag">{t("wiki.history.minor")}</span>
-                                    )}{" "}
-                                    {rev.comment || t("wiki.history.noComment")}
-                                </td>
-                                <td>
-                                    {index > 0 && (
-                                        <a href={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}?oldid=${rev._id}`}>
-                                            {t("wiki.history.view")}
-                                        </a>
-                                    ) || (<span className="current-revision">{t("wiki.history.current")}</span>)}
-                                    {index > 0 && (
-                                        <a href={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}?diff=${rev._id}`}>
-                                            {t("wiki.history.diff")}
-                                        </a>
-                                    )}
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
-        </div>
-    );
+            return (
+              <tr key={rev._id} className={isMinor ? "minor-edit" : ""}>
+                <td>{new Date(rev.timestamp).toLocaleString()}</td>
+                <td>{authorName}</td>
+                <td>
+                  {isMinor && (
+                    <span className="minor-flag">{t("wiki.history.minor")}</span>
+                  )}{" "}
+                  {rev.comment || t("wiki.history.noComment")}
+                </td>
+                <td>
+                  {index > 0 ? (
+                    <>
+                      <a href={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}?oldid=${rev._id}`}>
+                        {t("wiki.history.view")}
+                      </a>
+                      {" | "}
+                      <a href={`/wikis/${wiki.name}/${formatPageTitle(namespace, path)}?diff=${rev._id}`}>
+                        {t("wiki.history.diff")}
+                      </a>
+                      {" | "}
+                      <button
+                        type="button"                          // Use button instead of submit
+                        className="revert-button"
+                        data-revision={rev._id}                // revision ID to revert to
+                        data-page={formatPageTitle(namespace, path)}
+                        data-wiki={wiki.name}
+                      >
+                        {t("wiki.history.revert")}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="current-revision">{t("wiki.history.current")}</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 /* ===== RecentChanges component ===== */
@@ -128,11 +170,10 @@ function RecentChanges({ wiki, t, changes, type, days = 7, pagination }) {
         {changes.map((change, idx) => (
           <li key={idx}>
             <a
-              href={`/wikis/${wiki.name}/${
-                change.namespace === "Main"
-                  ? change.title.replace(/ /g, "_")
-                  : `${change.namespace}:${change.title.replace(/ /g, "_")}`
-              }`}
+              href={`/wikis/${wiki.name}/${change.namespace === "Main"
+                ? change.title.replace(/ /g, "_")
+                : `${change.namespace}:${change.title.replace(/ /g, "_")}`
+                }`}
             >
               {change.namespace === "Main" ? change.title : `${change.namespace}:${change.title}`}
             </a>{" "}
@@ -185,9 +226,8 @@ function AllPages({ wiki, t, pages, type, pagination, currentNamespace = "Main" 
         {pages.map((page) => (
           <li key={page.path}>
             <a
-              href={`/wikis/${wiki.name}/${
-                page.namespace === "Main" ? page.path : `${page.namespace}:${page.path}`
-              }`}
+              href={`/wikis/${wiki.name}/${page.namespace === "Main" ? page.path : `${page.namespace}:${page.path}`
+                }`}
             >
               {page.namespace === "Main" ? page.title : `${page.namespace}:${page.title}`}
             </a>
@@ -277,18 +317,35 @@ module.exports = function WikiPage(props) {
   const isModule = namespace === "Module";
   const isDocSubpage = safePage.path.endsWith("/doc");
   const isCommonCss = namespace === "Special" && safePage.path.toLowerCase() === "common.css";
-  const isCommonJs  = namespace === "Special" && safePage.path.toLowerCase() === "common.js";
+  const isCommonJs = namespace === "Special" && safePage.path.toLowerCase() === "common.js";
   const isCommonPage = isCommonCss || isCommonJs;
+
+  const isSpecialNamespace = ["Special", "Template", "File", "User"].includes(namespace);
+  const isViewingOldRevision = query.oldid || query.diff; // common wiki params
+
+  const doIndex =
+    !page.noIndex &&             // Force noindex using __NOINDEX__
+    safePage.exists &&
+    mode === "view" &&           // only normal viewing mode
+    !query.noredirect &&         // skip redirected pages
+    !isViewingOldRevision &&     // skip old/diff pages
+    !isModule &&
+    !isCommonPage &&
+    !isDocSubpage &&
+    !isSpecialNamespace;         // skip special namespaces
 
   return (
     <html lang={props.language}>
       <Head
-        title={t("page.wiki.title", { 0: wiki.title, 1: fullTitle })}
+        title={t("page.wiki.title", { 1: wiki.title, 0: fullTitle.replace(/_/g, " ") })}
+        doIndex={doIndex}
       >
         {mode === "edit" && <>
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css" />
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/monokai.min.css" />
           <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js" />
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js" />
           <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js" />
           <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js" />
           <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js" />
@@ -297,6 +354,7 @@ module.exports = function WikiPage(props) {
         </>}
         <Bundle name="wiki-page.css" />
         <Bundle name="wiki-page.js" />
+        <meta name="description" content={safePage.meta?.description || `A page on ${wiki.title} Wiki, hosted on ${config.domainName}`} />
 
         {/* Editable common styles and scripts from wiki pages */}
         {safePage.commonCss && <style dangerouslySetInnerHTML={{ __html: safePage.commonCss }} />}
@@ -309,11 +367,15 @@ module.exports = function WikiPage(props) {
             <h1 className="wiki-site-title">
               <a href={`/wikis/${wiki.name}`}>{wiki.title}</a>
             </h1>
+            <div className="wiki-search">
+              <input type="search" name="search" id="wiki-search" autoComplete="off" />
+              <div id="wiki-search-results" />
+            </div>
             <nav className="wiki-top-nav">
               <a href={`/wikis/${wiki.name}/Main_Page`}>{t("wiki.nav.mainPage")}</a>
               <a href={`/wikis/${wiki.name}/Special:AllPages`}>{t("wiki.nav.allPages")}</a>
               <a href={`/wikis/${wiki.name}/Special:RecentChanges`}>{t("wiki.nav.recentChanges")}</a>
-              {canEdit && <a href={`/wikis/${wiki.name}/Special:Settings`}>{t("wiki.nav.settings")}</a>}
+              {canDelete && <a href={`/wikis/${wiki.name}/Special:Settings`}>{t("wiki.nav.settings")}</a>}
             </nav>
           </div>
         </header>
@@ -330,10 +392,28 @@ module.exports = function WikiPage(props) {
 
               <h3>{t("wiki.sidebar.tools")}</h3>
               <ul>
-                {canEdit && <li><a href={`/wikis/${wiki.name}/Special:Settings`}>{t("wiki.sidebar.settings")}</a></li>}
+                {canDelete && <li><a href={`/wikis/${wiki.name}/Special:Settings`}>{t("wiki.sidebar.settings")}</a></li>}
                 <li><a href={`/wikis/${wiki.name}/Help:Contents`}>{t("wiki.sidebar.help")}</a></li>
               </ul>
+
+              <h3>{t("wiki.sidebar.website")}</h3>
+              <ul>
+                <li><a href="/">{t("wiki.sidebar.backToMain")}</a></li>
+                <li><a href="/wikis">{t("wiki.sidebar.allWikis")}</a></li>
+                <li><a href="https://github.com/LiveGobe/livegobe-website" target="_blank" rel="noopener noreferrer">{t("wiki.sidebar.sourceCode")}</a></li>
+                <li><a href="https://boosty.to/livegobe/donate" target="_blank" rel="noopener noreferrer">{t("wiki.sidebar.supportMe")}</a></li>
+              </ul>
             </nav>
+
+            {/* Language Selector */}
+            <LanguageSelector
+              wiki={wiki}
+              namespace={namespace}
+              basePath={safePage.path.split("/").slice(0, -1).join("/") || safePage.path}
+              currentLocale={props.currentLocale}
+              variants={props.localeVariants}
+              t={t}
+            />
           </aside>
 
           <article className="wiki-content-area">
@@ -449,6 +529,16 @@ module.exports = function WikiPage(props) {
                                   {t("wiki.actions.purge")}
                                 </a>
 
+                                <a
+                                  href="#"
+                                  className="dropdown-item"
+                                  id="purge-all"
+                                  data-wiki={wiki.name}
+                                  data-confirm-prompt={t("wiki.purge.confirm_all") || "Are you sure you want to purge all pages on this wiki?"}
+                                >
+                                  {t("wiki.actions.purgeAll")}
+                                </a>
+
                                 {canDelete && (
                                   <a
                                     href={`/wikis/${wiki.name}/${fullTitle}?mode=delete`}
@@ -478,12 +568,12 @@ module.exports = function WikiPage(props) {
 
             {/* Redirected from notice */}
             {mode === "view" && query.from && (
-                <div className="wiki-redirected-from">
-                    {t("wiki.page.redirectedFrom")}{" "}
-                    <a href={`/wikis/${wiki.name}/${query.from.replace(/ /g, "_")}?noredirect=1`}>
-                        {query.from}
-                    </a>
-                </div>
+              <div className="wiki-redirected-from">
+                {t("wiki.page.redirectedFrom")}{" "}
+                <a href={`/wikis/${wiki.name}/${query.from.replace(/ /g, "_")}?noredirect=1`}>
+                  {query.from}
+                </a>
+              </div>
             )}
 
             {/* Old revision warning */}
@@ -568,18 +658,18 @@ module.exports = function WikiPage(props) {
 
                     {/* Category listing */}
                     {namespace === "Category" && safePage.pageData?.pages?.length > 0 && (
-                        <div className="wiki-category-list">
-                            <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category}"</h3>
-                            <ul>
-                                {safePage.pageData.pages.map((p) => (
-                                    <li key={p.path}>
-                                        <a href={`/wikis/${wiki.name}/${p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`}`}>
-                                            {p.namespace === "Main" ? p.title : `${p.namespace}:${p.title}`}
-                                        </a>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                      <div className="wiki-category-list">
+                        <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category.replace(/_/g, " ")}"</h3>
+                        <ul>
+                          {safePage.pageData.pages.map((p) => (
+                            <li key={p.path}>
+                              <a href={`/wikis/${wiki.name}/${p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`}`}>
+                                {p.namespace === "Main" ? p.title : `${p.namespace}:${p.title}`}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </>
                 ) : isModule && !isDocSubpage ? (
@@ -605,18 +695,18 @@ module.exports = function WikiPage(props) {
 
                     {/* Category listing */}
                     {namespace === "Category" && safePage.pageData?.pages?.length > 0 && (
-                        <div className="wiki-category-list">
-                            <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category}"</h3>
-                            <ul>
-                                {safePage.pageData.pages.map((p) => (
-                                    <li key={p.path}>
-                                        <a href={`/wikis/${wiki.name}/${p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`}`}>
-                                            {p.namespace === "Main" ? p.title : `${p.namespace}:${p.title}`}
-                                        </a>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
+                      <div className="wiki-category-list">
+                        <h3>{t("wiki.category.pagesInCategory")} "{safePage.pageData.category.replace(/_/g, " ")}"</h3>
+                        <ul>
+                          {safePage.pageData.pages.map((p) => (
+                            <li key={p.path}>
+                              <a href={`/wikis/${wiki.name}/${p.namespace === "Main" ? p.path : `${p.namespace}:${p.path}`}`}>
+                                {p.namespace === "Main" ? p.title : `${p.namespace}:${p.title}`}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                   </>
                 )}
@@ -647,9 +737,14 @@ module.exports = function WikiPage(props) {
                     <div className="categories">
                       <h3>{t("wiki.page.categories")}:</h3>
                       <ul>
-                        {safePage.categories.map((cat) => (
-                          <li key={cat}>
-                            <a href={`/wikis/${wiki.name}/Category:${cat}`}>{cat}</a>
+                        {safePage.categoriesWithExists.map(cat => (
+                          <li key={cat.name}>
+                            <a
+                              className={!cat.exists ? "wiki-missing-category" : ""}
+                              href={`/wikis/${wiki.name}/Category:${cat.path}`}
+                            >
+                              {cat.name.replace(/_/g, " ")}
+                            </a>
                           </li>
                         ))}
                       </ul>
@@ -662,7 +757,11 @@ module.exports = function WikiPage(props) {
         </main>
 
         <footer className="wiki-footer">
-          <small>{t("wiki.footer.text", { wiki: wiki.title })}</small>
+          <small>{t("wiki.footer.text", { wiki: wiki.title })}</small> - <a href="https://livegobe.ru/wikis/livegobe-wiki/Legal#Privacy_Policy">
+            <small>Privacy Policy</small>
+          </a> - <a href="https://livegobe.ru/wikis/livegobe-wiki/Legal#Terms_of_Service">
+            <small>Terms of Service</small>
+          </a>
         </footer>
       </body>
     </html>
