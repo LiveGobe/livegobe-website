@@ -1161,6 +1161,22 @@ async function renderCell(cell, isHeader, expandTemplatesFn, options = {}) {
   let attr = "";
   let text = cell.trim();
 
+  // Render inline cell content
+  text = renderInline(
+    tokenizeInline(text, LINK_REGEX, {
+      wikiName: options.wikiName,
+      currentNamespace: options.currentNamespace,
+      existingFiles: options.existingFiles,
+      existingPages: options.existingPages
+    }),
+    {
+      wikiName: options.wikiName,
+      currentNamespace: options.currentNamespace,
+      existingFiles: options.existingFiles,
+      existingPages: options.existingPages
+    }
+  );
+
   // --- Expand escape templates inside the cell if function provided ---
   if (expandTemplatesFn) text = await expandTemplatesFn(text, { ...options });
 
@@ -1212,20 +1228,8 @@ async function renderCell(cell, isHeader, expandTemplatesFn, options = {}) {
   if (colspan) attr += ` colspan="${colspan}"`;
 
   attr = attr.trim();
-  return `<${tag}${attr ? " " + attr : ""}>${sanitize(renderInline(
-    tokenizeInline(text, LINK_REGEX, {
-      wikiName: options.wikiName,
-      currentNamespace: options.currentNamespace,
-      existingFiles: options.existingFiles,
-      existingPages: options.existingPages
-    }),
-    {
-      wikiName: options.wikiName,
-      currentNamespace: options.currentNamespace,
-      existingFiles: options.existingFiles,
-      existingPages: options.existingPages
-    }
-  ), PURIFY_CONFIG)}</${tag}>`;
+
+  return `<${tag}${attr ? " " + attr : ""}>${sanitize(text, PURIFY_CONFIG)}</${tag}>`;
 }
 
 /* ---------------------------
