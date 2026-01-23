@@ -1565,6 +1565,100 @@ body {
   color: var(--wiki-module_wiki-module-code_code-color) !important;
 }
 
+/* ============================================================
+   Template links ( {{Template}} )
+   ============================================================ */
+
+.cm-template-link {
+	color: #50fa7b;              /* green */
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.cm-template-link:hover {
+	text-decoration-thickness: 2px;
+}
+
+
+/* ============================================================
+   Module require links ( require("Foo") / require("Module:Foo") )
+   ============================================================ */
+
+.cm-module-link {
+	color: #8be9fd;              /* cyan */
+	text-decoration: underline;
+	cursor: pointer;
+}
+
+.cm-module-link:hover {
+	text-decoration-thickness: 2px;
+}
+
+/* Implicit Module:Foo ( require("Foo") ) */
+.cm-module-implicit {
+	text-decoration-style: dotted;
+}
+
+/* Missing / unresolved module */
+.cm-module-missing {
+	color: #ff5555;              /* red */
+	text-decoration-style: wavy;
+}
+
+
+/* ============================================================
+   LGML JavaScript overlay tokens
+   ============================================================ */
+
+/* export, exports, module.exports */
+.cm-lgml-export {
+	color: #ff79c6;
+	font-weight: bold;
+}
+
+/* require(...) call */
+.cm-lgml-require {
+	color: #bd93f9;
+}
+
+/* Module:Foo token */
+.cm-lgml-module {
+	color: #50fa7b;
+}
+
+/* frame, frame.args, frame.title, etc */
+.cm-lgml-frame {
+	color: #f1fa8c;
+}
+
+
+/* ============================================================
+   UX polish / interaction
+   ============================================================ */
+
+/* Allow marks to receive mouse events */
+.CodeMirror .cm-template-link,
+.CodeMirror .cm-module-link {
+	pointer-events: auto;
+}
+
+/* Subtle hover highlight */
+.CodeMirror .cm-template-link:hover,
+.CodeMirror .cm-module-link:hover {
+	background-color: rgba(255, 255, 255, 0.06);
+	border-radius: 3px;
+}
+
+
+/* ============================================================
+   Optional: cursor hint when Ctrl / Cmd is held
+   ============================================================ */
+
+.CodeMirror.cm-ctrl-held .cm-template-link,
+.CodeMirror.cm-ctrl-held .cm-module-link {
+	cursor: pointer;
+}
+
 .wiki-content img,
 .wiki-content audio,
 .wiki-content video {

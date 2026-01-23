@@ -4,20 +4,20 @@ import i18n from "../../js/repack-locales";
 await i18n.init();
 
 $(function () {
-    // === Helpers ===
-    function parsePath() {
-        const m = window.location.pathname.match(/^\/wikis\/([^\/]+)\/(.+)$/);
-        return m ? { wiki: decodeURIComponent(m[1]), page: decodeURIComponent(m[2]) } : null;
-    }
+	// === Helpers ===
+	function parsePath() {
+		const m = window.location.pathname.match(/^\/wikis\/([^\/]+)\/(.+)$/);
+		return m ? { wiki: decodeURIComponent(m[1]), page: decodeURIComponent(m[2]) } : null;
+	}
 
-    const path = parsePath();
-    const wikiName = path?.wiki || $("meta[name=wiki]").attr("content");
-    const pageName = path?.page || $("meta[name=page]").attr("content");
-    const storageKey = `wiki-draft:${wikiName}:${pageName}`;
+	const path = parsePath();
+	const wikiName = path?.wiki || $("meta[name=wiki]").attr("content");
+	const pageName = path?.page || $("meta[name=page]").attr("content");
+	const storageKey = `wiki-draft:${wikiName}:${pageName}`;
 
-    // === CodeMirror Editor ===
-    const $editorTextarea = $("textarea.wiki-editor");
-    if ($editorTextarea.length) {
+	// === CodeMirror Editor ===
+	const $editorTextarea = $("textarea.wiki-editor");
+	if ($editorTextarea.length) {
 		const BUILTIN_TEMPLATES = {
 			"!": "|",
 			"=": "=",
@@ -34,137 +34,137 @@ $(function () {
 
 		// === LGWL Base Mode ===
 		CodeMirror.defineMode("lgwlBase", function (config) {
-		return {
-			startState: function () {
 			return {
-				inNowiki: false,
-				inTemplate: 0,
-				inArg: 0,
-				inLink: 0,
-				inCodeBlock: false
-			};
-			},
+				startState: function () {
+					return {
+						inNowiki: false,
+						inTemplate: 0,
+						inArg: 0,
+						inLink: 0,
+						inCodeBlock: false
+					};
+				},
 
-			token: function (stream, state) {
-			// --- Nowiki ---
-			if (!state.inNowiki && stream.match("<nowiki>", true)) {
-				state.inNowiki = true;
-				return "nowiki";
-			}
-			if (state.inNowiki) {
-				if (stream.match("</nowiki>", true)) state.inNowiki = false;
-				else stream.next();
-				return "nowiki";
-			}
+				token: function (stream, state) {
+					// --- Nowiki ---
+					if (!state.inNowiki && stream.match("<nowiki>", true)) {
+						state.inNowiki = true;
+						return "nowiki";
+					}
+					if (state.inNowiki) {
+						if (stream.match("</nowiki>", true)) state.inNowiki = false;
+						else stream.next();
+						return "nowiki";
+					}
 
-			// --- Redirects ---
-			if (stream.sol() && stream.match(/^#REDIRECT\b/i, true)) return "redirect";
+					// --- Redirects ---
+					if (stream.sol() && stream.match(/^#REDIRECT\b/i, true)) return "redirect";
 
-			// --- Code block ```
-			if (!state.inCodeBlock && stream.sol() && stream.match("```", true)) {
-				state.inCodeBlock = true;
-				return "code-block";
-			}
-			if (state.inCodeBlock) {
-				if (stream.match("```", true)) state.inCodeBlock = false;
-				else stream.skipToEnd();
-				return "code-block";
-			}
+					// --- Code block ```
+					if (!state.inCodeBlock && stream.sol() && stream.match("```", true)) {
+						state.inCodeBlock = true;
+						return "code-block";
+					}
+					if (state.inCodeBlock) {
+						if (stream.match("```", true)) state.inCodeBlock = false;
+						else stream.skipToEnd();
+						return "code-block";
+					}
 
-			// --- Triple-brace {{{argument}}} ---
-			if (stream.match("{{{", true)) {
-				state.inArg++;
-				return "template-arg";
-			}
-			if (state.inArg > 0) {
-				if (stream.match("}}}", true)) {
-				state.inArg--;
-				return "template-arg";
-				} else {
-				stream.next();
-				return "template-arg";
-				}
-			}
+					// --- Triple-brace {{{argument}}} ---
+					if (stream.match("{{{", true)) {
+						state.inArg++;
+						return "template-arg";
+					}
+					if (state.inArg > 0) {
+						if (stream.match("}}}", true)) {
+							state.inArg--;
+							return "template-arg";
+						} else {
+							stream.next();
+							return "template-arg";
+						}
+					}
 
-			// --- Template {{...}} ---
-			if (stream.match("{{", true)) {
-				state.inTemplate++;
-				return "template";
-			}
-			if (state.inTemplate > 0) {
-				if (stream.match("}}", true)) {
-				state.inTemplate--;
-				return "template";
-				} else {
-				// Optional: detect builtins like {{!}} or {{=}}
-				const ch = stream.peek();
-				if (ch && "!()[]{}<>:=|".includes(ch)) {
+					// --- Template {{...}} ---
+					if (stream.match("{{", true)) {
+						state.inTemplate++;
+						return "template";
+					}
+					if (state.inTemplate > 0) {
+						if (stream.match("}}", true)) {
+							state.inTemplate--;
+							return "template";
+						} else {
+							// Optional: detect builtins like {{!}} or {{=}}
+							const ch = stream.peek();
+							if (ch && "!()[]{}<>:=|".includes(ch)) {
+								stream.next();
+								return "template-builtin";
+							}
+							stream.next();
+							return "template";
+						}
+					}
+
+					// --- Link [[...]] ---
+					if (stream.match("[[", true)) {
+						state.inLink++;
+						return "link";
+					}
+					if (state.inLink > 0) {
+						if (stream.match("]]", true)) {
+							state.inLink--;
+							return "link";
+						}
+						if (stream.match(/Category:/, true)) return "category-link";
+						if (stream.match(/(Tag|Tags?):/, true)) return "tag-link";
+						stream.next();
+						return "link";
+					}
+
+					// --- External link [http://...] ---
+					if (!state.inLink && stream.match(/\[(https?:\/\/[^\s\]]+)/, true)) {
+						stream.skipTo("]");
+						stream.next();
+						return "link";
+					}
+
+					// --- Tables ---
+					if (stream.sol()) {
+						if (stream.match("|-", true)) return "table-divider";
+						if (stream.match("||", true)) return "table-pipe";
+						if (stream.match("|", true)) return "table-pipe";
+						if (stream.match("!", true)) return "table-header";
+					}
+
+					// --- Headings == ... ==
+					if (stream.sol() && stream.match(/={2,6}(?=\s)/, true)) {
+						stream.skipToEnd();
+						return "heading";
+					}
+
+					// --- Lists *, #, - ---
+					if (stream.sol() && stream.match(/^(\*+|\#+|\-+)\s+/, true)) return "list";
+
+					// --- Blockquote > ---
+					if (stream.sol() && stream.match(/^>\s+/, true)) return "blockquote";
+
+					// --- Horizontal rule (---- or ***) ---
+					if (stream.sol() && stream.match(/^(-{4,}|\*{3,})/, true)) return "hr";
+
+					// --- Default ---
 					stream.next();
-					return "template-builtin";
+					return null;
 				}
-				stream.next();
-				return "template";
-				}
-			}
-
-			// --- Link [[...]] ---
-			if (stream.match("[[", true)) {
-				state.inLink++;
-				return "link";
-			}
-			if (state.inLink > 0) {
-				if (stream.match("]]", true)) {
-				state.inLink--;
-				return "link";
-				}
-				if (stream.match(/Category:/, true)) return "category-link";
-				if (stream.match(/(Tag|Tags?):/, true)) return "tag-link";
-				stream.next();
-				return "link";
-			}
-
-			// --- External link [http://...] ---
-			if (!state.inLink && stream.match(/\[(https?:\/\/[^\s\]]+)/, true)) {
-				stream.skipTo("]");
-				stream.next();
-				return "link";
-			}
-
-			// --- Tables ---
-			if (stream.sol()) {
-				if (stream.match("|-", true)) return "table-divider";
-				if (stream.match("||", true)) return "table-pipe";
-				if (stream.match("|", true)) return "table-pipe";
-				if (stream.match("!", true)) return "table-header";
-			}
-
-			// --- Headings == ... ==
-			if (stream.sol() && stream.match(/={2,6}(?=\s)/, true)) {
-				stream.skipToEnd();
-				return "heading";
-			}
-
-			// --- Lists *, #, - ---
-			if (stream.sol() && stream.match(/^(\*+|\#+|\-+)\s+/, true)) return "list";
-
-			// --- Blockquote > ---
-			if (stream.sol() && stream.match(/^>\s+/, true)) return "blockquote";
-
-			// --- Horizontal rule (---- or ***) ---
-			if (stream.sol() && stream.match(/^(-{4,}|\*{3,})/, true)) return "hr";
-
-			// --- Default ---
-			stream.next();
-			return null;
-			}
-		};
+			};
 		});
 
 		// === LGWL Inline Formatting Overlay ===
-		CodeMirror.defineMode("lgwlInline", function() {
+		CodeMirror.defineMode("lgwlInline", function () {
 			return {
-				startState: function() { return { strike: false, strong: false, em: false }; },
-				token: function(stream, state) {
+				startState: function () { return { strike: false, strong: false, em: false }; },
+				token: function (stream, state) {
 					// Strike
 					if (stream.match("~~")) { state.strike = !state.strike; return null; }
 					// Bold+italic
@@ -192,20 +192,47 @@ $(function () {
 		});
 
 		// === Final LGWL Mode ===
-		CodeMirror.defineMode("LGWL", function(config) {
-		const base = CodeMirror.getMode(config, "lgwlBase");
-		const inline = CodeMirror.getMode(config, "lgwlInline");
-		const htmlMode = CodeMirror.getMode(config, "htmlmixed");
+		CodeMirror.defineMode("LGWL", function (config) {
+			const base = CodeMirror.getMode(config, "lgwlBase");
+			const inline = CodeMirror.getMode(config, "lgwlInline");
+			const htmlMode = CodeMirror.getMode(config, "htmlmixed");
 
-		return CodeMirror.overlayMode(htmlMode, CodeMirror.overlayMode(base, inline));
+			return CodeMirror.overlayMode(htmlMode, CodeMirror.overlayMode(base, inline));
+		});
+
+		CodeMirror.defineMode("lgml-js-overlay", function (config) {
+			return {
+				token: function (stream) {
+					// === LGML keywords ===
+					if (stream.match(/\b(exports|module\.exports)\b/, true)) {
+						return "lgml-export";
+					}
+
+					// === require("...") schema ===
+					// Highlight ONLY the word "require"
+					if (stream.match(/\brequire\b/, true)) {
+						return "keyword";
+					}
+
+					stream.next();
+					return null;
+				}
+			};
+		});
+
+		CodeMirror.defineMode("lgml-javascript", function (config) {
+			const jsMode = CodeMirror.getMode(config, "javascript");
+			const overlay = CodeMirror.getMode(config, "lgml-js-overlay");
+
+			return CodeMirror.overlayMode(jsMode, overlay);
 		});
 
 		// === Determine proper editor mode ===
 		let editorMode = "LGWL";
-		
+
 		// Detect Module namespace but skip documentation subpages
 		if (pageName.startsWith("Module:") && !pageName.includes("/doc")) {
-			editorMode = "javascript";
+			editorMode = "lgml-javascript";
 		} else if (pageName.endsWith(".css")) {
 			editorMode = "css";
 		}
@@ -215,22 +242,22 @@ $(function () {
 		const editor = CodeMirror.fromTextArea($editorTextarea[0], {
 			lineNumbers: true,
 			mode: editorMode,
-			theme: editorMode == "javascript" || editorMode == "css" ? (darkTheme ? "monokai" : "eclipse") : "lgwl",
+			theme: editorMode == "lgml-javascript" || editorMode == "css" ? (darkTheme ? "monokai" : "eclipse") : "lgwl",
 			lineWrapping: true,
 			viewportMargin: Infinity,
 			smartIndent: false,
 			indentWithTabs: false,
 			indentUnit: 0,
 			extraKeys: {
-				"Ctrl-S": function(cm) {
-				const content = cm.getValue();
-				try {
-					localStorage.setItem(storageKey, content);
-					console.log(`[Draft saved @ ${new Date().toLocaleTimeString()}]`);
-					showSaveToast(i18n.t ? i18n.t("wiki.edit.draft_saved") : "Draft saved");
-				} catch (e) {
-					console.warn("Autosave failed:", e);
-				}
+				"Ctrl-S": function (cm) {
+					const content = cm.getValue();
+					try {
+						localStorage.setItem(storageKey, content);
+						console.log(`[Draft saved @ ${new Date().toLocaleTimeString()}]`);
+						showSaveToast(i18n.t ? i18n.t("wiki.edit.draft_saved") : "Draft saved");
+					} catch (e) {
+						console.warn("Autosave failed:", e);
+					}
 				}
 			}
 		});
@@ -244,6 +271,67 @@ $(function () {
 			"DATE",
 			"TIME"
 		]);
+
+		// === Function to linkify only module names ===
+		const REQUIRE_REGEX = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
+
+		function isWikiModule(name) {
+			// Relative paths
+			if (name.startsWith("./") || name.startsWith("../")) return false;
+
+			// Absolute paths or URLs
+			if (name.startsWith("/") || name.includes("://")) return false;
+
+			// File extensions
+			if (/\.[a-z0-9]+$/i.test(name)) return false;
+
+			// Node-style scoped packages
+			if (name.startsWith("@")) return false;
+
+			return true;
+		}
+
+		function normalizeModuleName(name) {
+			if (name.startsWith("Module:")) return name;
+			return "Module:" + name;
+		}
+
+		function linkifyModuleRequires(cm) {
+			const doc = cm.getDoc();
+
+			// Clear old marks
+			cm.getAllMarks().forEach(mark => {
+				if (mark.className === "cm-module-link") mark.clear();
+			});
+
+			const text = doc.getValue();
+			let match;
+
+			while ((match = REQUIRE_REGEX.exec(text)) !== null) {
+				const rawName = match[1];
+
+				if (!isWikiModule(rawName)) continue;
+
+				const moduleName = normalizeModuleName(rawName);
+
+				const startIndex =
+					match.index + match[0].indexOf(rawName);
+				const endIndex = startIndex + rawName.length;
+
+				const startPos = cm.posFromIndex(startIndex);
+				const endPos = cm.posFromIndex(endIndex);
+
+				cm.markText(startPos, endPos, {
+					className: "cm-module-link",
+					attributes: {
+						"data-module": moduleName
+					},
+					inclusiveLeft: false,
+					inclusiveRight: false,
+					clearWhenEmpty: true
+				});
+			}
+		}
 
 		// === Function to linkify only template names ===
 		function linkifyTemplates(cm) {
@@ -265,9 +353,9 @@ $(function () {
 			while ((match = regex.exec(fullText)) !== null) {
 				const fullTemplate = match[1].trim();
 				const [templateName] = fullTemplate.split("|").map(s => s.trim());
-				
+
 				// Skip if template is a magic word or a built-in template
-        		if (!templateName || LGWL_MAGIC_WORDS.has(templateName) || BUILTIN_TEMPLATES[templateName]) continue;
+				if (!templateName || LGWL_MAGIC_WORDS.has(templateName) || BUILTIN_TEMPLATES[templateName]) continue;
 
 				// Convert absolute character offsets to line/ch positions
 				const startPos = cm.posFromIndex(match.index + 2); // after {{
@@ -284,7 +372,7 @@ $(function () {
 		}
 
 		// === Make template and module marks clickable ===
-		editor.on('mousedown', function(cm, event) {
+		editor.on('mousedown', function (cm, event) {
 			const target = event.target;
 			if (target.classList.contains('cm-template-link')) {
 				// Only open if CTRL/COMMAND is held
@@ -305,86 +393,99 @@ $(function () {
 
 				event.preventDefault();
 			}
+			else if (target.classList.contains("cm-module-link")) {
+				if (!event.ctrlKey && !event.metaKey) return;
+
+				const moduleName = target.getAttribute("data-module");
+				window.open(
+					`/wikis/${wikiName}/${moduleName.replace(/ /g, "_")}`,
+					"_blank"
+				);
+				event.preventDefault();
+			}
 		});
 
 		// Keep textarea synced for autosave + preview
 		editor.on("change", () => $editorTextarea.val(editor.getValue()));
-		
+
 		// === Call linkifyTemplates on editor changes ===
 		editor.on('change', () => linkifyTemplates(editor));
 		linkifyTemplates(editor); // initial pass
 
-        // Refresh editor on window resize
-        $(window).on("resize", () => editor.refresh());
+		// === Call linkifyModuleRequires on editor changes ===
+		editor.on('change', () => linkifyModuleRequires(editor));
 
-        // Autosave every 5 seconds if content changed
-        let lastContent = editor.getValue();
-        setInterval(() => {
-            const cur = editor.getValue();
-            if (cur !== lastContent) {
-                try { localStorage.setItem(storageKey, cur); } catch (e) {}
-                lastContent = cur;
-            }
-        }, 5000);
+		// Refresh editor on window resize
+		$(window).on("resize", () => editor.refresh());
 
-        // Intercept wiki edit form submission
-        $("form.wiki-edit-form").on("submit", async function (e) {
-            e.preventDefault();
-            const $form = $(this);
-            const content = editor.getValue();
-            const summary = $form.find("input[name=summary]").val() || "";
-            const minor = $form.find("input[name=minor]").is(":checked");
+		// Autosave every 5 seconds if content changed
+		let lastContent = editor.getValue();
+		setInterval(() => {
+			const cur = editor.getValue();
+			if (cur !== lastContent) {
+				try { localStorage.setItem(storageKey, cur); } catch (e) { }
+				lastContent = cur;
+			}
+		}, 5000);
 
-            if (!wikiName || !pageName) {
-                alert("Missing wiki or page name.");
-                return;
-            }
+		// Intercept wiki edit form submission
+		$("form.wiki-edit-form").on("submit", async function (e) {
+			e.preventDefault();
+			const $form = $(this);
+			const content = editor.getValue();
+			const summary = $form.find("input[name=summary]").val() || "";
+			const minor = $form.find("input[name=minor]").is(":checked");
 
-            try {
-                $form.find("button, input, textarea").prop("disabled", true);
+			if (!wikiName || !pageName) {
+				alert("Missing wiki or page name.");
+				return;
+			}
 
-                const resp = await $.ajax({
-                    url: `/api/v2/wikis/${encodeURIComponent(wikiName)}/pages/${encodeURIComponent(pageName)}`,
-                    method: "POST",
-                    data: JSON.stringify({ content, summary, minor }),
-                    contentType: "application/json",
-                    dataType: "json"
-                });
+			try {
+				$form.find("button, input, textarea").prop("disabled", true);
 
-                if (resp && resp.message) alert(resp.message);
+				const resp = await $.ajax({
+					url: `/api/v2/wikis/${encodeURIComponent(wikiName)}/pages/${encodeURIComponent(pageName)}`,
+					method: "POST",
+					data: JSON.stringify({ content, summary, minor }),
+					contentType: "application/json",
+					dataType: "json"
+				});
 
-                // Clear local draft
-                try { localStorage.removeItem(storageKey); } catch (e) {}
+				if (resp && resp.message) alert(resp.message);
 
-                // Redirect to page view
-                window.location = `/wikis/${wikiName}/${pageName}`;
-            } catch (err) {
-                console.error(err);
-                alert("Failed to save page: " + (err.responseJSON?.message || err.statusText || err));
-            } finally {
-                $form.find("button, input, textarea").prop("disabled", false);
-            }
-        });
+				// Clear local draft
+				try { localStorage.removeItem(storageKey); } catch (e) { }
 
-        // Optional toast feedback for autosave
-        function showSaveToast(text) {
-            let $toast = $(".save-toast");
-            if (!$toast.length) $toast = $("<div class='save-toast'></div>").appendTo("body");
-            $toast.text(text).addClass("visible");
-            setTimeout(() => $toast.removeClass("visible"), 2000);
-        }
+				// Redirect to page view
+				window.location = `/wikis/${wikiName}/${pageName}`;
+			} catch (err) {
+				console.error(err);
+				alert("Failed to save page: " + (err.responseJSON?.message || err.statusText || err));
+			} finally {
+				$form.find("button, input, textarea").prop("disabled", false);
+			}
+		});
 
-        // Preview button
-        const $buttons = $(".edit-buttons");
-        if ($buttons.length && $buttons.find(".preview-btn").length === 0 && !pageName.startsWith("Module:")) {
-            $buttons.append(
-                $("<button type='button' class='preview-btn'>Preview</button>").on("click", () => {
-                    const content = editor.getValue().trim();
-                    if (!content) return alert("Nothing to preview.");
-                    showPreviewModal(content);
-                })
-            );
-        }
+		// Optional toast feedback for autosave
+		function showSaveToast(text) {
+			let $toast = $(".save-toast");
+			if (!$toast.length) $toast = $("<div class='save-toast'></div>").appendTo("body");
+			$toast.text(text).addClass("visible");
+			setTimeout(() => $toast.removeClass("visible"), 2000);
+		}
+
+		// Preview button
+		const $buttons = $(".edit-buttons");
+		if ($buttons.length && $buttons.find(".preview-btn").length === 0 && !pageName.startsWith("Module:")) {
+			$buttons.append(
+				$("<button type='button' class='preview-btn'>Preview</button>").on("click", () => {
+					const content = editor.getValue().trim();
+					if (!content) return alert("Nothing to preview.");
+					showPreviewModal(content);
+				})
+			);
+		}
 
 		// === Restore draft UI ===
 		const saved = localStorage.getItem(storageKey);
@@ -410,198 +511,198 @@ $(function () {
 
 			$("form.wiki-edit-form").prepend($banner);
 		}
-    }
+	}
 
-    // === Preview Modal ===
-    function showPreviewModal(content) {
-        const path = parsePath();
-        const wikiName = path?.wiki || $("meta[name=wiki]").attr("content");
-        const { namespace, page } = (() => {
-            if (!path?.page) return { namespace: "Main", page: "Preview" };
-            const split = path.page.split(":");
-            if (split.length > 1) return { namespace: split.shift(), page: split.join(":") };
-            return { namespace: "Main", page: path.page };
-        })();
+	// === Preview Modal ===
+	function showPreviewModal(content) {
+		const path = parsePath();
+		const wikiName = path?.wiki || $("meta[name=wiki]").attr("content");
+		const { namespace, page } = (() => {
+			if (!path?.page) return { namespace: "Main", page: "Preview" };
+			const split = path.page.split(":");
+			if (split.length > 1) return { namespace: split.shift(), page: split.join(":") };
+			return { namespace: "Main", page: path.page };
+		})();
 
-        const $modal = $("<div class='modal preview-modal'/>");
-        const $inner = $("<div class='modal-inner'/>");
-        const $header = $("<div class='modal-header'><h3>Preview</h3></div>");
-        const $close = $("<button class='modal-close' aria-label='Close'>×</button>").on("click", () => $modal.remove());
-        const $body = $("<div class='preview-body'><div class='loading'>Rendering preview...</div></div>");
+		const $modal = $("<div class='modal preview-modal'/>");
+		const $inner = $("<div class='modal-inner'/>");
+		const $header = $("<div class='modal-header'><h3>Preview</h3></div>");
+		const $close = $("<button class='modal-close' aria-label='Close'>×</button>").on("click", () => $modal.remove());
+		const $body = $("<div class='preview-body'><div class='loading'>Rendering preview...</div></div>");
 
-        $header.append($close);
-        $inner.append($header).append($body);
-        $modal.append($inner);
-        $("body").append($modal);
+		$header.append($close);
+		$inner.append($header).append($body);
+		$modal.append($inner);
+		$("body").append($modal);
 
-        fetch(`/api/v2/wikis/${encodeURIComponent(wikiName)}/render`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content, namespace, path: page })
-        })
-        .then(resp => resp.json())
-        .then(json => {
-			if (json.html) {
-				// Build preview HTML + render time footer
-				const renderTime = json.renderTimeMs
-					? `<div class='preview-render-time'>Rendered in ${json.renderTimeMs} ms</div>`
-					: "";
+		fetch(`/api/v2/wikis/${encodeURIComponent(wikiName)}/render`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ content, namespace, path: page })
+		})
+			.then(resp => resp.json())
+			.then(json => {
+				if (json.html) {
+					// Build preview HTML + render time footer
+					const renderTime = json.renderTimeMs
+						? `<div class='preview-render-time'>Rendered in ${json.renderTimeMs} ms</div>`
+						: "";
 
-				$body.html(`
+					$body.html(`
 					${renderTime}
 					<div class='wiki-preview'>
 						${json.html}
 					</div>
 				`);
-			} else {
-				$body.html(`<div class='error'>${json.message || "Preview unavailable"}</div>`);
+				} else {
+					$body.html(`<div class='error'>${json.message || "Preview unavailable"}</div>`);
+				}
+			})
+			.catch(err => {
+				console.error(err);
+				$body.html(`<div class='error'>Failed to load preview: ${err.message}</div>`);
+			});
+	}
+
+	// === Purge button ===
+	const $purge = $(".dropdown-item.purge-page");
+	if ($purge.length) {
+		$purge.on("click", async function (e) {
+			e.preventDefault();
+			const $this = $(this);
+			const wiki = $this.data("wiki") || path?.wiki;
+			const page = $this.data("page") || path?.page;
+			const promptText = $this.data("confirmPrompt") || "Are you sure you want to purge this page?";
+			if (!wiki || !page || !window.confirm(promptText)) return;
+
+			try {
+				const resp = await fetch(`/api/v2/wikis/${encodeURIComponent(wiki)}/pages/${encodeURIComponent(page)}/purge`, {
+					method: "POST",
+					credentials: "same-origin",
+					headers: { "Content-Type": "application/json" }
+				});
+				const json = await resp.json().catch(() => ({}));
+				if (json.message) alert(json.message);
+				window.location.reload();
+			} catch (err) {
+				alert("Error purging page: " + err);
 			}
-		})
-        .catch(err => {
-            console.error(err);
-            $body.html(`<div class='error'>Failed to load preview: ${err.message}</div>`);
-        });
-    }
-
-    // === Purge button ===
-    const $purge = $(".dropdown-item.purge-page");
-    if ($purge.length) {
-        $purge.on("click", async function (e) {
-            e.preventDefault();
-            const $this = $(this);
-            const wiki = $this.data("wiki") || path?.wiki;
-            const page = $this.data("page") || path?.page;
-            const promptText = $this.data("confirmPrompt") || "Are you sure you want to purge this page?";
-            if (!wiki || !page || !window.confirm(promptText)) return;
-
-            try {
-                const resp = await fetch(`/api/v2/wikis/${encodeURIComponent(wiki)}/pages/${encodeURIComponent(page)}/purge`, {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: { "Content-Type": "application/json" }
-                });
-                const json = await resp.json().catch(() => ({}));
-                if (json.message) alert(json.message);
-                window.location.reload();
-            } catch (err) {
-                alert("Error purging page: " + err);
-            }
-        });
-    }
+		});
+	}
 
 	// === Purge All button ===
 	const $purgeAll = $("#purge-all");
-    if ($purgeAll.length) {
-        $purgeAll.on("click", async function (e) {
-            e.preventDefault();
-            const $this = $(this);
-            const wiki = $this.data("wiki") || path?.wiki;
-            const promptText = $this.data("confirmPrompt") || "Are you sure you want to purge all pages on this wiki?";
-            if (!wiki || !window.confirm(promptText)) return;
+	if ($purgeAll.length) {
+		$purgeAll.on("click", async function (e) {
+			e.preventDefault();
+			const $this = $(this);
+			const wiki = $this.data("wiki") || path?.wiki;
+			const promptText = $this.data("confirmPrompt") || "Are you sure you want to purge all pages on this wiki?";
+			if (!wiki || !window.confirm(promptText)) return;
 
-            try {
-                const resp = await fetch(`/api/v2/wikis/${encodeURIComponent(wiki)}/purge`, {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: { "Content-Type": "application/json" }
-                });
-                const json = await resp.json().catch(() => ({}));
-                if (json.message) alert(json.message);
-                window.location.reload();
-            } catch (err) {
-                alert("Error purging wiki cache: " + err);
-            }
-        });
-    }
+			try {
+				const resp = await fetch(`/api/v2/wikis/${encodeURIComponent(wiki)}/purge`, {
+					method: "POST",
+					credentials: "same-origin",
+					headers: { "Content-Type": "application/json" }
+				});
+				const json = await resp.json().catch(() => ({}));
+				if (json.message) alert(json.message);
+				window.location.reload();
+			} catch (err) {
+				alert("Error purging wiki cache: " + err);
+			}
+		});
+	}
 
-    // === Delete button ===
-    const $del = $("#confirm-delete");
-    if ($del.length) {
-        $del.on("click", async function (e) {
-            e.preventDefault();
-            const $this = $(this);
-            const wiki = $this.data("wiki") || path?.wiki;
-            const page = $this.data("page") || path?.page;
-            const promptText = $this.data("confirmPrompt");
-            if (promptText && !window.confirm(promptText)) return;
+	// === Delete button ===
+	const $del = $("#confirm-delete");
+	if ($del.length) {
+		$del.on("click", async function (e) {
+			e.preventDefault();
+			const $this = $(this);
+			const wiki = $this.data("wiki") || path?.wiki;
+			const page = $this.data("page") || path?.page;
+			const promptText = $this.data("confirmPrompt");
+			if (promptText && !window.confirm(promptText)) return;
 
-            try {
-                const resp = await fetch(`/api/v2/wikis/${encodeURIComponent(wiki)}/pages/${encodeURIComponent(page)}`, {
-                    method: "DELETE",
-                    credentials: "same-origin",
-                    headers: { "Content-Type": "application/json" }
-                });
-                const json = await resp.json().catch(() => ({}));
-                if (json.message) alert(json.message);
-                window.location = `/wikis/${encodeURIComponent(wiki)}`;
-            } catch (err) {
-                alert("Error: " + err);
-            }
-        });
-    }
+			try {
+				const resp = await fetch(`/api/v2/wikis/${encodeURIComponent(wiki)}/pages/${encodeURIComponent(page)}`, {
+					method: "DELETE",
+					credentials: "same-origin",
+					headers: { "Content-Type": "application/json" }
+				});
+				const json = await resp.json().catch(() => ({}));
+				if (json.message) alert(json.message);
+				window.location = `/wikis/${encodeURIComponent(wiki)}`;
+			} catch (err) {
+				alert("Error: " + err);
+			}
+		});
+	}
 
-    // === History/diff link enhancements ===
-    $(document).on("click", "a[data-revision]", function (e) {
-        e.preventDefault();
-        window.location = $(this).attr("href");
-    });
+	// === History/diff link enhancements ===
+	$(document).on("click", "a[data-revision]", function (e) {
+		e.preventDefault();
+		window.location = $(this).attr("href");
+	});
 
 	const $uploadForm = $("form.upload-form");
-    if ($uploadForm.length) {
-        const $fileInput = $uploadForm.find("input[type=file]");
-        const $summaryInput = $uploadForm.find("input[name=summary]");
-        const $minorCheckbox = $uploadForm.find("input[name=minor]");
-        const $submitBtn = $uploadForm.find("button[type=submit]");
+	if ($uploadForm.length) {
+		const $fileInput = $uploadForm.find("input[type=file]");
+		const $summaryInput = $uploadForm.find("input[name=summary]");
+		const $minorCheckbox = $uploadForm.find("input[name=minor]");
+		const $submitBtn = $uploadForm.find("button[type=submit]");
 
-        // Display selected file name
-        const $fileNameDisplay = $("<span class='file-name-display'></span>").insertAfter($fileInput);
-        $fileInput.on("change", function () {
-            const files = this.files;
-            $fileNameDisplay.text(files && files.length ? files[0].name : "");
-        });
+		// Display selected file name
+		const $fileNameDisplay = $("<span class='file-name-display'></span>").insertAfter($fileInput);
+		$fileInput.on("change", function () {
+			const files = this.files;
+			$fileNameDisplay.text(files && files.length ? files[0].name : "");
+		});
 
-        // Progress bar
-        const $progressBar = $("<div class='upload-progress'><div class='progress-inner'></div></div>").insertAfter($submitBtn);
-        $progressBar.hide();
+		// Progress bar
+		const $progressBar = $("<div class='upload-progress'><div class='progress-inner'></div></div>").insertAfter($submitBtn);
+		$progressBar.hide();
 
-        $uploadForm.on("submit", function (e) {
-            e.preventDefault();
-            const file = $fileInput[0].files[0];
-            if (!file) return alert("Please select a file to upload.");
+		$uploadForm.on("submit", function (e) {
+			e.preventDefault();
+			const file = $fileInput[0].files[0];
+			if (!file) return alert("Please select a file to upload.");
 
 			// Use the query parameter ?file if available, else fallback to actual filename
 			let fileName = new URLSearchParams(window.location.search).get("file") || uploadFile.name;
 
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("fileName", fileName);
-            formData.append("summary", $summaryInput.val() || "");
-            formData.append("minor", $minorCheckbox.is(":checked") ? "1" : "0");
+			const formData = new FormData();
+			formData.append("file", file);
+			formData.append("fileName", fileName);
+			formData.append("summary", $summaryInput.val() || "");
+			formData.append("minor", $minorCheckbox.is(":checked") ? "1" : "0");
 
-            $submitBtn.prop("disabled", true);
-            $progressBar.show();
-            $progressBar.find(".progress-inner").css("width", "0%");
+			$submitBtn.prop("disabled", true);
+			$progressBar.show();
+			$progressBar.find(".progress-inner").css("width", "0%");
 
-            $.ajax({
-                url: $uploadForm.attr("action"),
-                method: "POST",
-                data: formData,
-                processData: false,
-                contentType: false,
-                xhr: function () {
-                    const xhr = $.ajaxSettings.xhr();
-                    if (xhr.upload) {
-                        xhr.upload.addEventListener("progress", function (evt) {
-                            if (evt.lengthComputable) {
-                                const percent = (evt.loaded / evt.total) * 100;
-                                $progressBar.find(".progress-inner").css("width", percent + "%");
-                            }
-                        }, false);
-                    }
-                    return xhr;
-                },
-                success: function (json) {
-                    if (json.error) {
+			$.ajax({
+				url: $uploadForm.attr("action"),
+				method: "POST",
+				data: formData,
+				processData: false,
+				contentType: false,
+				xhr: function () {
+					const xhr = $.ajaxSettings.xhr();
+					if (xhr.upload) {
+						xhr.upload.addEventListener("progress", function (evt) {
+							if (evt.lengthComputable) {
+								const percent = (evt.loaded / evt.total) * 100;
+								$progressBar.find(".progress-inner").css("width", percent + "%");
+							}
+						}, false);
+					}
+					return xhr;
+				},
+				success: function (json) {
+					if (json.error) {
 						alert("Upload failed: " + json.error);
 					} else if (json.file.path) {
 						alert("Upload successful!");
@@ -611,18 +712,18 @@ $(function () {
 					} else {
 						alert("Upload completed, but no file information returned.");
 					}
-                },
-                error: function (xhr, status, err) {
-                    console.error(err);
-                    alert("Upload failed: " + (xhr.responseJSON?.error || err));
-                },
-                complete: function () {
-                    $submitBtn.prop("disabled", false);
-                    $progressBar.hide();
-                }
-            });
-        });
-    }
+				},
+				error: function (xhr, status, err) {
+					console.error(err);
+					alert("Upload failed: " + (xhr.responseJSON?.error || err));
+				},
+				complete: function () {
+					$submitBtn.prop("disabled", false);
+					$progressBar.hide();
+				}
+			});
+		});
+	}
 
 	$(document).on("click", ".revert-button", async function (e) {
 		e.preventDefault();
@@ -712,7 +813,7 @@ $(function () {
 		}
 	});
 
-    function renderResults(results) {
+	function renderResults(results) {
 		const container = $("#wiki-search-results");
 		container.empty();
 
