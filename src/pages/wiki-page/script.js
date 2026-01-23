@@ -411,6 +411,7 @@ $(function () {
 		// === Call linkifyTemplates on editor changes ===
 		editor.on('change', () => linkifyTemplates(editor));
 		linkifyTemplates(editor); // initial pass
+		linkifyModuleRequires(editor); // initial pass
 
 		// === Call linkifyModuleRequires on editor changes ===
 		editor.on('change', () => linkifyModuleRequires(editor));
