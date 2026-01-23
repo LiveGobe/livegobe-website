@@ -1495,11 +1495,20 @@ router.get("/wiki/:wikiName/modules", async (req, res) => {
         
         if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
 
-        const modules = await Module.find({ wiki: wiki._id }).lean();
+        const modules = await WikiPage.find({
+            wiki: wiki._id,
+            namespace: "Module"
+        }).lean();
 
         return res.json({
             message: req.t("api.wikis.modules_list"),
-            modules
+            modules: modules.map(m => ({
+                title: m.title,
+                fullTitle: `${m.namespace}:${m.path}`,
+                path: m.path,
+                normalized: m.path.replace(/ /g, "_"),
+                lastModifiedAt: m.lastModifiedAt
+            }))
         });
 
     } catch (err) {
