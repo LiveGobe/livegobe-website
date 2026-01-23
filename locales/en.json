@@ -41,7 +41,8 @@
       "page_purged": "Page cache purged successfully",
       "all_purged": "Wiki cache purged successfully",
       "search_term_required": "Search term is required",
-      "search_results": "{0} results found for '{1}'"
+      "search_results": "{0} results found for '{1}'",
+      "modules_list": "Modules list retrieved successfully"
     },
     "filestorage": {
       "exists": "Filestorage already exists",

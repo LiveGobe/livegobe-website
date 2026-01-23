@@ -1487,4 +1487,25 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
     }
 });
 
+// Get a list of all modules on the wiki
+router.get("/wiki/:wikiName/modules", async (req, res) => {
+    try {
+        const wikiName = req.params.wikiName;
+        const wiki = await Wiki.findOne({ name: wikiName });
+        
+        if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+
+        const modules = await Module.find({ wiki: wiki._id }).lean();
+
+        return res.json({
+            message: req.t("api.wikis.modules_list"),
+            modules
+        });
+
+    } catch (err) {
+        console.error("API: error fetching modules:", err);
+        return res.status(500).json({ message: err.toString() });
+    }
+});
+
 module.exports = router;
