@@ -313,6 +313,13 @@ module.exports = function WikiPage(props) {
     ...page
   };
 
+  let description = safePage.meta?.description;
+  if (!description) {
+    if (safePage.exists && safePage.html) {
+      description = safePage.html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").substring(0, 80).trim();
+    }
+  }
+
   const fullTitle = formatPageTitle(namespace, safePage.path || safePage.title || "Main_Page");
   const isModule = namespace === "Module";
   const isDocSubpage = safePage.path.endsWith("/doc");
@@ -354,7 +361,7 @@ module.exports = function WikiPage(props) {
         </>}
         <Bundle name="wiki-page.css" />
         <Bundle name="wiki-page.js" />
-        <meta name="description" content={safePage.meta?.description || `A page on ${wiki.title} Wiki, hosted on ${config.domainName}`} />
+        <meta name="description" content={description || `A page on ${wiki.title} Wiki, hosted on ${config.domainName}`} />
 
         {/* Editable common styles and scripts from wiki pages */}
         {safePage.commonCss && <style dangerouslySetInnerHTML={{ __html: safePage.commonCss }} />}
