@@ -50,6 +50,7 @@ const BUILTIN_TEMPLATES = {
 //  2) External link [URL Label]
 const LINK_REGEX = /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]|\[([a-z]+:\/\/[^\]\s]+)(?:\s+([^\]]+))?\]/gi;
 
+
 const BLOCK_TAGS = [
   "div", "section", "article", "aside", "nav",
   "header", "footer",
@@ -71,8 +72,6 @@ const PURIFY_CONFIG = {
 
 DOMPurify.setConfig(PURIFY_CONFIG);
 const sanitize = DOMPurify.sanitize;
-
-let _pageDescription = null;
 
 /* ---------------------------
    LGML Module Executor (no in-memory cache)
@@ -1668,17 +1667,6 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
         console.error(`[LGML] Error in #invoke ${moduleName}.${functionName}:`, err);
         return `<span class="error">[LGML execution error]</span>`;
       }
-    } else if (/^#description\b/i.test(trimmed)) {
-      // Page meta description template
-      const pipeIdx = trimmed.indexOf("|");
-
-      if (pipeIdx === -1) {
-        return `<span class="error">[Invalid #description syntax]</span>`;
-      }
-
-      const description = trimmed.slice(pipeIdx + 1).trim();
-      _pageDescription = description;
-      return "";
     }
 
     /* ---------------------------
@@ -1896,11 +1884,8 @@ async function renderWikiText(text, options = {}) {
   // --- Restore <nowiki> after parsing ---
   const restoredHtml = restoreNowikiBlocks(html, nowikiBlocks);
 
-  const description = _pageDescription.length > 160 ? _pageDescription.slice(0, 157) + "..." : _pageDescription;
-  _pageDescription = ""; // reset for next render
-
   // Return both HTML and categories
-  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex, description };
+  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex };
 }
 
 module.exports = { renderWikiText, resolveLink };

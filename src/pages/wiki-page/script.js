@@ -354,9 +354,6 @@ $(function () {
 				const fullTemplate = match[1].trim();
 				const [templateName] = fullTemplate.split("|").map(s => s.trim());
 
-				// Skip if template is #description
-				if (templateName.startsWith('#description')) continue;
-
 				// Skip if template is a magic word or a built-in template
 				if (!templateName || LGWL_MAGIC_WORDS.has(templateName) || BUILTIN_TEMPLATES[templateName]) continue;
 
@@ -389,7 +386,7 @@ $(function () {
 					window.open(`/wikis/${wikiName}/Module:${moduleName}`, '_blank');
 				}
 				// Handle normal {{TemplateName}} calls
-				else if (!templateName.startsWith("#")) {
+				else {
 					const safeName = templateName.replace(/ /g, '_');
 					window.open(`/wikis/${wikiName}/Template:${safeName}`, '_blank');
 				}
