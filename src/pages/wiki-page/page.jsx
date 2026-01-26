@@ -316,7 +316,9 @@ module.exports = function WikiPage(props) {
   let description = safePage.meta?.description;
   if (!description) {
     if (safePage.exists && safePage.html) {
-      description = safePage.html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").substring(0, 80).trim();
+      description = safePage.html.indexOf("<p>") !== -1
+        ? safePage.html.split("<p>")[1].split("</p>")[0].replace(/<([^>])+>/g, "").replace(/\s+/g, " ").trim()
+        : safePage.html.split('<div class="wiki-content">')[1].split("</div>")[0].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").substring(0, 160).trim();
     }
   }
 
