@@ -147,7 +147,6 @@ function extractTemplatesFromText(text) {
     return Array.from(templates);
 }
 
-// Pre-save hook to update HTML and timestamps
 // Pre-save hook to update HTML, categories, tags, and timestamps
 WikiPageSchema.pre("save", async function (next) {
     if (!this.populated('wiki')) {
@@ -232,7 +231,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         }
 
         // --- Render LGWL content ---
-        const { html, categories, tags, noIndex } = await renderWikiText(currentContent, {
+        const { html, categories, tags, noIndex, description } = await renderWikiText(currentContent, {
             wikiName: this.wiki.name,
             pageName: this.path,
             currentNamespace: this.namespace,
@@ -250,6 +249,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         this.html = html; // in-memory for immediate response
         this.categories = categories;
         this.tags = tags;
+        this.meta.description = description || null;
 
         // If there's any missing page links, ensure it's categorised
         if (/\bwiki-missing\b/.test(html) && !this.categories.includes("Pages_with_broken_links")) {
@@ -277,7 +277,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         setImmediate(async () => { await this.purgeCache(); });
     }
 
-    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget };
+    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, description: this.meta.description };
 };
 
 // Instance method to add a new revision (stores text on disk; keeps metadata in DB)
@@ -347,10 +347,10 @@ WikiPageSchema.methods.purgeCache = async function (visited = new Set()) {
                 if (!page) continue;
 
                 // Force re-render and persist with updateOne to avoid triggering hooks
-                const { html, categories, tags } = await page.renderContent();
+                const { html, categories, tags, description } = await page.renderContent();
                 // write HTML to file and update DB metadata
                 try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
-                await WikiPage.updateOne({ _id: id }, { $set: { categories, tags, lastModifiedAt: new Date() } });
+                await WikiPage.updateOne({ _id: id }, { $set: { categories, tags, meta: { description }, lastModifiedAt: new Date() } });
 
                 // Queue dependents
                 if (page.templateUsedBy?.length) {
@@ -445,9 +445,9 @@ WikiPageSchema.statics.backgroundRender = async function (id) {
     if (!page) return false;
 
     try {
-        const { html, categories, tags, noIndex } = await page.renderContent();
+        const { html, categories, tags, noIndex, description } = await page.renderContent();
         try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
-        await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, lastModifiedAt: new Date() } });
+        await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, meta: { description }, lastModifiedAt: new Date() } });
         // invalidate per-wiki page cache so redlink detection stays fresh
         try { pageCache.invalidate(page.wiki._id); } catch (e) { }
         return true;
