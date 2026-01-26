@@ -313,14 +313,6 @@ module.exports = function WikiPage(props) {
     ...page
   };
 
-  let description = safePage.meta?.description;
-  if (!description) {
-    if (safePage.exists && safePage.html) {
-      description = safePage.html.indexOf("<p>") !== -1
-        ? safePage.html.split("<p>")[1].split("</p>")[0].replace(/<([^>])+>/g, "").replace(/\s+/g, " ").trim()
-        : safePage.html.split('<div class="wiki-content">')[1].split("</div>")[0].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").substring(0, 160).trim();
-    }
-  }
 
   const fullTitle = formatPageTitle(namespace, safePage.path || safePage.title || "Main_Page");
   const isModule = namespace === "Module";
@@ -343,6 +335,19 @@ module.exports = function WikiPage(props) {
     !isDocSubpage &&
     !isSpecialNamespace;         // skip special namespaces
 
+  let description = safePage.meta?.description;
+  if (!description) {
+    if (safePage.exists && safePage.html) {
+      try {
+      description = safePage.html.indexOf("<p>") !== -1
+          ? safePage.html.split("<p>")[1].split("</p>")[0].replace(/<([^>])+>/g, "").replace(/\s+/g, " ").trim()
+          : safePage.html.split('<div class="wiki-content">')[1].split("</div>")[0].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").substring(0, 160).trim();
+      } catch (e) {
+        // Fallback to a generic description if parsing fails
+        description = `A page on ${wiki.title} Wiki, hosted on ${config.domainName}`;
+      }
+    }
+  }
   return (
     <html lang={props.language}>
       <Head
