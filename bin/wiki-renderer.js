@@ -435,30 +435,43 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 
   // --- Sandbox setup ---
   const sandbox = {
-    module: { exports: {} },
-    exports: {},
-    Math, Date, JSON, String, Number, Boolean, Array, Object, Promise, pipe, flow, Either, Decode, Assert,
-    require: async function (name) {
+    // 1. Use a null prototype for the module structure
+    module: Object.assign(Object.create(null), { exports: Object.create(null) }),
+    exports: Object.create(null),
+
+    // 2. The 'require' logic
+    require: Object.freeze(async function (name) {
       try {
         const mod = String(name || "").trim().replace(/\s+/g, "_");
         if (!mod) throw new Error("Empty module name");
-        if (mod === normalized) throw new Error(`Recursive require: Module:${mod}`);
+
+        // Check for recursion using your depth logic
+        if (depth > 10) throw new Error("Max require depth exceeded");
+
         const subOptions = { ...options, _depth: depth + 1 };
+        // Ensure this returns a clean object
         const subResult = await executeWikiModule(subOptions, mod, "__default__");
-        return subResult?.__exports__ || {};
+
+        return subResult?.__exports__ || Object.create(null);
       } catch (err) {
-        console.error(`[LGML] require("${name}") failed in ${normalized}:`, err);
-        return {};
+        // Log internally, return empty to the guest
+        console.error(`[Wiki] Require failed: ${name}`, err.message);
+        return Object.create(null);
       }
-    },
-    __resolveLink(target) {
+    }),
+
+    // 3. Resolver
+    __resolveLink: Object.freeze((target) => {
       try {
-        const wikiName = options.wikiName || "";
-        return resolveLink(target, { wikiName, currentNamespace: options.currentNamespace });
+        // Force return a primitive string to avoid object-leaks
+        return String(resolveLink(target, {
+          wikiName: options.wikiName || "",
+          currentNamespace: options.currentNamespace
+        }));
       } catch {
         return "#";
       }
-    }
+    })
   };
   sandbox.exports = sandbox.module.exports;
   //vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
