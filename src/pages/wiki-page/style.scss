@@ -595,6 +595,7 @@ body {
   background: var(--body-background);
   color: var(--body-color);
   margin: 0;
+  font-size: 14px;
 }
 
 /* === HEADER === */
@@ -884,7 +885,7 @@ body {
   width: 100%;
   border-collapse: collapse;
   margin-top: 0.75rem;
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 
 .wiki-history .history-table th,
@@ -980,7 +981,7 @@ body {
   border-top: 1px solid #eee;
   padding-top: 0.75rem;
   color: var(--PAGE_META_wiki-page-meta-color);
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 
 .wiki-page-meta .categories {
