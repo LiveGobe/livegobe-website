@@ -751,10 +751,6 @@ body {
   margin-left: 0;
 }
 
-.wiki-content-area .wiki-page-content {
-  line-height: 1.6;
-}
-
 .wiki-content-area .wiki-page-content h1,
 .wiki-content-area .wiki-page-content h2,
 .wiki-content-area .wiki-page-content h3,
@@ -1149,7 +1145,6 @@ body {
 
 .modal.preview-modal .modal-inner .preview-body .wiki-preview {
   color: var(--modalpreview-modal_modal-inner_preview-body_wiki-preview-color);
-  line-height: 1.6;
 }
 
 .modal.preview-modal .modal-inner .preview-body .wiki-preview h1,
@@ -1409,7 +1404,7 @@ body {
   color: var(--cm-s-lgwl-color);
   font-family: "JetBrains Mono", monospace;
   font-size: 0.9rem;
-  line-height: 1.4;
+  line-height: 1.2;
 }
 
 .cm-s-lgwl .cm-link {
@@ -1827,7 +1822,7 @@ body {
   border-collapse: collapse;
   margin: 1rem 0;
   font-size: 0.95rem;
-  line-height: 1.4;
+  line-height: 1.2;
   background-color: var(--Default_Wiki_Table_Styles_wiki-table-background-color);
   border: var(--Default_Wiki_Table_Styles_wiki-table-border);
   /* Zebra striping */
@@ -1925,7 +1920,7 @@ body {
   padding: 0.75rem 1rem;
   margin-bottom: 1rem;
   font-size: 0.95rem;
-  line-height: 1.4;
+  line-height: 1.2;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -2018,7 +2013,6 @@ body {
 
 .wiki-module .wiki-module-doc p {
   margin: 0.5rem 0;
-  line-height: 1.6;
   color: var(--wiki-module_wiki-module-code-color);
 }
 
@@ -2046,7 +2040,7 @@ body {
   font-family: "JetBrains Mono", "Fira Code", monospace;
   font-size: 0.9rem;
   padding: 1rem 1.25rem;
-  line-height: 1.55;
+  line-height: 1.3;
   overflow-x: auto;
   white-space: pre;
   border-top: var(--Module_Page_Styling_Light_Theme_wiki-module-border);
@@ -2088,7 +2082,7 @@ body {
   border-radius: 4px;
   overflow-x: auto;
   white-space: pre;
-  line-height: 1.4;
+  line-height: 1.2;
   margin: 0;
   border: var(--wiki-category-list-border);
   /* Optional subtle syntax-like coloring */
