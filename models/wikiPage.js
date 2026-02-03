@@ -234,6 +234,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         // --- Render LGWL content ---
         const { html, categories, tags, noIndex } = await renderWikiText(currentContent, {
             wikiName: this.wiki.name,
+            wikiId: this.wiki._id,
             pageName: this.path,
             currentNamespace: this.namespace,
             WikiPage,

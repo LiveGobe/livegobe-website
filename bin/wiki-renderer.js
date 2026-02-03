@@ -85,468 +85,251 @@ const VM = require("vm2");
  * Execute a module function, e.g. {{#invoke:ModuleName|funcName|arg1|arg2}}
  * Safe sandbox with strict isolation.
  */
+const { Worker } = require("worker_threads");
+
+// static only: require("X")
+const STATIC_REQUIRE_RE =
+  /\brequire\s*\(\s*(['"])([^'"]+)\1\s*\)/g;
+
+// illegal: require(anything_not_literal)
+const NON_LITERAL_REQUIRE_RE =
+  /\brequire\s*\(\s*(?!['"])[^)]+\)/g;
+
+function normalizeModuleName(name) {
+  return String(name || "")
+    .replace(/^Module:/, "")
+    .trim()
+    .replace(/\s+/g, "_");
+}
+
+async function buildWikiBundle(options, entryModule) {
+  const visited = new Set();
+  const ordered = [];
+
+  async function walk(moduleName, stack = []) {
+    if (visited.has(moduleName)) return;
+
+    if (stack.includes(moduleName)) {
+      throw new Error(
+        `Circular require: ${[...stack, moduleName]
+          .map(m => `Module:${m}`)
+          .join(" → ")}`
+      );
+    }
+
+    stack.push(moduleName);
+
+    const page = await options.getPage("Module", moduleName);
+    if (!page) {
+      throw new Error(`Module "${moduleName}" not found`);
+    }
+
+    const rawSource = await wikiFileStorage.readContent(
+      page.wiki,
+      "Module",
+      moduleName
+    );
+
+    // --------------------------------------------------
+    // Reject non-literal requires (require(expr))
+    // --------------------------------------------------
+    if (NON_LITERAL_REQUIRE_RE.test(rawSource)) {
+      throw new Error(
+        `Dynamic require() is not allowed in Module:${moduleName}`
+      );
+    }
+
+    // --------------------------------------------------
+    // Collect static deps
+    // --------------------------------------------------
+    const deps = [];
+    let match;
+    STATIC_REQUIRE_RE.lastIndex = 0;
+
+    while ((match = STATIC_REQUIRE_RE.exec(rawSource))) {
+      const dep = normalizeModuleName(match[2]);
+      if (dep === moduleName) {
+        throw new Error(`Self-require in Module:${moduleName}`);
+      }
+      deps.push(dep);
+    }
+
+    for (const dep of deps) {
+      await walk(dep, [...stack]);
+    }
+
+    // --------------------------------------------------
+    // Rewrite static requires only
+    // --------------------------------------------------
+    let source = rawSource.replace(
+      STATIC_REQUIRE_RE,
+      (_, __, name) => `await __require__("${normalizeModuleName(name)}")`
+    );
+
+    // --------------------------------------------------
+    // Support `exports = {}` safely
+    // --------------------------------------------------
+    source = source.replace(
+      /\bexports\s*=\s*/g,
+      "module.exports = "
+    );
+
+    ordered.push({ name: moduleName, source });
+    visited.add(moduleName);
+    stack.pop();
+  }
+
+  await walk(normalizeModuleName(entryModule));
+
+  // --------------------------------------------------
+  // Emit bundle
+  // --------------------------------------------------
+  let out = `"use strict";\n`;
+  out += `const __modules__ = Object.create(null);\n`;
+  out += `const __cache__ = Object.create(null);\n\n`;
+
+  out += `
+async function __require__(name) {
+  if (__cache__[name]) return __cache__[name].exports;
+
+  const fn = __modules__[name];
+  if (!fn) {
+    throw new Error("Unknown module: Module:" + name);
+  }
+
+  const module = { exports: {} };
+  __cache__[name] = module;
+
+  await fn(module);
+  return module.exports;
+}
+`;
+
+  for (const { name, source } of ordered) {
+    out += `
+__modules__["${name}"] = async function (module) {
+${source}
+};
+`;
+  }
+
+  out += `
+return await __require__("${normalizeModuleName(entryModule)}");
+`;
+
+  return out;
+}
+
 async function executeWikiModule(options = {}, moduleName, functionName, args = []) {
   if (!options || typeof options.getPage !== "function") {
     throw new Error("executeWikiModule: options.getPage is required");
   }
 
-  const normalized = (moduleName || "").trim().replace(/\s+/g, "_");
-  if (!normalized) return `<span class="lgml-error">LGML: missing module name</span>`;
-
-  const depth = options._depth || 0;
-  if (depth > 5) {
-    return `<span class="lgml-error">LGML: nested module limit exceeded</span>`;
+  const normalized = normalizeModuleName(moduleName);
+  if (!normalized) {
+    return `<span class="lgml-error">LGML: missing module name</span>`;
   }
 
-  // --- Per-request module cache (so multiple requires in same render reuse compiled exports)
-  // options._moduleCache is a Map keyed by normalized module name -> exported object
-  if (!options._moduleCache) options._moduleCache = new Map();
-  const moduleCache = options._moduleCache;
-
-  // If we've already loaded this module for this request, reuse it
-  if (moduleCache.has(normalized)) {
-    const cachedExport = moduleCache.get(normalized);
-    // If caller asked for __default__, return exports container
-    if (functionName === "__default__") return { __exports__: cachedExport };
-    // Otherwise, try to call requested function on cached export.
-    // Reconstruct named/positional args locally (same logic as below) so we can
-    // invoke the cached function without depending on later variables.
-    const localNamed = {};
-    const localPos = [];
-    for (const a of args) {
-      const trimmed = (a || "").trim();
-      const eqIndex = trimmed.indexOf("=");
-      if (eqIndex > 0) {
-        const key = trimmed.slice(0, eqIndex).trim();
-        const value = trimmed.slice(eqIndex + 1).trim();
-        localNamed[key] = value;
-      } else {
-        if (trimmed !== "") localPos.push(trimmed);
-      }
-    }
-
-    const fn = cachedExport && cachedExport[functionName];
-    if (!fn || typeof fn !== "function") {
-      return `<span class="lgml-error">LGML: function "${functionName}" not found in Module:${normalized}</span>`;
-    }
-
-    try {
-      if (localPos.length === 0 && Object.keys(localNamed).length > 0)
-        return await fn(localNamed);
-      return await fn.apply(null, localPos.length ? localPos : [localNamed]);
-    } catch (fnErr) {
-      const lineInfo = fnErr.stack?.match(new RegExp(`${normalized}:(\\d+):(\\d+)`));
-      const line = lineInfo ? ` at line ${lineInfo[1]}, column ${lineInfo[2]}` : "";
-      const message = fnErr.message ? `: ${fnErr.message}` : "";
-      return sanitize(`<span class="lgml-error">LGML: error in ${normalized}.${functionName}${line}${message}</span>`, PURIFY_CONFIG);
-    }
-  }
-
-  // --- Load module page ---
-  let modulePage;
-  try {
-    modulePage = await options.getPage("Module", normalized);
-  } catch (err) {
-    console.error(`[LGML] DB error fetching Module:${normalized}`, err);
-    return `<span class="lgml-error">LGML: error loading module ${normalized}</span>`;
-  }
-
-  if (modulePage) {
-    modulePage.content = await wikiFileStorage.readContent(modulePage.wiki, "Module", normalized);
-  }
-
-  if (!modulePage || !modulePage.content) {
-    return `<span class="lgml-error">LGML: Module "${normalized}" not found</span>`;
-  }
-
-  // --- Parse LGML args ---
+  // ----------------------------
+  // Parse LGML args
+  // ----------------------------
   const namedArgs = {};
   const positionalArgs = [];
+
   for (const arg of args) {
-    const trimmed = arg.trim();
-    const eqIndex = trimmed.indexOf("=");
-    if (eqIndex > 0) {
-      const key = trimmed.slice(0, eqIndex).trim();
-      const value = trimmed.slice(eqIndex + 1).trim();
-      namedArgs[key] = value;
-    } else {
+    const trimmed = String(arg || "").trim();
+    const eq = trimmed.indexOf("=");
+    if (eq > 0) {
+      namedArgs[trimmed.slice(0, eq).trim()] =
+        trimmed.slice(eq + 1).trim();
+    } else if (trimmed !== "") {
       positionalArgs.push(trimmed);
     }
   }
 
-  /* Padreramnt1 Implementations */
-  function pipe(value, ...functions) {
-    return functions.reduce((res, fn) => fn(res), value)
-  }
-
-  function flow(...functions) {
-    return (value) => pipe(value, ...functions)
-  }
-
-  const Either = {
-    is(it) {
-      return typeof it === 'object' && null != it && 'Either' === it._type
-    },
-    error(error) {
-      return {
-        _type: 'Either',
-        ok: false,
-        error,
-      }
-    },
-    ok(value) {
-      return {
-        _type: 'Either',
-        ok: true,
-        value,
-      }
-    },
-    assert(condition, error) {
-      return (value) => {
-        return !condition
-          ? Either.ok(value)
-          : Either.error(error)
-      }
-    },
-    map(fn) {
-      return (either) => {
-        if (either.ok) {
-          return Either.ok(fn(either.value))
-        }
-        return either
-      }
-    },
-    flattern(either) {
-      if (!either.ok) {
-        return either
-      }
-      if (!either.value.ok) {
-        return either.value
-      }
-      return Either.ok(either.value.value)
-    },
-    chain(fn) {
-      return (either) => {
-        return pipe(
-          either,
-          Either.map(fn),
-          Either.flattern,
-        )
-      }
-    },
-    unwrap(either) {
-      if (!either.ok) {
-        if (either.error instanceof Error) {
-          throw either.error
-        }
-        throw new Error(either.error)
-      }
-      return either.value
-    },
-    tryCatch(fn) {
-      return (it) => {
-        try {
-          return Either.ok(fn(it))
-        } catch (error) {
-          return Either.error(error)
-        }
-      }
-    },
-  }
-
-  const Decode = {
-    default(fallback) {
-      return Either.chain(value => null == value ? fallback : value)
-    },
-    number: (() => {
-      function convert(value) {
-        if (typeof value === 'string') {
-          value = value.trim()
-        }
-        if ('' === value) {
-          return Either.ok(null)
-        }
-        const valueOf = value.valueOf()
-        const asNumber = typeof valueOf === 'number' ? valueOf : Number(valueOf)
-        if (isNaN(asNumber)) {
-          return Either.error(new TypeError(`not a number`, { cause: { value } }))
-        }
-        return Either.ok(asNumber)
-      }
-
-      const decoder = (value, ...asserts) => {
-        return pipe(
-          value,
-          convert,
-          Either.chain(Assert.required),
-          ...asserts.map(Either.chain),
-          Either.unwrap
-        )
-      }
-      decoder.optional = (value, ...asserts) => {
-        return pipe(
-          value,
-          convert,
-          ...asserts.map(Either.chain),
-          Either.unwrap
-        )
-      }
-      return decoder
-    })(),
-    string: (() => {
-      const convert = (value) => {
-        if (null == value) {
-          return Either.ok(value)
-        }
-        return Either.ok(typeof value === 'string' ? value : value.toString())
-      }
-      const decoder = (value, ...asserts) => {
-        return pipe(
-          value,
-          convert,
-          Either.chain(Assert.required),
-          ...asserts.map(Either.chain),
-          Either.unwrap,
-        )
-      }
-      decoder.optional = (value, ...asserts) => {
-        return pipe(
-          value,
-          ...asserts.map(Either.chain),
-          Either.unwrap,
-        )
-      }
-      return decoder
-    })(),
-    object: (() => {
-      const decoder = (scheme, value, ...asserts) => {
-        return pipe(
-          value,
-          Assert.required,
-          Either.chain(Assert.scheme(scheme)),
-          ...asserts.map(Either.chain),
-          Either.unwrap,
-        )
-      }
-      decoder.optional = (scheme, value, ...asserts) => {
-        return pipe(
-          value,
-          Either.chain(Assert.scheme(scheme)),
-          ...asserts.map(Either.chain),
-          Either.unwrap,
-        )
-      }
-      return decoder
-    })()
-  }
-
-  const Assert = {
-    required(it) {
-      return Either.assert(null == it || '' == it, new TypeError('required', {
-        cause: {
-          value: it
-        }
-      }))(it)
-    },
-    number(it) {
-      return Either.assert(typeof it !== 'number' || isNaN(it), new TypeError('not a number', {
-        cause: {
-          value: it
-        }
-      }))(it)
-    },
-    string(it) {
-      return Either.assert(typeof it !== 'string', new TypeError(`not a string`, {
-        cause: {
-          value: it
-        }
-      }))(it)
-    },
-    object(it) {
-      return Either.assert(typeof it !== 'object' || null == it, new TypeError(`not a object`, {
-        cause: {
-          value: it
-        }
-      }))(it)
-    },
-    range(min, max) {
-      return (it) => {
-        return pipe(
-          it,
-          Assert.number,
-          Either.chain(Either.assert(it < min || max < it), new Error(`out of range [${min}, ${max}]`, {
-            cause: {
-              value: it,
-              min,
-              max,
-              range: [min, max]
-            }
-          })),
-        )
-      }
-    },
-    oneOf(entries) {
-      return (it) => {
-        return Either.assert(!entries.includes(it), new Error(`expected to be one of`, {
-          cause: {
-            value: it,
-            entries
-          }
-        }))(it)
-      }
-    },
-    keyOf(obj) {
-      const keys = Object.keys(obj)
-      return Assert.oneOf(keys)
-    },
-    scheme(obj) {
-      const keys = Object.keys(obj)
-      return (it) => {
-        let failed = false;
-        let out = {};
-        let errors = {}
-        keys.forEach(key => {
-          const value = it[key]
-          const check = obj[key]
-          const res = pipe(value, Either.tryCatch(check))
-          if (res.ok) {
-            out[key] = res.value
-          } else {
-            failed = true
-            errors[key] = res.error
-          }
-        })
-        return Either.assert(failed, new Error(`object assert exeption`, {
-          cause: {
-            value: it,
-            errors
-          }
-        }))(out)
-      }
-    }
-  }
-
-  const Enum = {
-    create(obj) {
-      return Object.keys(obj).reduce((a, c) => (a[c] = c, a), {})
-    }
-  }
-  /* END of Padreramnt1 Implementation */
-
-  // --- Sandbox setup ---
-  const sandbox = {
-    // 1. Use a null prototype for the module structure
-    module: Object.assign(Object.create(null), { exports: Object.create(null) }),
-    exports: Object.create(null),
-
-    // 2. The 'require' logic
-    require: Object.freeze(async function (name) {
-      try {
-        const mod = String(name || "").trim().replace(/\s+/g, "_");
-        if (!mod) throw new Error("Empty module name");
-
-        // Check for recursion using your depth logic
-        if (depth > 10) throw new Error("Max require depth exceeded");
-
-        const subOptions = { ...options, _depth: depth + 1 };
-        // Ensure this returns a clean object
-        const subResult = await executeWikiModule(subOptions, mod, "__default__");
-
-        return subResult?.__exports__ || Object.create(null);
-      } catch (err) {
-        // Log internally, return empty to the guest
-        console.error(`[Wiki] Require failed: ${name}`, err.message);
-        return Object.create(null);
-      }
-    }),
-
-    // 3. Resolver
-    __resolveLink: Object.freeze((target) => {
-      try {
-        // Force return a primitive string to avoid object-leaks
-        return String(resolveLink(target, {
-          wikiName: options.wikiName || "",
-          currentNamespace: options.currentNamespace
-        }));
-      } catch {
-        return "#";
-      }
-    })
-  };
-  sandbox.exports = sandbox.module.exports;
-  //vm.createContext(sandbox, { name: `LGML:Module:${normalized}` });
-  const vm = new VM.VM({ timeout: 2000, sandbox, allowAsync: true });
-
+  // ----------------------------
+  // Build bundle
+  // ----------------------------
+  let bundleCode;
   try {
-    // --- Wrap module in async IIFE to support top-level await ---
-    const wrapped = `
-(async (module, exports) => {
-  try {
-    ${modulePage.content}
-  } catch (e) {
-    console.error("LGML module error:", e);
-    throw e;
+    bundleCode = await buildWikiBundle(options, normalized);
+  } catch (err) {
+    console.error(`[LGML] Bundle failed for Module:${normalized}`, err);
+    return `<span class="lgml-error">LGML: bundle error in Module:${normalized}</span>`;
   }
-  // Merge top-level returned object into module.exports
-  if (typeof exports === "object" && exports !== module.exports) {
-    Object.assign(module.exports, exports);
-  }
-})(module, module.exports)
+
+  const finalCode = `
+"use strict";
+module.exports = (async () => {
+${bundleCode}
+})();
 `;
 
-    // --- Execute module code ---
-    await vm.run(wrapped, `LGML:Module:${normalized}`);
+  // ----------------------------
+  // Execute in worker
+  // ----------------------------
+  const workerPath = path.join(__dirname, "wiki-module-worker.js");
 
-    // --- Determine exports ---
-    let exported = sandbox.module.exports || sandbox.exports;
-    if (sandbox.exports !== sandbox.module.exports) exported = sandbox.exports;
+  const payload = {
+    moduleName: normalized,
+    code: finalCode,
+    functionName,
+    args: positionalArgs.length ? positionalArgs : [namedArgs],
+    wikiId: String(options.wikiId)
+  };
 
-    // Cache module exports for this request so subsequent requires reuse it
-    try {
-      if (options && options._moduleCache && typeof options._moduleCache.set === 'function') {
-        options._moduleCache.set(normalized, exported);
+  return await new Promise((resolve) => {
+    const worker = new Worker(workerPath, { workerData: payload });
+
+    const timeout = setTimeout(() => {
+      worker.terminate();
+      resolve(
+        `<span class="lgml-error">LGML: execution timeout in Module:${normalized}</span>`
+      );
+    }, 10000);
+
+    worker.once("message", (msg) => {
+      clearTimeout(timeout);
+
+      if (msg?.error) {
+        return resolve(
+          sanitize(
+            `<span class="lgml-error">LGML: ${msg.error}</span>`,
+            PURIFY_CONFIG
+          )
+        );
       }
-    } catch (e) {
-      // ignore cache set errors
-    }
 
-    const isPlainExport =
-      exported && typeof exported === "object" && !Object.values(exported).some(v => typeof v === "function");
+      const result = msg?.result;
+      if (result == null) return resolve("");
+      if (typeof result === "string") return resolve(result);
 
-    if (functionName === "__default__" || isPlainExport) return { __exports__: exported };
+      try {
+        resolve(String(result));
+      } catch {
+        resolve(JSON.stringify(result));
+      }
+    });
 
-    const fn = exported[functionName];
-    if (!fn || typeof fn !== "function") {
-      return `<span class="lgml-error">LGML: function "${functionName}" not found in Module:${normalized}</span>`;
-    }
+    worker.once("error", (err) => {
+      clearTimeout(timeout);
+      console.error(`[LGML Worker Error] Module:${normalized}`, err);
+      resolve(
+        `<span class="lgml-error">LGML: internal execution error in Module:${normalized}</span>`
+      );
+    });
 
-    let result;
-    try {
-      if (positionalArgs.length === 0 && Object.keys(namedArgs).length > 0)
-        result = await fn(namedArgs);
-      else
-        result = await fn.apply(null, positionalArgs.length ? positionalArgs : [namedArgs]);
-    } catch (fnErr) {
-      const lineInfo = fnErr.stack?.match(new RegExp(`${normalized}:(\\d+):(\\d+)`));
-      const line = lineInfo ? ` at line ${lineInfo[1]}, column ${lineInfo[2]}` : "";
-      const message = fnErr.message ? `: ${fnErr.message}` : "";
-      return sanitize(`<span class="lgml-error">LGML: error in ${normalized}.${functionName}${line}${message}</span>`, PURIFY_CONFIG);
-    }
-
-    if (result == null) return "";
-    if (typeof result === "string") return result;
-    try { return String(result); } catch { return JSON.stringify(result); }
-
-  } catch (err) {
-    const stack = err.stack || "";
-    const lineInfo =
-      stack.match(new RegExp(`Module:${normalized}:(\\d+):(\\d+)`)) ||
-      stack.match(new RegExp(`Module:${normalized}:(\\d+)`));
-    const line = lineInfo ? ` at line ${lineInfo[1]}${lineInfo[2] ? `, column ${lineInfo[2]}` : ""}` : "";
-    const message = err.message ? `: ${err.message}` : "";
-    return sanitize(`<span class="lgml-error">LGML: execution error in ${normalized}${line}${message}</span>`, PURIFY_CONFIG);
-  }
+    worker.once("exit", (code) => {
+      if (code !== 0) {
+        clearTimeout(timeout);
+        resolve(
+          `<span class="lgml-error">LGML: worker crashed executing Module:${normalized}</span>`
+        );
+      }
+    });
+  });
 }
+
 
 /* ---------------------------
    Magic Words Expansion (Scoped)
