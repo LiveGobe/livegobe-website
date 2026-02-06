@@ -339,11 +339,31 @@ module.exports = function WikiPage(props) {
   if (!description) {
     if (safePage.exists && safePage.html) {
       try {
-      description = safePage.html.indexOf("<p>") !== -1
-          ? safePage.html.split("<p>")[1].split("</p>")[0].replace(/<([^>])+>/g, "").replace(/\s+/g, " ").trim()
-          : safePage.html.split('<div class="wiki-content">')[1].split("</div>")[0].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").substring(0, 160).trim();
+        description = (() => {
+          const html = safePage.html || "";
+          const $ = require("cheerio").load(html);
+
+          // First non-empty <p> not inside .lg-banner-*
+          const firstParagraph = $("p").filter((_, el) => {
+            const text = $(el).text().replace(/\s+/g, " ").trim();
+            return text.length > 0 && $(el).closest('[class*="lg-banner-"]').length === 0;
+          }).first();
+
+          if (firstParagraph.length) {
+            return firstParagraph.text().replace(/\s+/g, " ").trim();
+          }
+
+          // Fallback: wiki-content
+          const wikiContent = $(".wiki-content").first();
+          if (!wikiContent.length) return "";
+
+          return wikiContent.text()
+            .replace(/\s+/g, " ")
+            .trim()
+            .substring(0, 160);
+        })();
+
       } catch (e) {
-        // Fallback to a generic description if parsing fails
         description = `A page on ${wiki.title} Wiki, hosted on ${config.domainName}`;
       }
     }
