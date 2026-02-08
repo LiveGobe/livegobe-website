@@ -275,7 +275,8 @@ ${bundleCode}
     code: finalCode,
     functionName,
     args: positionalArgs.length ? positionalArgs : [namedArgs],
-    wikiId: String(options.wikiId)
+    wikiId: String(options.wikiId),
+    existingPages: options.existingPages
   };
 
   return await new Promise((resolve) => {

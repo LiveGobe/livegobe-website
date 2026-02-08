@@ -4,7 +4,7 @@ const { VM } = require("vm2");
 const { readContent } = require("./wiki-file-storage");
 
 (async () => {
-  const { moduleName, code, functionName, args, wikiId } = workerData;
+  const { moduleName, code, functionName, args, wikiId, existingPages } = workerData;
 
   // ----------------------------
   // 1. Sandbox
@@ -35,6 +35,9 @@ const { readContent } = require("./wiki-file-storage");
   };
 
   Object.freeze(sandbox.requireData);
+
+  sandbox.availablePages = existingPages;
+  Object.freeze(sandbox.availablePages);
 
   // Optional helper
   sandbox.__resolveLink = target => String(target || "#");
