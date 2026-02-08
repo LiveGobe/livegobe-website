@@ -28,7 +28,7 @@ const ALLOWED_TAGS = [
 const ALLOWED_ATTR = [
   "href", "src", "alt", "title", "width", "height",
   "colspan", "rowspan", "class", "id", "style",
-  "role", "aria-label"
+  "role", "aria-label", "selected", "name"
 ];
 
 const BUILTIN_TEMPLATES = {
