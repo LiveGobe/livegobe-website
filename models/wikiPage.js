@@ -131,6 +131,7 @@ WikiPageSchema.index({ wiki: 1, namespace: 1, path: 1 }, { unique: true });
 // Additional indexes for performance
 WikiPageSchema.index({ wiki: 1, lastModifiedAt: -1 });
 WikiPageSchema.index({ wiki: 1, categories: 1 });
+WikiPageSchema.index({ wiki: 1, namespace: 1, title: 1 });
 WikiPageSchema.index({ title: "text", "meta.description": "text" });
 
 /* ---------------------------
@@ -427,7 +428,81 @@ WikiPageSchema.statics.createPage = async function (wiki, title, namespace, path
 
 // Static method to find pages by category
 WikiPageSchema.statics.findByCategory = async function (wiki, category) {
-    return await this.find({ wiki, categories: category });
+    return await this.aggregate([
+        // 1️⃣ Scope to wiki AND exclude /doc pages from the result set early
+        {
+            $match: {
+                wiki,
+                title: { $not: /\/doc$/ }
+            }
+        },
+
+        // 2️⃣ Lookup /doc subpage only for Module namespace
+        {
+            $lookup: {
+                from: this.collection.name,
+                let: { wiki: "$wiki", title: "$title", ns: "$namespace" },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$wiki", "$$wiki"] },
+                                    { $eq: ["$namespace", "Module"] },
+                                    {
+                                        $eq: [
+                                            "$title",
+                                            { $concat: ["$$title", "/doc"] }
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    },
+                    { $project: { categories: 1, _id: 0 } }
+                ],
+                as: "doc"
+            }
+        },
+
+        // 3️⃣ Compute effective category match
+        {
+            $addFields: {
+                directMatch: { $in: [category, "$categories"] },
+
+                docMatch: {
+                    $and: [
+                        { $eq: ["$namespace", "Module"] },
+                        {
+                            $in: [
+                                category,
+                                { $ifNull: [{ $arrayElemAt: ["$doc.categories", 0] }, []] }
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+
+        // 4️⃣ Keep only effective matches
+        {
+            $match: {
+                $or: [
+                    { directMatch: true },
+                    { docMatch: true }
+                ]
+            }
+        },
+
+        // 5️⃣ Cleanup helper fields
+        {
+            $project: {
+                doc: 0,
+                directMatch: 0,
+                docMatch: 0
+            }
+        }
+    ]);
 };
 
 // Static method to list all pages in a namespace

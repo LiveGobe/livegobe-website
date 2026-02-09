@@ -387,6 +387,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
 
                 if (docPage) {
                     const docHtml = await fileStorage.readHtml(docPage.wiki, docPage.namespace, docPage.path);
+                    page.categories = docPage.categories;
                     if (docHtml) {
                         page.docHtml = docHtml;
                     } else {
@@ -410,7 +411,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
 
             // Show the raw Lua code
             page.html = `<pre class="module-source"><code>${escapeHtml(page.content)}</code></pre>`;
-            page.categories = [];
+            page.categories = page.categories || [];
             page.tags = [];
             page.commonCss = commonCss;
             page.commonJs = commonJs;
