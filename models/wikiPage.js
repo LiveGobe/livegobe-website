@@ -528,9 +528,9 @@ WikiPageSchema.statics.backgroundRender = async function (id) {
     if (!page) return false;
 
     try {
-        const { html, categories, tags, noIndex } = await page.renderContent();
+        const { html, categories, tags, noIndex, meta } = await page.renderContent();
         try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
-        await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, lastModifiedAt: new Date() } });
+        await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, lastModifiedAt: new Date(), meta } });
         // invalidate per-wiki page cache so redlink detection stays fresh
         try { pageCache.invalidate(page.wiki._id); } catch (e) { }
         return true;
