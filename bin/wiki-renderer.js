@@ -1467,6 +1467,31 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
     }
 
     /* ---------------------------
+      Page meta built-ins
+    ---------------------------- */
+    if (/^#(name|description):/i.test(trimmed)) {
+      const colonIdx = trimmed.indexOf(":");
+      const type = trimmed.slice(1, colonIdx).toLowerCase();
+      const rawValue = trimmed.slice(colonIdx + 1).trim();
+
+      // Expand magic words + nested templates inside value
+      const withMagic = expandMagicWords(rawValue);
+      const expanded = await expandTemplates(withMagic, options, depth + 1, visited);
+
+      // Ensure meta container exists
+      if (!options.meta) options.meta = {};
+
+      if (type === "name") {
+        options.meta.name = expanded;
+      } else if (type === "description") {
+        options.meta.description = expanded;
+      }
+
+      // Do not render visible output
+      return "";
+    }
+
+    /* ---------------------------
        Normal template handling
     ---------------------------- */
     const parts = splitTemplateArgs(trimmed);
@@ -1630,6 +1655,7 @@ async function renderWikiText(text, options = {}) {
   // keyed by module name so repeated `require`/#invoke calls reuse the same
   // compiled module during a single render request.
   if (!options._moduleCache) options._moduleCache = new Map();
+  if (!options.meta) options.meta = {};
 
   const { wikiName, pageName, currentNamespace, WikiPage, currentPageId } = options;
 
@@ -1682,7 +1708,7 @@ async function renderWikiText(text, options = {}) {
   const restoredHtml = restoreNowikiBlocks(html, nowikiBlocks);
 
   // Return both HTML and categories
-  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex };
+  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex, meta: options.meta };
 }
 
 module.exports = { renderWikiText, resolveLink };

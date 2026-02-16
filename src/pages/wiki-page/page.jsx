@@ -313,7 +313,6 @@ module.exports = function WikiPage(props) {
     ...page
   };
 
-
   const fullTitle = formatPageTitle(namespace, safePage.path || safePage.title || "Main_Page");
   const isModule = namespace === "Module";
   const isDocSubpage = safePage.path.endsWith("/doc");
@@ -371,7 +370,7 @@ module.exports = function WikiPage(props) {
   return (
     <html lang={props.language}>
       <Head
-        title={fullTitle == "Main_Page" ? wiki.title : t("page.wiki.title", { 1: wiki.title, 0: fullTitle.replace(/_/g, " ") })}
+        title={fullTitle == "Main_Page" ? wiki.title : t("page.wiki.title", { 1: wiki.title, 0: safePage.meta?.name || fullTitle.replace(/_/g, " ") })}
         doIndex={doIndex}
       >
         {mode === "edit" && <>
@@ -475,7 +474,7 @@ module.exports = function WikiPage(props) {
 
               <div className="wiki-page-header-row">
                 <h2 className="wiki-page-title">
-                  {namespace !== "Main" ? `${namespace}:${safePage.title}` : safePage.title}
+                  {namespace !== "Main" ? `${namespace}:${safePage.meta?.name || safePage.title}` : safePage.meta?.name || safePage.title}
                   {safePage.protected !== "none" && safePage.protected !== undefined && (
                     <span
                       className={`protection-badge protection-${safePage.protected}`}

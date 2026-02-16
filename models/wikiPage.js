@@ -122,6 +122,12 @@ const WikiPageSchema = new mongoose.Schema({
             default: null,
             trim: true,
             maxlength: 160
+        },
+        name: {
+            type: String,
+            default: null,
+            trim: true,
+            maxLength: 50
         }
     }
 });
@@ -233,7 +239,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         }
 
         // --- Render LGWL content ---
-        const { html, categories, tags, noIndex } = await renderWikiText(currentContent, {
+        const { html, categories, tags, noIndex, meta } = await renderWikiText(currentContent, {
             wikiName: this.wiki.name,
             wikiId: this.wiki._id,
             pageName: this.path,
@@ -252,9 +258,10 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         this.html = html; // in-memory for immediate response
         this.categories = categories;
         this.tags = tags;
+        this.meta = meta;
 
         // If there's any missing page links, ensure it's categorised
-        if (/\bwiki-missing\b/.test(html) && !this.categories.includes("Pages_with_broken_links")) {
+        if (this.namespace != "Special" && /\bwiki-missing\b/.test(html) && !this.categories.includes("Pages_with_broken_links")) {
             this.categories.push("Pages_With_Broken_Links");
         }
 
@@ -279,7 +286,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         setImmediate(async () => { await this.purgeCache(); });
     }
 
-    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget };
+    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, meta: this.meta };
 };
 
 // Instance method to add a new revision (stores text on disk; keeps metadata in DB)
@@ -349,10 +356,10 @@ WikiPageSchema.methods.purgeCache = async function (visited = new Set()) {
                 if (!page) continue;
 
                 // Force re-render and persist with updateOne to avoid triggering hooks
-                const { html, categories, tags } = await page.renderContent();
+                const { html, categories, tags, meta } = await page.renderContent();
                 // write HTML to file and update DB metadata
                 try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
-                await WikiPage.updateOne({ _id: id }, { $set: { categories, tags, lastModifiedAt: new Date() } });
+                await WikiPage.updateOne({ _id: id }, { $set: { categories, tags, lastModifiedAt: new Date(), meta } });
 
                 // Queue dependents
                 if (page.templateUsedBy?.length) {
