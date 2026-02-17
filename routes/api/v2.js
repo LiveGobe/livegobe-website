@@ -21,12 +21,12 @@ const WikiPage = require("../../models/wikiPage");
 const fileCache = require("../../bin/file-cache");
 
 router.route("/filestorage").get((req, res) => {
-    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
+    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing") });
 
     FileStorage.findOne({ owner: req.user.id }).then(storage => {
         res.json({ storage: storage });
     }).catch(err => {
-        res.status(500).json({ message: err.toString()});
+        res.status(500).json({ message: err.toString() });
     });
 }).post((req, res) => {
     if (!req.user) return res.status(403).json({ message: req.t("api.usermissing") });
@@ -58,7 +58,7 @@ router.route("/filestorage/folder").post((req, res) => {
     if (!folderName) return res.status(400).json({ message: req.t("api.filestorage.folder.gamenamemissing") });
     if (!folderPath) return res.status(400).json({ message: req.t("api.filestorage.pathmissing") });
     if (!utils.foldernameValid(folderName)) return res.status(400).json({ message: req.t("api.filestorage.folder.nameinvalid") });
-    
+
     FileStorage.findOne({ owner: req.user.id }).then(storage => {
         if (!storage) return res.status(400).json({ message: req.t("api.filestorage.missing") });
         if (folderPath != "/") {
@@ -194,13 +194,13 @@ router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFile
         // if there's one file to upload
         if (req.files.file) {
             let file = req.files.file;
-            
+
             if (storage.files.find(f => f.name == file.name && f.path == filePath) || storage.folders.find(f => f.name == file.name && f.path == filePath)) return res.status(400).json({ message: req.t("api.filestorage.fexists", { "0": file.name }) });
             if (storage.size + file.size > storage.maxSize) return res.status(400).json({ message: req.t("api.filestorage.file.toobig"), size: file.size, available: storage.maxSize - storage.size });
 
             let mvPath = path.join(process.cwd(), config.filestorage.path, `${req.user.id}${filePath}`);
             if (!fs.existsSync(mvPath)) fs.mkdirSync(mvPath, { recursive: true });
-                
+
             let promise = new Promise((resolve, reject) => {
                 if (!utils.filenameValid(file.name)) return reject("Invalid filename");
                 file.mv(path.join(mvPath, file.name), (err) => {
@@ -220,7 +220,7 @@ router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFile
                     return resolve(fileObj);
                 });
             });
-            
+
             promise.then(result => {
                 storage.save().then(storage => {
                     res.json({ message: req.t("api.filestorage.file.uploaded", { "0": file.name }), file: storage.files.find(f => f.name == result.name && f.path == result.path) });
@@ -261,7 +261,7 @@ router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFile
             files.forEach(file => {
                 let mvPath = path.join(process.cwd(), config.filestorage.path, `${req.user.id}${filePath}`);
                 if (!fs.existsSync(mvPath)) fs.mkdirSync(mvPath, { recursive: true });
-                
+
                 promises.push(new Promise((resolve, reject) => {
                     if (!utils.filenameValid(file.name)) return reject("Invalid filename");
                     file.mv(path.join(mvPath, file.name), (err) => {
@@ -274,14 +274,14 @@ router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFile
                             private: private ?? true,
                             md5: file.md5
                         };
-            
+
                         storage.files.push(fileObj);
                         storage.size += file.size;
                         return resolve();
                     });
                 }));
             });
-            
+
             Promise.allSettled(promises).then(results => {
                 storage.save().then(storage => {
                     let failedFiles = [], counter = 0;
@@ -327,7 +327,7 @@ router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFile
         }
 
         if (fileName != storage.files[index].name || filePath != storage.files[index].path) {
-            if (storage.files.find(f => f.name == fileName && f.path == filePath) || storage.folders.find(f => f.name == fileName && f.path == filePath)) return res.status(400).json({ message: req.t("api.filestorage.fexists", { "0": fileName }) });1
+            if (storage.files.find(f => f.name == fileName && f.path == filePath) || storage.folders.find(f => f.name == fileName && f.path == filePath)) return res.status(400).json({ message: req.t("api.filestorage.fexists", { "0": fileName }) }); 1
 
             let mvPath = path.join(process.cwd(), config.filestorage.path, `${req.user.id}${storage.files[index].path}`);
             fs.renameSync(path.join(mvPath, storage.files[index].name), path.join(process.cwd(), config.filestorage.path, `${req.user.id}${filePath}`, fileName));
@@ -371,7 +371,7 @@ router.route("/filestorage/file").post(fileUpload({ useTempFiles: true, tempFile
 });
 
 router.route("/settings/name").patch((req, res) => {
-    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
+    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing") });
 
     let name = req.query["name"] || req.body.name;
     if (!name) return res.status(400).json({ message: req.t("api.settings.name.missing") });
@@ -387,16 +387,16 @@ router.route("/settings/name").patch((req, res) => {
             res.status(500).json({ message: err.toString() });
         });
     }).catch(err => {
-        res.status(500).json({ message: err.toString()});
+        res.status(500).json({ message: err.toString() });
     });
 });
 
 router.route("/settings/apikey").get((req, res) => {
-    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
+    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing") });
 
     res.json({ apikey: req.user.apiKey });
 }).post((req, res) => {
-    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing")});
+    if (!req.user) return res.status(403).json({ message: req.t("api.usermissing") });
 
     User.findById(req.user._id).then(user => {
         user.apiKey = uuid.v4();
@@ -430,11 +430,11 @@ router.route("/users").get((req, res) => {
     }
 
     if (username) {
-        conditions.push({ username: new RegExp('^'+username+'$', "i") });
+        conditions.push({ username: new RegExp('^' + username + '$', "i") });
     }
 
     if (name) {
-        conditions.push({ name: new RegExp('^'+name+'$', "i") });
+        conditions.push({ name: new RegExp('^' + name + '$', "i") });
     }
 
     query = conditions.length > 0 ? { $or: conditions } : {};
@@ -447,8 +447,8 @@ router.route("/users").get((req, res) => {
 });
 
 router.route("/users/:username/permissions").patch((req, res) => {
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly") });
 
     let username = req.params.username;
     let permissions = req.query.permissions ?? req.body.permissions;
@@ -470,8 +470,8 @@ router.route("/users/:username/permissions").patch((req, res) => {
 });
 
 router.route("/users/filestorage").get((req, res) => {
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly") });
 
     let id = req.query.id ?? req.body.id;
     if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: req.t("api.users.invalidid") });
@@ -484,8 +484,8 @@ router.route("/users/filestorage").get((req, res) => {
         res.status(500).json({ message: err.toString() })
     });
 }).patch((req, res) => {
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly") });
 
     let id = req.query.id ?? req.body.id;
     let maxSize = Number(req.query.maxSize ?? req.body.maxSize);
@@ -513,8 +513,8 @@ router.route("/modsportal/games").get((req, res) => {
         res.status(500).json({ message: err.toString() })
     });
 }).post(fileUpload({ defParamCharset: "utf-8" }), (req, res) => {
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly") });
 
     let name = req.query.name ?? req.body.name;
     let image = req.files?.file;
@@ -541,8 +541,8 @@ router.route("/modsportal/games").get((req, res) => {
 });
 
 router.route("/modsportal/games/:gameName/mods").post(fileUpload({ defParamCharset: "utf-8" }), (req, res) => {
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.allowModsUpload()) return res.status(403).json({ message: req.t("api.nopermission")});
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.allowModsUpload()) return res.status(403).json({ message: req.t("api.nopermission") });
 
     let fileFile = req.files?.file;
     let imageFile = req.files?.image;
@@ -602,8 +602,8 @@ router.route("/modsportal/games/:gameName/mods").post(fileUpload({ defParamChars
 });
 
 router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-8" }), (req, res) => {
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.allowModsUpload()) return res.status(403).json({ message: req.t("api.nopermission")});
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.allowModsUpload()) return res.status(403).json({ message: req.t("api.nopermission") });
 
     let fileFile = req.files?.file;
     let modVersion = req.query.modVersion ?? req.body.modVersion;
@@ -611,8 +611,8 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
     if (!modVersion) return res.status(400).json({ message: req.t("api.modsportal.modversionmissing") });
     if (!utils.versionValid(modVersion)) return res.status(400).json({ message: req.t("api.modsportal.versioninvalid") });
     if (!fileFile) return res.status(400).json({ message: req.t("api.modsportal.modfilemissing") });
-    
-    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
+
+    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId } } }).then(game => {
         if (!game) return res.status(400).json({ message: req.t("api.modsportal.gamenotexists") });
         const mod = game.mods.find(mod => mod.id == req.params.modId);
         if (!mod) return res.status(400).json({ message: req.t("api.modsportal.modnotexists") });
@@ -637,8 +637,8 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
         res.status(500).json({ message: err.toString() });
     });
 }).patch(fileUpload({ defParamCharset: "utf-8" }), (req, res) => {
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.allowModsEdit()) return res.status(403).json({ message: req.t("api.nopermission")});
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.allowModsEdit()) return res.status(403).json({ message: req.t("api.nopermission") });
 
     let imageFile = req.files?.image;
     let modName = req.query.name ?? req.body.name;
@@ -650,7 +650,7 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
     if (!modDescription) return res.status(400).json({ message: req.t("api.modsportal.moddescriptionmissing") });
     if (!modTags) return res.status(400).json({ message: req.t("api.modsportal.modtagsmissing") });
 
-    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(async game => {
+    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId } } }).then(async game => {
         if (!game) return res.status(400).json({ message: req.t("api.modsportal.gamenotexists") });
         const mod = game.mods.find(mod => mod.id == req.params.modId);
 
@@ -678,10 +678,10 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
         res.status(500).json({ message: err.toString() });
     });
 }).delete((req, res) => {
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly")});
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly") });
 
-    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
+    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId } } }).then(game => {
         if (!game) return res.status(400).json({ message: req.t("api.modsportal.gamenotexists") });
         const modIndex = game.mods.findIndex(m => m.id == req.params.modId);
         if (modIndex == -1) return res.status(400).json({ message: req.t("api.modsportal.modnotexists") });
@@ -701,10 +701,10 @@ router.route("/modsportal/mods/:modId").post(fileUpload({ defParamCharset: "utf-
 });
 
 router.route("/modsportal/mods/:modId/:modVersion").delete((req, res) => {
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing")});
-    if (!req.user.allowModsEdit()) return res.status(403).json({ message: req.t("api.nopermission")});
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.allowModsEdit()) return res.status(403).json({ message: req.t("api.nopermission") });
 
-    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
+    ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId } } }).then(game => {
         if (!game) return res.status(400).json({ message: req.t("api.modsportal.gamenotexists") });
         const mod = game.mods.find(mod => mod.id == req.params.modId);
         if (!mod) return res.status(400).json({ message: req.t("api.modsportal.modnotexists") });
@@ -826,73 +826,73 @@ router.route("/wikis").get((req, res) => {
 
 // Purge page cache (for admins or editors)
 router.post("/wikis/:wikiName/pages/:pageTitle*/purge", async (req, res) => {
-  try {
-    const wikiName = req.params.wikiName;
-    let pageTitle = req.params.pageTitle || "Main_Page";
-    const subPath = req.params[0] || "";
+    try {
+        const wikiName = req.params.wikiName;
+        let pageTitle = req.params.pageTitle || "Main_Page";
+        const subPath = req.params[0] || "";
 
-    // parse namespace
-    let namespace = "Main";
-    if (pageTitle.includes(":")) {
-      [namespace, pageTitle] = pageTitle.split(":", 2);
-      if (!utils.getSupportedNamespaces().includes(namespace)) {
-        pageTitle = `${namespace}:${pageTitle}`;
-        namespace = "Main";
-      }
+        // parse namespace
+        let namespace = "Main";
+        if (pageTitle.includes(":")) {
+            [namespace, pageTitle] = pageTitle.split(":", 2);
+            if (!utils.getSupportedNamespaces().includes(namespace)) {
+                pageTitle = `${namespace}:${pageTitle}`;
+                namespace = "Main";
+            }
+        }
+
+        // Find wiki
+        const wiki = await Wiki.findOne({ name: wikiName });
+        if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+
+        // Must be logged in
+        if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+
+        // Must have edit permission or be admin
+        if (!wiki.canEdit(req.user) && !req.user.hasRole?.("admin")) {
+            return res.status(403).json({ message: req.t("api.nopermission") });
+        }
+
+        // Build full path including subpages
+        const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
+        const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath });
+        if (!page) return res.status(404).json({ message: req.t("api.wikis.page_not_found", { page: fullPath }) });
+
+        // Trigger purge
+        await page.purgeCache();
+
+        return res.json({ message: req.t("api.wikis.page_purged", { page: fullPath }) });
+    } catch (err) {
+        console.error("API: error purging wiki page:", err);
+        res.status(500).json({ message: err.toString() });
     }
-
-    // Find wiki
-    const wiki = await Wiki.findOne({ name: wikiName });
-    if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
-
-    // Must be logged in
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
-
-    // Must have edit permission or be admin
-    if (!wiki.canEdit(req.user) && !req.user.hasRole?.("admin")) {
-      return res.status(403).json({ message: req.t("api.nopermission") });
-    }
-
-    // Build full path including subpages
-    const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
-    const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath });
-    if (!page) return res.status(404).json({ message: req.t("api.wikis.page_not_found", { page: fullPath }) });
-
-    // Trigger purge
-    await page.purgeCache();
-
-    return res.json({ message: req.t("api.wikis.page_purged", { page: fullPath }) });
-  } catch (err) {
-    console.error("API: error purging wiki page:", err);
-    res.status(500).json({ message: err.toString() });
-  }
 });
 
 // Purge all pages cache (for admins or editors)
 router.post("/wikis/:wikiName/purge", async (req, res) => {
-  try {
-    const wikiName = req.params.wikiName;
+    try {
+        const wikiName = req.params.wikiName;
 
-    // Find wiki
-    const wiki = await Wiki.findOne({ name: wikiName });
-    if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+        // Find wiki
+        const wiki = await Wiki.findOne({ name: wikiName });
+        if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
 
-    // Must be logged in
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+        // Must be logged in
+        if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
 
-    // Must have edit permission or be admin
-    if (!wiki.canEdit(req.user) && !req.user.hasRole?.("admin")) {
-      return res.status(403).json({ message: req.t("api.nopermission") });
+        // Must have edit permission or be admin
+        if (!wiki.canEdit(req.user) && !req.user.hasRole?.("admin")) {
+            return res.status(403).json({ message: req.t("api.nopermission") });
+        }
+
+        // Trigger purge all
+        await WikiPage.purgeAll(wiki.id);
+
+        return res.json({ message: req.t("api.wikis.all_purged") });
+    } catch (err) {
+        console.error("API: error purging wiki pages:", err);
+        res.status(500).json({ message: err.toString() });
     }
-
-    // Trigger purge all
-    await WikiPage.purgeAll(wiki.id);
-
-    return res.json({ message: req.t("api.wikis.all_purged") });
-  } catch (err) {
-    console.error("API: error purging wiki pages:", err);
-    res.status(500).json({ message: err.toString() });
-  }
 });
 
 // Page endpoints (get, create/update)
@@ -1044,7 +1044,7 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
             if (page) {
                 // Check if page is protected
                 if (page.protected !== "none" && !wiki.isAdmin(req.user)) {
-                    return res.status(403).json({ 
+                    return res.status(403).json({
                         message: req.t("api.wikis.page_protected"),
                         protection: page.protected
                     });
@@ -1176,34 +1176,34 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
 
 // Render page content (for preview)
 router.post("/wikis/:wikiName/render", async (req, res) => {
-	try {
-		const wikiName = req.params.wikiName;
-		const { content, namespace, path } = req.body;
+    try {
+        const wikiName = req.params.wikiName;
+        const { content, namespace, path } = req.body;
 
-		if (!content) {
-			return res.status(400).json({ message: req.t("api.wikis.content_required") });
-		}
+        if (!content) {
+            return res.status(400).json({ message: req.t("api.wikis.content_required") });
+        }
 
-		// Find wiki
-		const wiki = await Wiki.findOne({ name: wikiName });
-		if (!wiki) {
-			return res.status(404).json({ message: req.t("api.wikis.not_found") });
-		}
+        // Find wiki
+        const wiki = await Wiki.findOne({ name: wikiName });
+        if (!wiki) {
+            return res.status(404).json({ message: req.t("api.wikis.not_found") });
+        }
 
-		// Check permission (canView or canEdit)
-		if (!wiki.canAccess(req.user)) {
-			return res.status(403).json({ message: req.t("api.nopermission") });
-		}
+        // Check permission (canView or canEdit)
+        if (!wiki.canAccess(req.user)) {
+            return res.status(403).json({ message: req.t("api.nopermission") });
+        }
 
-		const WikiPage = mongoose.model("WikiPage");
+        const WikiPage = mongoose.model("WikiPage");
 
-		// Create a temporary instance to reuse render logic
-		const tempPage = new WikiPage({
-			wiki: wiki._id,
-			namespace: namespace || "Main",
-			path: path || "Preview_Page",
-			content
-		});
+        // Create a temporary instance to reuse render logic
+        const tempPage = new WikiPage({
+            wiki: wiki._id,
+            namespace: namespace || "Main",
+            path: path || "Preview_Page",
+            content
+        });
 
         // Start performance timer
         const startTimer = performance.now();
@@ -1214,78 +1214,78 @@ router.post("/wikis/:wikiName/render", async (req, res) => {
         // End timer
         const renderTimeMs = +(performance.now() - startTimer).toFixed(2);
 
-		return res.json({
-			message: req.t("api.wikis.page_rendered"),
-			html: tempPage.html,
-			categories: tempPage.categories || [],
+        return res.json({
+            message: req.t("api.wikis.page_rendered"),
+            html: tempPage.html,
+            categories: tempPage.categories || [],
             renderTimeMs
-		});
-	} catch (err) {
-		console.error("API: error rendering wiki preview:", err);
-		res.status(500).json({ message: err.toString() });
-	}
+        });
+    } catch (err) {
+        console.error("API: error rendering wiki preview:", err);
+        res.status(500).json({ message: err.toString() });
+    }
 });
 
 // POST /files - upload a file to the wiki
 router.post("/wikis/:wikiName/files", fileUpload({ defParamCharset: "utf-8" }), async (req, res) => {
-  const ALLOWED_MIME_TYPES = [
-    "image/jpeg",
-    "image/png",
-    "image/gif",
-    "image/webp",
-    "image/svg+xml",
-    "audio/mpeg",
-    "audio/ogg",
-    "audio/wav",
-    "video/mp4",
-    "video/webm",
-    "video/ogg"
-  ];
+    const ALLOWED_MIME_TYPES = [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "image/svg+xml",
+        "audio/mpeg",
+        "audio/ogg",
+        "audio/wav",
+        "video/mp4",
+        "video/webm",
+        "video/ogg"
+    ];
 
-  try {
-    const wikiName = req.params.wikiName;
-    const wiki = await Wiki.findOne({ name: wikiName });
-    if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
+    try {
+        const wikiName = req.params.wikiName;
+        const wiki = await Wiki.findOne({ name: wikiName });
+        if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
 
-    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
-    if (!wiki.canEdit(req.user)) return res.status(403).json({ message: req.t("api.nopermission") });
+        if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+        if (!wiki.canEdit(req.user)) return res.status(403).json({ message: req.t("api.nopermission") });
 
-    if (!req.files || !req.files.file) {
-      return res.status(400).json({ message: req.t("api.files.no_file") });
-    }
+        if (!req.files || !req.files.file) {
+            return res.status(400).json({ message: req.t("api.files.no_file") });
+        }
 
-    const uploadFile = req.files.file;
+        const uploadFile = req.files.file;
 
-    if (!ALLOWED_MIME_TYPES.includes(uploadFile.mimetype)) {
-      return res.status(400).json({ message: req.t("api.files.invalid_type") });
-    }
+        if (!ALLOWED_MIME_TYPES.includes(uploadFile.mimetype)) {
+            return res.status(400).json({ message: req.t("api.files.invalid_type") });
+        }
 
-    const uploadDir = path.join(process.cwd(), "public", "wikis", wiki.name, "uploads");
-    fs.mkdirSync(uploadDir, { recursive: true });
+        const uploadDir = path.join(process.cwd(), "public", "wikis", wiki.name, "uploads");
+        fs.mkdirSync(uploadDir, { recursive: true });
 
-    let safeFilename = "";
-    if (req.body.fileName) {
-        safeFilename = req.body.fileName.replace(/\s+/g, "_");
-    } else if (uploadFile?.name) {
-        safeFilename = uploadFile.name.replace(/\s+/g, "_");
-    } else {
-        // fallback to timestamp if all else fails
-        safeFilename = `upload_${Date.now()}`;
-    }
-    const filePath = path.join(uploadDir, safeFilename);
+        let safeFilename = "";
+        if (req.body.fileName) {
+            safeFilename = req.body.fileName.replace(/\s+/g, "_");
+        } else if (uploadFile?.name) {
+            safeFilename = uploadFile.name.replace(/\s+/g, "_");
+        } else {
+            // fallback to timestamp if all else fails
+            safeFilename = `upload_${Date.now()}`;
+        }
+        const filePath = path.join(uploadDir, safeFilename);
 
-    await uploadFile.mv(filePath);
+        await uploadFile.mv(filePath);
 
-    const namespace = "File";
-    const pageTitle = safeFilename;
-    const pagePath = safeFilename;
+        const namespace = "File";
+        const pageTitle = safeFilename;
+        const pagePath = safeFilename;
 
-    let page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: pagePath });
+        let page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: pagePath });
 
-    const uploadDate = new Date().toDateString();
-    const fileSizeKB = Math.round(uploadFile.size / 1024);
+        const uploadDate = new Date().toDateString();
+        const fileSizeKB = Math.round(uploadFile.size / 1024);
 
-    const filePageContent = `__NOTOC__
+        const filePageContent = `__NOTOC__
 == File Information ==
 * '''Filename''': ${safeFilename}
 * '''Size''': ${fileSizeKB} KB
@@ -1313,13 +1313,13 @@ ${uploadFile.mimetype.startsWith("image/") ? `[[File:${safeFilename}]]` : "Previ
 
         await page.save();
 
-    const populatedPage = await WikiPage.findById(page._id).populate("lastModifiedBy", "name");
+        const populatedPage = await WikiPage.findById(page._id).populate("lastModifiedBy", "name");
 
-    // Invalidate file cache for this wiki so future renders see the new file
-    try { fileCache.invalidate(wiki.name); } catch (e) { }
+        // Invalidate file cache for this wiki so future renders see the new file
+        try { fileCache.invalidate(wiki.name); } catch (e) { }
 
-    // Use staticLink utility for URL
-    const fileUrl = utils.staticUrl(`wikis/${wiki.name}/uploads/${safeFilename}`);
+        // Use staticLink utility for URL
+        const fileUrl = utils.staticUrl(`wikis/${wiki.name}/uploads/${safeFilename}`);
 
         const fileHtml = await require("../../bin/wiki-file-storage").readHtml(populatedPage.wiki, populatedPage.namespace, populatedPage.path);
 
@@ -1335,10 +1335,10 @@ ${uploadFile.mimetype.startsWith("image/") ? `[[File:${safeFilename}]]` : "Previ
                 url: fileUrl
             }
         });
-  } catch (err) {
-    console.error("API: error uploading file:", err);
-    res.status(500).json({ message: err.toString() });
-  }
+    } catch (err) {
+        console.error("API: error uploading file:", err);
+        res.status(500).json({ message: err.toString() });
+    }
 });
 
 // GET /search - search wiki pages
@@ -1408,70 +1408,136 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
             return m ? m[1] : null;
         }
 
-        // Create reusable escaped value
         const escaped = escapeRegex(search);
-
         const exact = new RegExp(escaped, "i");
         const fuzzy = new RegExp(fuzzyRegex(search), "i");
 
-        // Redirect syntax
         const redirectRegex = /^#redirect\s*\[\[(.+?)\]\]/i;
 
         // ================================
-        // Query
+        // Query (NOW includes meta fields)
         // ================================
         const pages = await WikiPage.find({
             wiki: wiki._id,
             ...namespaceFilter,
             $or: [
-                // direct matches
                 { title: exact },
                 { path: exact },
-
-                // fuzzy
                 { title: fuzzy },
-                { path: fuzzy }
+                { path: fuzzy },
+
+                // NEW: meta search
+                { "meta.name": exact },
+                { "meta.description": exact },
+                { "meta.name": fuzzy },
+                { "meta.description": fuzzy }
             ]
         }).limit(100).lean();
 
         // ================================
-        // Ranking
+        // Ranking (NOW includes meta)
         // ================================
         const term = search.toLowerCase();
+
+        // ================================
+        // User locale detection (LGWS-native)
+        // ================================
+        const userLocale = (req.language || "en").toLowerCase();
+
+        function getPageLocale(page) {
+            const m = (page.title || "").match(/\/([a-z]{2}(?:-[A-Z]{2})?)$/i);
+            return m ? m[1].toLowerCase() : null;
+        }
+
         const scorePage = (p) => {
             let score = 0;
 
-            const title = p.title.toLowerCase();
-            const path = p.path.toLowerCase();
+            const title = (p.title || "").toLowerCase();
+            const path = (p.path || "").toLowerCase();
+            const metaName = (p.meta?.name || "").toLowerCase();
+            const metaDesc = (p.meta?.description || "").toLowerCase();
 
-            if (title === term) score += 100;
-            if (title.startsWith(term)) score += 50;
+            const pageLocale = getPageLocale(p);
 
-            if (title.match(exact)) score += 30;
-            if (path.match(exact)) score += 15;
+            // =========================
+            // Text relevance
+            // =========================
+            if (title === term) score += 120;
+            if (metaName === term) score += 115;
 
-            if (title.match(fuzzy)) score += 5;
+            if (title.startsWith(term)) score += 70;
+            if (metaName.startsWith(term)) score += 65;
+
+            if (title.match(exact)) score += 50;
+            if (metaName.match(exact)) score += 45;
+            if (metaDesc.match(exact)) score += 30;
+
+            if (path.match(exact)) score += 20;
+
+            if (title.match(fuzzy)) score += 10;
+            if (metaName.match(fuzzy)) score += 8;
+            if (metaDesc.match(fuzzy)) score += 6;
+
+            // =========================
+            // 🌍 Locale-aware ranking
+            // =========================
+            if (pageLocale) {
+                if (pageLocale === userLocale) {
+                    score += 40;   // strong boost for user's language
+                } else {
+                    score -= 5;    // slight penalty for other languages
+                }
+            }
 
             return score;
         };
 
-        // Enrich candidates by checking stored content for redirect information
+        // ================================
+        // Load content for redirect detection
+        // ================================
         const fileStorage = require("../../bin/wiki-file-storage");
-        const enriched = await Promise.all(pages.map(async page => {
-            const content = await fileStorage.readContent(page.wiki, page.namespace, page.path);
-            return { page, score: scorePage(page), content: content || "" };
-        }));
+
+        const enriched = await Promise.all(
+            pages.map(async page => {
+                const content = await fileStorage.readContent(
+                    page.wiki,
+                    page.namespace,
+                    page.path
+                );
+
+                return {
+                    page,
+                    score: scorePage(page),
+                    content: content || ""
+                };
+            })
+        );
+
+        function getDisplayTitle(page) {
+            // 1️⃣ Forced meta display name
+            if (page.meta?.name && page.meta.name.trim()) {
+                return page.meta.name.trim();
+            }
+
+            let title = page.title || "";
+
+            // 2️⃣ Remove LGWS locale suffix ONLY: "/xx" or "/xx-YY"
+            title = title.replace(/\/[a-z]{2}(?:-[A-Z]{2})?$/i, "");
+
+            return title;
+        }
 
         const ranked = enriched
             .sort((a, b) => b.score - a.score)
             .slice(0, 50)
             .map(p => ({
-                title: p.page.title,
+                title: getDisplayTitle(p.page),
                 path: p.page.path,
                 namespace: p.page.namespace,
+                description: p.page.meta?.description || "",
                 isRedirect: redirectRegex.test(p.content),
                 redirectTo: extractRedirectTarget(p.content)
-            }))
+            }));
 
         return res.json({
             message: req.t("api.wikis.search_results", {
@@ -1492,7 +1558,7 @@ router.get("/wiki/:wikiName/modules", async (req, res) => {
     try {
         const wikiName = req.params.wikiName;
         const wiki = await Wiki.findOne({ name: wikiName });
-        
+
         if (!wiki) return res.status(404).json({ message: req.t("api.wikis.not_found") });
 
         const modules = await WikiPage.find({

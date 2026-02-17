@@ -834,7 +834,7 @@ $(function () {
 				? r.redirectTo
 				: (isMain ? r.path : `${r.namespace}:${r.path}`);
 
-			const href = `/wikis/${wikiName}/${encodeURIComponent(finalTarget.replace(/ /g, "_"))}`;
+			const href = `/wikis/${wikiName}/${encodeURI(finalTarget.replace(/ /g, "_"))}`;
 
 			container.append(`
 				<a class="wiki-search-item" href="${href}">
