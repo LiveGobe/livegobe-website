@@ -4,6 +4,23 @@ import i18n from "../../js/repack-locales";
 await i18n.init();
 
 $(function () {
+	// Theme Switcher
+	$("#wiki-theme-switch").on("click", function () {
+		const currentTheme = $("body").attr("data-theme") || "light";
+		const newTheme = currentTheme === "light" ? "dark" : "light";
+		document.cookie = `theme=${newTheme}; path=/; max-age=31536000`; // 1 year
+
+		// Update the DOM attribute and jQuery's cached data so subsequent reads reflect the change
+		$("body").attr("data-theme", newTheme).data("theme", newTheme);
+	});
+
+	// Language Switcher
+	$("#wiki-lang-switch").on("change", function () {
+		const newLang = $(this).val();
+		document.cookie = `lang=${newLang}; path=/; max-age=31536000`; // 1 year
+		location.reload();
+	});
+
 	// === Helpers ===
 	function parsePath() {
 		const m = window.location.pathname.match(/^\/wikis\/([^\/]+)\/(.+)$/);
@@ -829,10 +846,15 @@ $(function () {
 			const isMain = r.namespace === "Main";
 			const title = isMain ? r.title : `${r.namespace}:${r.title}`;
 
-			// Final target: If it's a redirect, show redirectTo, else show normal path
-			const finalTarget = r.isRedirect && r.redirectTo
-				? r.redirectTo
-				: (isMain ? r.path : `${r.namespace}:${r.path}`);
+			// Final target: If it's a redirect, use redirectTo.path for the link;
+			// display the redirect name (meta override) if present, otherwise the path.
+			let finalTarget = isMain ? r.path : `${r.namespace}:${r.path}`;
+			let redirectDisplay = null;
+			if (r.isRedirect && r.redirectTo) {
+				// `redirectTo` is now an object: { path, name }
+				if (r.redirectTo.path) finalTarget = r.redirectTo.path;
+				redirectDisplay = r.redirectTo.name || r.redirectTo.path || null;
+			}
 
 			const href = `/wikis/${wikiName}/${encodeURI(finalTarget.replace(/ /g, "_"))}`;
 
@@ -840,7 +862,7 @@ $(function () {
 				<a class="wiki-search-item" href="${href}">
 					<div class="wiki-search-title">
 						${title}
-						${r.isRedirect ? `<span class="wiki-search-redirect">→ ${r.redirectTo.replace(/_/g, " ")}</span>` : ""}
+						${r.isRedirect && redirectDisplay ? `<span class="wiki-search-redirect">→ ${redirectDisplay.replace(/_/g, " ")}</span>` : ""}
 					</div>
 				</a>
 			`);
