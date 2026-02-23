@@ -1527,17 +1527,55 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
             return title;
         }
 
-        const ranked = enriched
-            .sort((a, b) => b.score - a.score)
-            .slice(0, 50)
-            .map(p => ({
-                title: getDisplayTitle(p.page),
-                path: p.page.path,
-                namespace: p.page.namespace,
-                description: p.page.meta?.description || "",
-                isRedirect: redirectRegex.test(p.content),
-                redirectTo: extractRedirectTarget(p.content)
-            }));
+        const ranked = await Promise.all(
+            enriched
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 50)
+                .map(async p => {
+                    const isRedirect = redirectRegex.test(p.content);
+                    const originalPath = extractRedirectTarget(p.content);
+                    let name = originalPath;
+
+                    // If this page is a redirect and we have a target,
+                    // try to resolve the target page and prefer its meta.name override.
+                    if (isRedirect && originalPath) {
+                        try {
+                            // Determine target namespace and path
+                            let targetNamespace = "Main";
+                            let targetPath = originalPath;
+                            const colonIndex = originalPath.indexOf(":");
+                            if (colonIndex !== -1) {
+                                const maybeNs = originalPath.slice(0, colonIndex).trim();
+                                const remainder = originalPath.slice(colonIndex + 1).trim();
+                                if (utils.getSupportedNamespaces().includes(maybeNs)) {
+                                    targetNamespace = maybeNs;
+                                    targetPath = remainder;
+                                } else {
+                                    // keep as full path if namespace not supported
+                                    targetPath = originalPath;
+                                    targetNamespace = "Main";
+                                }
+                            }
+
+                            const targetPage = await WikiPage.findOne({ wiki: wiki._id, namespace: targetNamespace, path: targetPath }).lean();
+                            if (targetPage && targetPage.meta?.name && targetPage.meta.name.trim()) {
+                                name = targetPage.meta.name.trim();
+                            }
+                        } catch (e) {
+                            // ignore lookup errors and leave name as-is
+                        }
+                    }
+
+                    return {
+                        title: getDisplayTitle(p.page),
+                        path: p.page.path,
+                        namespace: p.page.namespace,
+                        description: p.page.meta?.description || "",
+                        isRedirect,
+                        redirectTo: isRedirect ? { path: originalPath, name } : null
+                    };
+                })
+        );
 
         return res.json({
             message: req.t("api.wikis.search_results", {
