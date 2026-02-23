@@ -598,7 +598,10 @@
       "mainPage": "Main Page",
       "allPages": "All Pages",
       "settings": "Wiki Settings",
-      "recentChanges": "Recent Changes"
+      "recentChanges": "Recent Changes",
+      "theme": {
+        "switch": "Switch Theme"
+      }
     },
     "sidebar": {
       "navigation": "Navigation",

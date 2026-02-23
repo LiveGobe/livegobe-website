@@ -598,7 +598,10 @@
       "mainPage": "Главная Страница",
       "allPages": "Все Страницы",
       "settings": "Настройки Вики",
-      "recentChanges": "Недавние Изменения"
+      "recentChanges": "Недавние Изменения",
+      "theme": {
+        "switch": "Переключить Тему"
+      }
     },
     "sidebar": {
       "navigation": "Навигация",
