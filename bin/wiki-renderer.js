@@ -301,7 +301,7 @@ ${bundleCode}
     functionName,
     args: positionalArgs.length ? positionalArgs : [namedArgs],
     wikiId: String(options.wikiId),
-    frame: options.frame ? JSON.parse(JSON.stringify(options.frame)) : {},
+    frame: JSON.parse(JSON.stringify(options.frame || {})),
     existingPages: options.existingPages
   };
 
@@ -1671,6 +1671,7 @@ async function renderWikiText(text, options = {}) {
   // compiled module during a single render request.
   if (!options._moduleCache) options._moduleCache = new Map();
   if (!options.meta) options.meta = {};
+  if (!options.frame) options.frame = {};
 
   const { wikiName, pageName, currentNamespace, WikiPage, currentPageId } = options;
 

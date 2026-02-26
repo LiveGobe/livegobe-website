@@ -65,7 +65,8 @@ async function executeTask(workerData) {
                     `requireData: failed to parse "${key}": ${err.message}`
                 );
             }
-        }
+        },
+        console: process.env.NODE_ENV === "development" ? console : null
     });
 
     if (!moduleCache.has(moduleHash)) {
@@ -96,7 +97,7 @@ async function executeTask(workerData) {
         );
     }
 
-    return { result };
+    return { result, frame: JSON.parse(JSON.stringify(vm.sandbox.frame || {})) };
 }
 
 // ===============================

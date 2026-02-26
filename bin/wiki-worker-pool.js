@@ -27,7 +27,11 @@ class WikiWorkerPool {
             worker.busy = false;
 
             if (worker._resolve) {
-                worker._resolve(msg);
+                worker._resolve({
+                    result: msg?.result,
+                    frame: msg?.frame
+                });
+
                 worker._resolve = null;
             }
 
