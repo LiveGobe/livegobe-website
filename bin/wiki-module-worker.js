@@ -1,69 +1,116 @@
 "use strict";
-const { parentPort, workerData } = require("worker_threads");
+
+const { parentPort } = require("worker_threads");
 const { VM } = require("vm2");
 const { readContent } = require("./wiki-file-storage");
 
-(async () => {
-  const { moduleName, code, functionName, args, wikiId, existingPages } = workerData;
+const moduleCache = new Map();
 
-  // ----------------------------
-  // 1. Sandbox
-  // ----------------------------
-  const sandbox = Object.create(null);
-  sandbox.module = Object.create(null);
-  sandbox.module.exports = Object.create(null);
-  sandbox.exports = sandbox.module.exports;
+const vm = new VM({
+    sandbox: {
+        module: { exports: {} },
+        exports: {},
+        frame: {},
+        availablePages: {},
+        requireData: async () => {
+            throw new Error("requireData not initialized");
+        }
+    },
+    allowAsync: true,
+    eval: false,
+    wasm: false
+});
 
-  // ----------------------------
-  // 2. Dynamic requireData (data-only)
-  // ----------------------------
-  sandbox.requireData = async function(name) {
-    const key = String(name || "").trim().replace(/\s+/g, "_");
-    if (!key) throw new Error("requireData() expects a module name");
+// ===============================
+// Execution handler
+// ===============================
 
-    const content = await readContent(wikiId, "Module", key);
+async function executeTask(workerData) {
+    const {
+        moduleName,
+        moduleHash,
+        code,
+        functionName,
+        args,
+        wikiId,
+        existingPages,
+        frame
+    } = workerData;
 
-    if (!content) {
-      throw new Error(`requireData: module "${key}" not found`);
+    // Inject runtime helpers into sandbox per task
+    vm.setGlobals({
+        frame: frame || {},
+        availablePages: existingPages || {},
+
+        requireData: async function(name) {
+            const key = String(name || "")
+                .trim()
+                .replace(/\s+/g, "_");
+
+            if (!key) {
+                throw new Error("requireData() expects module name");
+            }
+
+            const content = await readContent(wikiId, "Module", key);
+
+            if (!content) {
+                throw new Error(`requireData: module "${key}" not found`);
+            }
+
+            try {
+                return JSON.parse(content);
+            }
+            catch (err) {
+                throw new Error(
+                    `requireData: failed to parse "${key}": ${err.message}`
+                );
+            }
+        }
+    });
+
+    if (!moduleCache.has(moduleHash)) {
+        const compiled = await vm.run(
+            code,
+            `LGML:Module:${moduleName}`
+        );
+
+        moduleCache.set(moduleHash, compiled);
     }
 
-    try {
-      return JSON.parse(content);
-    } catch (err) {
-      throw new Error(`requireData: failed to parse "${key}": ${err.message}`);
-    }
-  };
-
-  Object.freeze(sandbox.requireData);
-
-  sandbox.availablePages = existingPages;
-  Object.freeze(sandbox.availablePages);
-
-  // Optional helper
-  sandbox.__resolveLink = target => String(target || "#");
-  Object.freeze(sandbox);
-
-  // ----------------------------
-  // 3. VM
-  // ----------------------------
-  const vm = new VM({ sandbox, allowAsync: true, eval: false, wasm: false });
-
-  try {
-    const exported = await vm.run(code, `LGML:Module:${moduleName}`);
+    const exported = moduleCache.get(moduleHash);
 
     let result;
+
     if (functionName === "__default__") {
-      result = exported;
-    } else if (typeof exported === "function") {
-      result = await exported.apply(null, args);
-    } else if (exported && typeof exported[functionName] === "function") {
-      result = await exported[functionName].apply(null, args);
-    } else {
-      throw new Error(`function "${functionName}" not found in Module:${moduleName}`);
+        result = exported;
+    }
+    else if (typeof exported === "function") {
+        result = await exported.apply(null, args);
+    }
+    else if (exported && typeof exported[functionName] === "function") {
+        result = await exported[functionName].apply(null, args);
+    }
+    else {
+        throw new Error(
+            `function "${functionName}" not found in Module:${moduleName}`
+        );
     }
 
-    parentPort.postMessage({ result });
-  } catch (err) {
-    parentPort.postMessage({ error: err.message || "Unknown execution error" });
-  }
-})();
+    return { result };
+}
+
+// ===============================
+// Message loop worker
+// ===============================
+
+parentPort.on("message", async (task) => {
+    try {
+        const result = await executeTask(task);
+        parentPort.postMessage(result);
+    }
+    catch (err) {
+        parentPort.postMessage({
+            error: err.message || "Unknown execution error"
+        });
+    }
+});

@@ -130,6 +130,13 @@ async function buildWikiBundle(options, entryModule) {
       moduleName
     );
 
+    const crypto = require("crypto");
+
+    const sourceHash = crypto
+      .createHash("sha256")
+      .update(rawSource)
+      .digest("hex");
+
     // --------------------------------------------------
     // Reject non-literal requires (require(expr))
     // --------------------------------------------------
@@ -174,7 +181,11 @@ async function buildWikiBundle(options, entryModule) {
       "module.exports = "
     );
 
-    ordered.push({ name: moduleName, source });
+    ordered.push({
+      name: moduleName,
+      source,
+      hash: sourceHash
+    });
     visited.add(moduleName);
     stack.pop();
   }
@@ -185,8 +196,10 @@ async function buildWikiBundle(options, entryModule) {
   // Emit bundle
   // --------------------------------------------------
   let out = `"use strict";\n`;
+
   out += `const __modules__ = Object.create(null);\n`;
-  out += `const __cache__ = Object.create(null);\n\n`;
+  out += `const __cache__ = Object.create(null);\n`;
+  out += `const __module_hash__ = Object.create(null);\n\n`;
 
   out += `
 async function __require__(name) {
@@ -205,8 +218,10 @@ async function __require__(name) {
 }
 `;
 
-  for (const { name, source } of ordered) {
+  for (const { name, source, hash } of ordered) {
     out += `
+__module_hash__["${name}"] = "${hash}";
+
 __modules__["${name}"] = async function (module) {
 ${source}
 };
@@ -230,15 +245,13 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     return `<span class="lgml-error">LGML: missing module name</span>`;
   }
 
-  // ----------------------------
-  // Parse LGML args
-  // ----------------------------
   const namedArgs = {};
   const positionalArgs = [];
 
   for (const arg of args) {
     const trimmed = String(arg || "").trim();
     const eq = trimmed.indexOf("=");
+
     if (eq > 0) {
       namedArgs[trimmed.slice(0, eq).trim()] =
         trimmed.slice(eq + 1).trim();
@@ -247,14 +260,14 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
   }
 
-  // ----------------------------
-  // Build bundle
-  // ----------------------------
   let bundleCode;
+
   try {
     bundleCode = await buildWikiBundle(options, normalized);
-  } catch (err) {
+  }
+  catch (err) {
     console.error(`[LGML] Bundle failed for Module:${normalized}`, err);
+
     return `<span class="lgml-error">LGML: bundle error in Module:${normalized}</span>`;
   }
 
@@ -265,70 +278,72 @@ ${bundleCode}
 })();
 `;
 
-  // ----------------------------
-  // Execute in worker
-  // ----------------------------
-  const workerPath = path.join(__dirname, "wiki-module-worker.js");
+  if (!global.__LGWS_POOL) {
+    const WikiWorkerPool = require("./wiki-worker-pool");
+    const os = require("os");
+
+    const poolSize = Math.max(2, Math.floor(os.cpus().length / 2));
+
+    global.__LGWS_POOL = new WikiWorkerPool(poolSize);
+  }
+
+  const crypto = require("crypto");
+
+  const sourceHash = crypto
+    .createHash("sha256")
+    .update(bundleCode)
+    .digest("hex");
 
   const payload = {
     moduleName: normalized,
+    moduleHash: sourceHash,
     code: finalCode,
     functionName,
     args: positionalArgs.length ? positionalArgs : [namedArgs],
     wikiId: String(options.wikiId),
+    frame: options.frame ? JSON.parse(JSON.stringify(options.frame)) : {},
     existingPages: options.existingPages
   };
 
-  return await new Promise((resolve) => {
-    const worker = new Worker(workerPath, { workerData: payload });
+  const timeoutMs = 10000;
 
-    const timeout = setTimeout(() => {
-      worker.terminate();
-      resolve(
-        `<span class="lgml-error">LGML: execution timeout in Module:${normalized}</span>`
-      );
-    }, 10000);
+  const poolPromise = global.__LGWS_POOL.execute(payload);
 
-    worker.once("message", (msg) => {
-      clearTimeout(timeout);
+  const timeoutPromise = new Promise(resolve => {
+    const t = setTimeout(() => {
+      resolve({
+        error: `LGML: execution timeout in Module:${normalized}`
+      });
+    }, timeoutMs);
 
-      if (msg?.error) {
-        return resolve(
-          sanitize(
-            `<span class="lgml-error">LGML: ${msg.error}</span>`,
-            PURIFY_CONFIG
-          )
-        );
-      }
-
-      const result = msg?.result;
-      if (result == null) return resolve("");
-      if (typeof result === "string") return resolve(result);
-
-      try {
-        resolve(String(result));
-      } catch {
-        resolve(JSON.stringify(result));
-      }
-    });
-
-    worker.once("error", (err) => {
-      clearTimeout(timeout);
-      console.error(`[LGML Worker Error] Module:${normalized}`, err);
-      resolve(
-        `<span class="lgml-error">LGML: internal execution error in Module:${normalized}</span>`
-      );
-    });
-
-    worker.once("exit", (code) => {
-      if (code !== 0) {
-        clearTimeout(timeout);
-        resolve(
-          `<span class="lgml-error">LGML: worker crashed executing Module:${normalized}</span>`
-        );
-      }
-    });
+    poolPromise.finally(() => clearTimeout(t));
   });
+
+  const msg = await Promise.race([poolPromise, timeoutPromise]);
+
+  if (msg?.frame && options.frame) {
+    Object.assign(options.frame, msg.frame);
+  }
+
+  if (msg?.error) {
+    return sanitize(
+      `<span class="lgml-error">LGML: ${msg.error}</span>`,
+      PURIFY_CONFIG
+    );
+  }
+
+  const result = msg?.result;
+
+  if (result == null) return "";
+
+  if (typeof result === "string") return result;
+
+  try {
+    return String(result);
+  }
+  catch {
+    return JSON.stringify(result);
+  }
 }
 
 
