@@ -6,6 +6,18 @@ const { readContent } = require("./wiki-file-storage");
 
 const moduleCache = new Map();
 
+// Size limit for frame object (100 MB)
+const FRAME_SIZE_LIMIT = 104857600;
+
+// Helper: Calculate approximate JSON serialized size
+function getObjectSize(obj) {
+    try {
+        return Buffer.byteLength(JSON.stringify(obj), 'utf-8');
+    } catch {
+        return 0;
+    }
+}
+
 const vm = new VM({
     sandbox: {
         module: { exports: {} },
@@ -97,7 +109,17 @@ async function executeTask(workerData) {
         );
     }
 
-    return { result, frame: JSON.parse(JSON.stringify(vm.sandbox.frame || {})) };
+    // Check frame size before returning
+    const frameToReturn = vm.sandbox.frame || {};
+    const frameSize = getObjectSize(frameToReturn);
+    
+    if (frameSize > FRAME_SIZE_LIMIT) {
+        throw new Error(
+            `frame object exceeds size limit (${frameSize} > ${FRAME_SIZE_LIMIT} bytes)`
+        );
+    }
+
+    return { result, frame: JSON.parse(JSON.stringify(frameToReturn)) };
 }
 
 // ===============================
