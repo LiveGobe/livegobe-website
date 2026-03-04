@@ -1384,17 +1384,6 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
         }
 
         // ================================
-        // Namespace filter
-        // ================================
-        let namespaceFilter = {};
-
-        if (namespace === null) {
-            namespaceFilter = { namespace: "Main" };
-        } else {
-            namespaceFilter = { namespace };
-        }
-
-        // ================================
         // Regex helpers
         // ================================
         const escapeRegex = (str) =>
@@ -1406,6 +1395,18 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
         function extractRedirectTarget(content) {
             const m = content.match(/^#redirect\s*\[\[(.+?)\]\]/i);
             return m ? m[1] : null;
+        }
+
+        // ================================
+        // Namespace filter
+        // ================================
+        let namespaceFilter = {};
+
+        if (namespace === null) {
+            namespaceFilter = { namespace: "Main" };
+        } else {
+            // Case-insensitive namespace matching
+            namespaceFilter = { namespace: new RegExp(`^${escapeRegex(namespace)}$`, "i") };
         }
 
         const escaped = escapeRegex(search);
@@ -1445,8 +1446,12 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
         const userLocale = (req.language || "en").toLowerCase();
 
         function getPageLocale(page) {
-            const m = (page.title || "").match(/\/([a-z]{2}(?:-[A-Z]{2})?)$/i);
-            return m ? m[1].toLowerCase() : null;
+            const path = page.path || "";
+
+            // Strict match: basePath/xx  (lowercase only)
+            const m = path.match(/\/([a-z]{2})$/);
+
+            return m ? m[1] : "en"; // no suffix = English
         }
 
         const scorePage = (p) => {
@@ -1481,12 +1486,10 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
             // =========================
             // 🌍 Locale-aware ranking
             // =========================
-            if (pageLocale) {
-                if (pageLocale === userLocale) {
-                    score += 40;   // strong boost for user's language
-                } else {
-                    score -= 5;    // slight penalty for other languages
-                }
+            if (pageLocale === userLocale) {
+                score += 40;   // strong boost for user's language
+            } else if (pageLocale !== "en") {
+                score -= 5;    // slight penalty for other languages
             }
 
             return score;
@@ -1547,7 +1550,7 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
                             if (colonIndex !== -1) {
                                 const maybeNs = originalPath.slice(0, colonIndex).trim();
                                 const remainder = originalPath.slice(colonIndex + 1).trim();
-                                if (utils.getSupportedNamespaces().includes(maybeNs)) {
+                                if (utils.getSupportedNamespaces().map(ns => ns.toLowerCase()).includes(maybeNs.toLowerCase())) {
                                     targetNamespace = maybeNs;
                                     targetPath = remainder;
                                 } else {

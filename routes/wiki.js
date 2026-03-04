@@ -10,51 +10,83 @@ const fileStorage = require("../bin/wiki-file-storage");
 // Helper: Check if a string is a valid locale code (2 chars, in available locales)
 function isLocaleCode(str) {
     if (!str || str.length !== 2) return false;
-    const availableLocales = utils.getAvailableLocales();
-    return availableLocales.includes(str.toLowerCase());
+
+    // Must be strictly lowercase letters
+    if (!/^[a-z]{2}$/.test(str)) return false;
+
+    return true;
 }
 
 // Helper: Extract locale from page path if last segment is a locale code
 function extractLocaleFromPath(path) {
     const parts = path.split('/');
-    if (parts.length === 0) return { basePath: path, locale: null };
+    if (parts.length === 0) {
+        return { basePath: path, locale: null };
+    }
+
     const lastPart = parts[parts.length - 1];
+
     if (isLocaleCode(lastPart)) {
         return {
             basePath: parts.slice(0, -1).join('/'),
-            locale: lastPart.toLowerCase()
+            locale: lastPart // keep original (already lowercase)
         };
     }
+
     return { basePath: path, locale: null };
 }
 
 // Helper: Get all available locale variants for a page
 async function getPageLocaleVariants(wiki, namespace, basePath) {
-    const availableLocales = utils.getAvailableLocales();
     const variants = [];
 
-    // Check base page (no locale suffix)
+    // 🔹 1. Check base page (English default, no suffix)
     const basePage = await WikiPage.findOne({
         wiki: wiki._id,
         namespace,
         path: basePath
     }).lean();
+
     if (basePage) {
-        variants.push({ locale: null, path: basePath, exists: true });
+        variants.push({
+            locale: "en",
+            path: basePath,
+            exists: true,
+            isDefault: true
+        });
     }
 
-    // Check each locale variant
-    for (const locale of availableLocales) {
-        const localePath = `${basePath}/${locale}`;
-        const locPage = await WikiPage.findOne({
-            wiki: wiki._id,
-            namespace,
-            path: localePath
-        }).lean();
-        if (locPage) {
-            variants.push({ locale, path: localePath, exists: true });
+    // 🔹 2. Find lowercase 2-letter locale pages only
+    const escapeRegex = str =>
+        str.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+    const localePages = await WikiPage.find({
+        wiki: wiki._id,
+        namespace,
+        path: {
+            $regex: `^${escapeRegex(basePath)}\\/[a-z]{2}$`
         }
+    })
+        .select("path")
+        .lean();
+
+    for (const page of localePages) {
+        const locale = page.path.slice(basePath.length + 1);
+
+        variants.push({
+            locale,
+            path: page.path,
+            exists: true,
+            isDefault: false
+        });
     }
+
+    // 🔹 3. Sort: English first, then alphabetically
+    variants.sort((a, b) => {
+        if (a.isDefault) return -1;
+        if (b.isDefault) return 1;
+        return a.locale.localeCompare(b.locale);
+    });
 
     return variants;
 }

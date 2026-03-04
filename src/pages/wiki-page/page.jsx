@@ -10,29 +10,37 @@ function formatPageTitle(namespace, path) {
 }
 
 // Language selector component
-function LanguageSelector({ wiki, namespace, basePath, currentLocale, variants = [], t }) {
+function LanguageSelector({ wiki, namespace, currentLocale, variants = [], t }) {
+  if (!variants || variants.length <= 1) return null;
+
   return (
     <div className="language-selector">
-      {/* Show a list of available languages (for each variant add a link) */}
-      {variants && variants.length > 1 && (
-        <>
-          <h3>{t("wiki.supported_languages")}</h3>
-          <ul>
-            <li>
-              {currentLocale != null ? (<a href={`/wikis/${wiki.name}/${namespace === "Main" ? basePath : `${namespace}:${basePath}`}`}>
-                {wiki.language.toUpperCase() || t("wiki.language.default")}
-              </a>) : (wiki.language.toUpperCase() || t("wiki.language.default"))}
+      <h3>{t("wiki.supported_languages")}</h3>
+      <ul>
+        {variants.map(variant => {
+          const isCurrent = currentLocale === variant.locale || (variant.isDefault && !currentLocale);
+
+          const href = `/wikis/${wiki.name}/${namespace === "Main"
+            ? variant.path
+            : `${namespace}:${variant.path}`
+            }`;
+
+          const label =
+            variant.locale === "en"
+              ? (wiki.language?.toUpperCase() || t("wiki.language.default"))
+              : variant.locale.toUpperCase();
+
+          return (
+            <li key={variant.locale}>
+              {isCurrent ? (
+                label
+              ) : (
+                <a href={href}>{label}</a>
+              )}
             </li>
-            {variants.map(variant => (
-              <li key={variant.locale}>
-                {currentLocale !== variant.locale ? (<a href={`/wikis/${wiki.name}/${namespace === "Main" ? variant.path : `${namespace}:${variant.path}`}`}>
-                  {variant.locale?.toUpperCase()}
-                </a>) : (variant.locale?.toUpperCase())}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
+          );
+        })}
+      </ul>
     </div>
   );
 }
