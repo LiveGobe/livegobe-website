@@ -284,6 +284,8 @@ $(function () {
 			"PAGENAME",
 			"NAMESPACE",
 			"FULLPAGENAME",
+			"BASEPAGENAME",
+			"PAGELANGUAGE",
 			"SITENAME",
 			"DATE",
 			"TIME"

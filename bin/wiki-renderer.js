@@ -371,6 +371,26 @@ function expandMagicWords(text, context = {}) {
       namespace === "Main"
         ? effectivePage.replace(/_/g, " ")
         : `${namespace}:${effectivePage.replace(/_/g, " ")}`,
+    BASEPAGENAME: (() => {
+      const parts = effectivePage.split("/");
+
+      const last = parts[parts.length - 1];
+
+      // If last segment looks like language code (2 letters)
+      if (/^[a-z]{2}$/.test(last)) {
+        parts.pop();
+      }
+
+      const base = parts[parts.length - 1] || "";
+      return base.replace(/_/g, " ");
+    })(),
+    PAGELANGUAGE: (() => {
+      const parts = effectivePage.split("/");
+      const last = parts[parts.length - 1];
+
+      if (/^[a-z]{2}$/.test(last)) return last;
+      return "en"; // default language
+    })(),
     SITENAME: wikiName,
     DATE: dateStr,
     TIME: timeStr,
@@ -1404,13 +1424,34 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
      Magic-word expansion
   ---------------------------- */
   function expandMagicWords(str) {
-    return str.replace(/{{\s*(PAGENAME|NAMESPACE|FULLPAGENAME)\s*}}/gi, (_, word) => {
+    return str.replace(/{{\s*(PAGENAME|NAMESPACE|FULLPAGENAME|BASEPAGENAME)\s*}}/gi, (_, word) => {
       const W = word.toUpperCase();
       if (W === "PAGENAME") return pageName?.replace(/_/g, " ") || "";
       if (W === "NAMESPACE") return currentNamespace || "";
       if (W === "FULLPAGENAME") {
         const base = pageName?.replace(/_/g, " ") || "";
         return currentNamespace ? `${currentNamespace}:${base}` : base;
+      }
+      if (W === "BASEPAGENAME") {
+        const parts = pageName.split("/");
+
+        const last = parts[parts.length - 1];
+
+        // If last segment looks like language code (2 letters)
+        if (/^[a-z]{2}$/.test(last)) {
+          parts.pop();
+        }
+
+        const base = parts[parts.length - 1] || "";
+        return base.replace(/_/g, " ");
+      }
+      if (W === "PAGELANGUAGE") {
+        const parts = pageName.split("/");
+        const last = parts[parts.length - 1];
+        if (/^[a-z]{2}$/.test(last)) {
+          return last;
+        }
+        return "en"; // default language
       }
       return _;
     });
@@ -1519,6 +1560,26 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
     if (upper === "FULLPAGENAME") {
       const base = pageName?.replace(/_/g, " ") || "";
       return currentNamespace ? `${currentNamespace}:${base}` : base;
+    }
+    if (upper === "BASEPAGENAME") {
+      const parts = pageName.split("/");
+
+      const last = parts[parts.length - 1];
+
+      // If last segment looks like language code (2 letters)
+      if (/^[a-z]{2}$/.test(last)) {
+        parts.pop();
+      }
+
+      const base = parts[parts.length - 1] || "";
+      return base.replace(/_/g, " ");
+    }
+    if (upper === "PAGELANGUAGE") {
+      const parts = pageName.split("/");
+      const last = parts[parts.length - 1];
+
+      if (/^[a-z]{2}$/.test(last)) return last;
+      return "en"; // default language
     }
     if (BUILTIN_TEMPLATES.hasOwnProperty(normalizedName)) return BUILTIN_TEMPLATES[normalizedName];
 
