@@ -226,6 +226,8 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         return await WikiPage.findOne({ wiki: this.wiki._id, namespace, path: name }).lean();
     };
 
+    let FRAME_SIZE = null;
+
     try {
         // Use cached page index when available to avoid heavy DB scan
         let existingPages = pageCache.get(this.wiki._id);
@@ -239,7 +241,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         }
 
         // --- Render LGWL content ---
-        const { html, categories, tags, noIndex, meta } = await renderWikiText(currentContent, {
+        const { html, categories, tags, noIndex, meta, frameSize } = await renderWikiText(currentContent, {
             wikiName: this.wiki.name,
             wikiId: this.wiki._id,
             pageName: this.path,
@@ -250,6 +252,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
             existingPages
         });
 
+        FRAME_SIZE = frameSize;
         this.noIndex = noIndex;
         // Persist rendered HTML to file storage
         if (!dryRun) {
@@ -286,7 +289,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         setImmediate(async () => { await this.purgeCache(); });
     }
 
-    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, meta: this.meta };
+    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, meta: this.meta, frameSize: FRAME_SIZE };
 };
 
 // Instance method to add a new revision (stores text on disk; keeps metadata in DB)

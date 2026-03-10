@@ -1209,7 +1209,7 @@ router.post("/wikis/:wikiName/render", async (req, res) => {
         const startTimer = performance.now();
 
         // Render content (simple LGWL -> HTML) using provided source
-        await tempPage.renderContent({ sourceContent: content, dryRun: true });
+        const { frameSize } = await tempPage.renderContent({ sourceContent: content, dryRun: true });
 
         // End timer
         const renderTimeMs = +(performance.now() - startTimer).toFixed(2);
@@ -1218,7 +1218,8 @@ router.post("/wikis/:wikiName/render", async (req, res) => {
             message: req.t("api.wikis.page_rendered"),
             html: tempPage.html,
             categories: tempPage.categories || [],
-            renderTimeMs
+            renderTimeMs,
+            frameSize
         });
     } catch (err) {
         console.error("API: error rendering wiki preview:", err);

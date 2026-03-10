@@ -564,12 +564,12 @@ $(function () {
 			.then(json => {
 				if (json.html) {
 					// Build preview HTML + render time footer
-					const renderTime = json.renderTimeMs
-						? `<div class='preview-render-time'>Rendered in ${json.renderTimeMs} ms</div>`
+					const renderStats = json.renderTimeMs
+						? `<div class='preview-render-time'>Rendered in ${json.renderTimeMs} ms${json.frameSize ? `, Frame size: ${json.frameSize} / 104857600 Bytes` : ""}</div>`
 						: "";
 
 					$body.html(`
-					${renderTime}
+					${renderStats}
 					<div class='wiki-preview'>
 						${json.html}
 					</div>

@@ -79,13 +79,6 @@ const sanitize = DOMPurify.sanitize;
    - Executes module code in a small vm sandbox (no require/process)
    - Supports async module functions (awaits returned promises)
 ----------------------------*/
-const VM = require("vm2");
-
-/**
- * Execute a module function, e.g. {{#invoke:ModuleName|funcName|arg1|arg2}}
- * Safe sandbox with strict isolation.
- */
-const { Worker } = require("worker_threads");
 
 // static only: require("X")
 const STATIC_REQUIRE_RE =
@@ -1785,7 +1778,7 @@ async function renderWikiText(text, options = {}) {
   const restoredHtml = restoreNowikiBlocks(html, nowikiBlocks);
 
   // Return both HTML and categories
-  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex, meta: options.meta };
+  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex, meta: options.meta, frameSize: Buffer.byteLength(JSON.stringify(options.frame), 'utf-8') };
 }
 
 module.exports = { renderWikiText, resolveLink };
