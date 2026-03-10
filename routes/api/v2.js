@@ -1428,11 +1428,14 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
                 { title: fuzzy },
                 { path: fuzzy },
 
-                // NEW: meta search
                 { "meta.name": exact },
                 { "meta.description": exact },
                 { "meta.name": fuzzy },
-                { "meta.description": fuzzy }
+                { "meta.description": fuzzy },
+
+                // 🔹 Tag search
+                { tags: exact },
+                { tags: fuzzy }
             ]
         }).limit(100).lean();
 
@@ -1460,6 +1463,7 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
 
             const title = (p.title || "").toLowerCase();
             const path = (p.path || "").toLowerCase();
+            const tags = (p.tags || []).map(t => t.toLowerCase());
             const metaName = (p.meta?.name || "").toLowerCase();
             const metaDesc = (p.meta?.description || "").toLowerCase();
 
@@ -1483,6 +1487,15 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
             if (title.match(fuzzy)) score += 10;
             if (metaName.match(fuzzy)) score += 8;
             if (metaDesc.match(fuzzy)) score += 6;
+
+            // =========================
+            // Tag relevance
+            // =========================
+
+            if (tags.includes(term)) score += 95;
+            if (tags.some(t => t.startsWith(term))) score += 50;
+            if (tags.some(t => t.match(exact))) score += 35;
+            if (tags.some(t => t.match(fuzzy))) score += 12;
 
             // =========================
             // 🌍 Locale-aware ranking
@@ -1576,6 +1589,7 @@ router.get("/wiki/:wikiName/search", async (req, res) => {
                         namespace: p.page.namespace,
                         description: p.page.meta?.description || "",
                         isRedirect,
+                        tags: p.page.tags || [],
                         redirectTo: isRedirect ? { path: originalPath, name } : null
                     };
                 })
