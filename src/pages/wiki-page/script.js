@@ -674,11 +674,18 @@ $(function () {
 		const $minorCheckbox = $uploadForm.find("input[name=minor]");
 		const $submitBtn = $uploadForm.find("button[type=submit]");
 
+		// Pre-fill file name from ?file= query parameter if available
+		const urlParams = new URLSearchParams(window.location.search);
+		const fileNameParam = urlParams.get("file");
+		if (fileNameParam) {
+			$uploadForm.find("input[name=name]").val(fileNameParam);
+		}
+
 		// Display selected file name
 		const $fileNameDisplay = $("<span class='file-name-display'></span>").insertAfter($fileInput);
 		$fileInput.on("change", function () {
 			const files = this.files;
-			$fileNameDisplay.text(files && files.length ? files[0].name : "");
+			$fileNameDisplay.text($uploadForm.find("input[name=name]").val() || (files && files.length ? files[0].name : ""));
 		});
 
 		// Progress bar
@@ -691,7 +698,7 @@ $(function () {
 			if (!file) return alert("Please select a file to upload.");
 
 			// Use the query parameter ?file if available, else fallback to actual filename
-			let fileName = new URLSearchParams(window.location.search).get("file") || uploadFile.name;
+			let fileName = $uploadForm.find("input[name=name]").val() || new URLSearchParams(window.location.search).get("file") || uploadFile.name;
 
 			const formData = new FormData();
 			formData.append("file", file);

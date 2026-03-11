@@ -272,6 +272,11 @@ function SpecialUpload({ wiki, t, user }) {
           className="upload-form"
         >
           <div className="form-group">
+            <label htmlFor="name">{t("wiki.special.upload.nameoverride")}:</label>
+            <input type="text" name="name" id="name" required placeholder={t("wiki.special.upload.nameoverride")} />
+          </div>
+
+          <div className="form-group">
             <label htmlFor="file">{t("wiki.special.upload.chooseFile")}:</label>
             <input type="file" name="file" id="file" required />
           </div>

@@ -713,7 +713,8 @@
         "upload": "Upload",
         "hint": "File Restrictions",
         "allowedTypes": "Allowed Media Types: Images/Videos/Audio",
-        "maxSize": "Max File Size - 20 MB"
+        "maxSize": "Max File Size - 20 MB",
+        "nameoverride": "File name"
       }
     },
     "category": {
