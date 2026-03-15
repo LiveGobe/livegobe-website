@@ -3,6 +3,8 @@ import i18n from "../../js/repack-locales";
 // Initialize locale helper
 await i18n.init();
 
+window.i18n = i18n; // Expose globally for inline use in HTML templates if needed
+
 $(function () {
 	// Theme Switcher
 	$("#wiki-theme-switch").on("click", function () {
