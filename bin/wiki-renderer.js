@@ -406,6 +406,37 @@ function tokenize(text, options = {}) {
   let inCodeBlock = false;
   let codeBuffer = [];
 
+  // ✅ NEW: paragraph buffer
+  let paragraphBuffer = [];
+
+  function flushParagraph() {
+    if (paragraphBuffer.length === 0) return;
+
+    const parts = [];
+
+    paragraphBuffer.forEach((line, index) => {
+      const inline = tokenizeInline(line, LINK_REGEX, options);
+
+      if (Array.isArray(inline)) {
+        parts.push(...inline);
+      } else {
+        parts.push(inline);
+      }
+
+      // ✅ preserve newline BETWEEN lines
+      if (index < paragraphBuffer.length - 1) {
+        parts.push({ type: "newline" });
+      }
+    });
+
+    tokens.push({
+      type: "textBlock",
+      content: parts
+    });
+
+    paragraphBuffer = [];
+  }
+
   function tokenizeTables(startIndex) {
     const table = {
       type: "tableBlock",
@@ -452,11 +483,7 @@ function tokenize(text, options = {}) {
             text = raw.slice(0, -1).trim();
           }
 
-          currentRow.push({
-            isHeader: true,
-            align,
-            text,
-          });
+          currentRow.push({ isHeader: true, align, text });
         }
         i++;
         continue;
@@ -480,11 +507,7 @@ function tokenize(text, options = {}) {
             text = raw.slice(0, -1).trim();
           }
 
-          currentRow.push({
-            isHeader: false,
-            align,
-            text,
-          });
+          currentRow.push({ isHeader: false, align, text });
         }
         i++;
         continue;
@@ -500,15 +523,20 @@ function tokenize(text, options = {}) {
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
     const line = rawLine.replace(/\r$/, "");
+    const trimmed = line.trim();
 
+    // TABLE
     if (/^\{\|/.test(line)) {
+      flushParagraph();
       const { table, nextIndex } = tokenizeTables(i);
       tokens.push(table);
       i = nextIndex - 1;
       continue;
     }
 
-    if (/^```/.test(line.trim())) {
+    // ``` CODE BLOCK
+    if (/^```/.test(trimmed)) {
+      flushParagraph();
       if (!inCodeBlock) {
         inCodeBlock = true;
         codeBuffer = [];
@@ -524,26 +552,43 @@ function tokenize(text, options = {}) {
       continue;
     }
 
-    const trimmed = line.trim();
-    if (!trimmed) continue;
+    // ✅ EMPTY LINE = paragraph break
+    if (!trimmed) {
+      flushParagraph();
+      continue;
+    }
 
+    // HR
     if (/^(?:-{4,}|\*{3,})$/.test(trimmed)) {
+      flushParagraph();
       tokens.push({ type: "hr" });
       continue;
     }
 
+    // BLOCKQUOTE
     if (/^>\s?/.test(trimmed)) {
-      tokens.push({ type: "blockquote", content: trimmed.replace(/^>\s?/, "") });
+      flushParagraph();
+      tokens.push({
+        type: "blockquote",
+        content: trimmed.replace(/^>\s?/, "")
+      });
       continue;
     }
 
+    // INDENTED CODE
     if (/^(?:\t| {4})/.test(rawLine)) {
-      tokens.push({ type: "codeBlock", content: rawLine.replace(/^(?:\t| {4})/, "") });
+      flushParagraph();
+      tokens.push({
+        type: "codeBlock",
+        content: rawLine.replace(/^(?:\t| {4})/, "")
+      });
       continue;
     }
 
+    // HEADINGS
     const headingMatch = trimmed.match(/^(={2,6})\s*(.+?)\s*\1$/);
     if (headingMatch) {
+      flushParagraph();
       const level = headingMatch[1].length;
       const text = headingMatch[2];
       const id = text.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_\-:.]/g, "");
@@ -551,8 +596,10 @@ function tokenize(text, options = {}) {
       continue;
     }
 
+    // LISTS
     const listMatch = trimmed.match(/^([*#-]+)\s+(.*)$/);
     if (listMatch) {
+      flushParagraph();
       const markers = listMatch[1];
       const level = markers.length;
       const ordered = markers[0] === "#";
@@ -561,12 +608,15 @@ function tokenize(text, options = {}) {
       continue;
     }
 
+    // GALLERY
     if (/^<gallery/i.test(trimmed)) {
-      const galleryLines = [];
+      flushParagraph();
 
+      const galleryLines = [];
       const attrMatch = trimmed.match(/^<gallery([^>]*)>/i);
       const attrString = attrMatch ? attrMatch[1] : "";
       const attrs = {};
+
       attrString.replace(/(\w+)\s*=\s*(['"]?)([^'"]+)\2/g, (_, key, __, value) => {
         attrs[key.toLowerCase()] = value.trim();
       });
@@ -580,31 +630,25 @@ function tokenize(text, options = {}) {
         attrs,
         entries: galleryLines.filter(Boolean)
       });
+
       continue;
     }
 
-    const parts = tokenizeInline(trimmed, LINK_REGEX, options);
-
-    /* -------------------------------------------------------------
-       FIXED: Safe HTML block detection (no greediness)
-    ------------------------------------------------------------- */
-    // Detect start of a block-level HTML element
+    // HTML BLOCK
     const htmlOpen = trimmed.match(/^<([a-zA-Z][\w-]*)\b[^>]*>\s*$/);
-
     if (htmlOpen) {
       const tag = htmlOpen[1].toLowerCase();
 
-      // Only treat known block-level elements as htmlBlock
       if (BLOCK_TAGS.includes(tag)) {
+        flushParagraph();
+
         const blockLines = [trimmed];
         const stack = [tag];
 
         while (i + 1 < lines.length && stack.length > 0) {
           const nextLine = lines[++i];
 
-          // A line containing ONLY "<tag ...>"
           const nextOpen = nextLine.trim().match(/^<([a-zA-Z][\w-]*)\b[^>]*>\s*$/);
-          // A line containing ONLY "</tag>"
           const nextClose = nextLine.trim().match(/^<\/([a-zA-Z][\w-]*)>\s*$/);
 
           if (nextOpen) {
@@ -612,9 +656,8 @@ function tokenize(text, options = {}) {
             if (BLOCK_TAGS.includes(t)) stack.push(t);
           } else if (nextClose) {
             const t = nextClose[1].toLowerCase();
-            if (stack[stack.length - 1] === t) {
-              stack.pop();
-            } else {
+            if (stack[stack.length - 1] === t) stack.pop();
+            else {
               const idx = stack.lastIndexOf(t);
               if (idx !== -1) stack.splice(idx);
             }
@@ -632,9 +675,12 @@ function tokenize(text, options = {}) {
       }
     }
 
-    // default text
-    tokens.push({ type: "textBlock", content: Array.isArray(parts) ? parts : [parts] });
+    // ✅ DEFAULT TEXT → buffer instead of pushing
+    paragraphBuffer.push(trimmed);
   }
+
+  // ✅ flush remaining paragraph
+  flushParagraph();
 
   return tokens;
 }
@@ -708,6 +754,8 @@ function renderInline(parts, { wikiName, currentNamespace, existingFiles = new S
   }
 
   return parts.map(part => {
+    if (part.type === "newline") return "<br>";
+
     if (part.type === "text") return formatText(part.value);
 
     if (part.type === "link") {
@@ -1105,7 +1153,20 @@ function parse(tokens, options = {}) {
         listStack.push({ level: t.level, ordered: t.ordered });
       }
 
-      const inner = renderInline(t.content, { wikiName, currentNamespace, existingFiles, existingPages: options.existingPages });
+      const inner = renderInline(
+        t.content.map(part => {
+          if (part && part.type === "newline") {
+            return { type: "rawHtml", value: "<br>" };
+          }
+          return part;
+        }),
+        {
+          wikiName,
+          currentNamespace,
+          existingFiles,
+          existingPages: options.existingPages
+        }
+      );
       html += `<li>${inner}</li>\n`;
       continue;
     }
