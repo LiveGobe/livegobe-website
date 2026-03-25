@@ -3,8 +3,6 @@ import i18n from "../../js/repack-locales";
 // Initialize locale helper
 await i18n.init();
 
-window.i18n = i18n; // Expose globally for inline use in HTML templates if needed
-
 $(function () {
 	// Theme Switcher
 	$("#wiki-theme-switch").on("click", function () {
@@ -50,6 +48,492 @@ $(function () {
 			">": ">",
 			":": ":"
 		};
+
+		// Add this helper function to find the object before the dot
+		function getObjectAtCursor(cm, cursor) {
+			const line = cm.getLine(cursor.line);
+			let end = cursor.ch;
+
+			let start = end;
+			while (start > 0 && /[\w$.]/.test(line.charAt(start - 1))) {
+				start--;
+			}
+
+			const fullExpr = line.slice(start, end);
+
+			// Remove trailing dot safely
+			const cleaned = fullExpr.replace(/\.$/, "");
+
+			return cleaned;
+		}
+
+		function getMembersOf(objName) {
+			if (!objName) return [];
+
+			try {
+				let target = window;
+				const paths = objName.split('.');
+
+				for (const segment of paths) {
+					if (!target) return [];
+					target = target[segment];
+				}
+
+				if (!target) return [];
+
+				const props = new Set();
+
+				// Own props
+				Object.getOwnPropertyNames(target).forEach(p => props.add(p));
+
+				// Prototype props (VERY IMPORTANT)
+				let proto = Object.getPrototypeOf(target);
+				while (proto) {
+					Object.getOwnPropertyNames(proto).forEach(p => props.add(p));
+					proto = Object.getPrototypeOf(proto);
+				}
+
+				return [...props].filter(p => !p.startsWith("_"));
+			}
+			catch (e) {
+				return [];
+			}
+		}
+
+		function extractVariables(cm) {
+			const code = cm.getValue();
+			const vars = new Set();
+
+			// Updated regex to capture the entire declaration LHS
+			const regex = /\b(const|let|var|function)\s+([\w$]+|\{[\s\S]+?\})\s*=/g;
+			let match;
+
+			while ((match = regex.exec(code))) {
+				const lhs = match[2].trim();
+
+				if (lhs.startsWith("{")) {
+					// It's a destructuring assignment
+					const inside = lhs.slice(1, -1);
+					inside.split(",").forEach(part => {
+						// Handle "orig: alias" or just "name"
+						const pieces = part.split(":");
+						const name = (pieces.length > 1 ? pieces[1] : pieces[0]).trim();
+						// Filter out non-word characters (like trailing commas/whitespace)
+						const cleanName = name.match(/[a-zA-Z_$][\w$]*/);
+						if (cleanName) vars.add(cleanName[0]);
+					});
+				} else {
+					// Normal variable or function name
+					vars.add(lhs);
+				}
+			}
+
+			return [...vars];
+		}
+
+		function smartMatch(item, word) {
+			item = item.toLowerCase();
+			word = word.toLowerCase();
+
+			if (!word) return true;
+
+			// 🔥 PRIORITY: exact prefix
+			if (item.startsWith(word)) return true;
+
+			// 🔥 fallback fuzzy
+			let i = 0;
+			for (let j = 0; j < item.length && i < word.length; j++) {
+				if (item[j] === word[i]) i++;
+			}
+			return i === word.length;
+		}
+
+		function extractObjectKeys(objBody, set) {
+			objBody.split(",").forEach(p => {
+				const part = p.trim();
+				if (!part) return;
+
+				// handle:
+				// foo
+				// foo: ...
+				// "foo": ...
+				// 'foo': ...
+				const match = /^["']?(\w+)["']?\s*:?\s*/.exec(part);
+				if (match) {
+					set.add(match[1]);
+				}
+			});
+		}
+
+		function resolveRequireBindings(cm) {
+			const varMap = {};           // normal variable → module
+			const destructuredMap = {};  // destructured variable → { module, export }
+
+			const lines = cm.getValue().split("\n");
+
+			const requireRegex = /const\s+([\w{},\s:]+)\s*=\s*await\s+require\(\s*["']([^"']+)["']\s*\)/g;
+
+			lines.forEach(line => {
+				let m;
+				while ((m = requireRegex.exec(line))) {
+					const lhs = m[1].trim();      // e.g. Utils OR { foo, bar: baz }
+					const moduleName = m[2];      // e.g. "Utils"
+
+					// Destructured
+					if (lhs.startsWith("{") && lhs.endsWith("}")) {
+						const inside = lhs.slice(1, -1); // remove braces
+						inside.split(",").forEach(part => {
+							const [orig, alias] = part.split(":").map(s => s.trim());
+							const varName = alias || orig;
+							destructuredMap[varName] = { module: moduleName, export: orig };
+						});
+					} else {
+						// Normal variable
+						varMap[lhs] = moduleName;
+					}
+				}
+			});
+
+			return { varMap, destructuredMap };
+		}
+
+		let __BINDINGS_CACHE__ = null;
+		let __BINDINGS_CACHE_DOC__ = null;
+
+		function getBindings(cm) {
+			const doc = cm.getValue();
+
+			if (__BINDINGS_CACHE_DOC__ === doc) {
+				return __BINDINGS_CACHE__;
+			}
+
+			const result = resolveRequireBindings(cm);
+
+			__BINDINGS_CACHE__ = result;
+			__BINDINGS_CACHE_DOC__ = doc;
+
+			return result;
+		}
+
+		function extractExportsFromCode(code) {
+			const exportsSet = new Set();
+
+			/* =========================
+			   1. module.exports = { ... }
+			========================= */
+			const moduleObjMatch = /module\.exports\s*=\s*{([\s\S]*?)}/g;
+			let m;
+
+			while ((m = moduleObjMatch.exec(code))) {
+				extractObjectKeys(m[1], exportsSet);
+			}
+
+			/* =========================
+			   2. exports = { ... }  🔥 FIX
+			========================= */
+			const exportsObjMatch = /\bexports\s*=\s*{([\s\S]*?)}/g;
+
+			while ((m = exportsObjMatch.exec(code))) {
+				extractObjectKeys(m[1], exportsSet);
+			}
+
+			/* =========================
+			   3. exports.foo = ...
+			========================= */
+			const propRegex = /exports\.(\w+)\s*=/g;
+			while ((m = propRegex.exec(code))) {
+				exportsSet.add(m[1]);
+			}
+
+			/* =========================
+			   4. module.exports.foo = ...
+			========================= */
+			const modPropRegex = /module\.exports\.(\w+)\s*=/g;
+			while ((m = modPropRegex.exec(code))) {
+				exportsSet.add(m[1]);
+			}
+
+			return [...exportsSet];
+		}
+
+		async function fetchModuleExports(moduleName) {
+			if (MODULE_METADATA[moduleName]) return MODULE_METADATA[moduleName];
+
+			try {
+				const res = await $.get(`/api/v2/wikis/${wikiName}/pages/${"Module:" + moduleName}`);
+				const code = res.page.content || "";
+
+				const exports = extractExportsFromCode(code);
+
+				MODULE_METADATA[moduleName] = exports;
+				return exports;
+			} catch (e) {
+				console.error("Failed to fetch module:", moduleName, e);
+				MODULE_METADATA[moduleName] = [];
+				return [];
+			}
+		}
+
+		const JS_KEYWORDS = [
+			"const", "continue", "class", "catch", "case",
+			"break", "function", "return", "if", "else",
+			"for", "while", "switch", "import", "export",
+			"default", "new", "try", "finally", "throw",
+			"let", "var", "async", "await"
+		];
+
+		CodeMirror.registerHelper("hint", "javascript-smart", function (cm) {
+			const cursor = cm.getCursor();
+			const token = cm.getTokenAt(cursor);
+			const line = cm.getLine(cursor.line);
+
+			if (token.type === "string" || token.type === "comment") return null;
+
+			let start = cursor.ch;
+			while (start > 0 && /[\w$]/.test(line.charAt(start - 1))) start--;
+
+			const word = line.slice(start, cursor.ch);
+			const isProperty = line.charAt(start - 1) === ".";
+
+			let candidates = [];
+
+			if (isProperty) {
+				const objName = getObjectAtCursor(cm, { line: cursor.line, ch: start - 1 });
+
+				// 🔥 Handle require("X").something
+				const requireMatch = /require\s*\(\s*["']([^"']+)["']\s*\)$/.exec(objName);
+				if (requireMatch) {
+					const moduleName = requireMatch[1];
+					candidates = MODULE_METADATA[moduleName] || [];
+				}
+				else {
+					candidates = getMembersOf(objName);
+				}
+			}
+			else {
+				const variables = extractVariables(cm);
+
+				candidates = [
+					...JS_KEYWORDS,
+					...variables,
+					...Object.getOwnPropertyNames(window)
+				];
+			}
+
+			// 🔥 Smart ranking
+			const ranked = candidates
+				.map(item => {
+					const text = typeof item === "string" ? item : item.text;
+					let score = 0;
+
+					if (text.startsWith(word)) score = 100;
+					else if (text.includes(word)) score = 50;
+					else {
+						let i = 0;
+						for (let j = 0; j < text.length && i < word.length; j++) {
+							if (text[j] === word[i]) i++;
+						}
+						if (i === word.length) score = 10;
+					}
+
+					return { item, score };
+				})
+				.filter(x => x.score > 0)
+				.sort((a, b) => b.score - a.score)
+				.map(x => x.item);
+
+			return {
+				list: ranked,
+				from: CodeMirror.Pos(cursor.line, start),
+				to: cursor
+			};
+		});
+
+		const MODULE_METADATA = {}; // Cache of what modules export
+
+		CodeMirror.registerHelper("hint", "lgml-javascript", function (cm, callback) {
+			const cursor = cm.getCursor();
+			const token = cm.getTokenAt(cursor);
+			const line = cm.getLine(cursor.line);
+			const lineToCursor = line.slice(0, cursor.ch);
+
+			// 🚫 Block autocomplete inside normal strings (except require)
+			const requireMatch = /require\s*\(\s*["']([\w/:]*)$/.exec(lineToCursor);
+			const isString = token.type && (token.type.includes("string") || token.type.includes("template"));
+			if (isString && !requireMatch) return;
+
+			/* =========================
+			   1. REQUIRE("...") PATH HINTS
+			========================== */
+			if (requireMatch) {
+				const query = requireMatch[1];
+
+				if (!window.__MODULE_LIST_CACHE__) {
+					window.__MODULE_LIST_CACHE__ = $.getJSON(`/api/v2/wiki/${wikiName}/modules`);
+				}
+
+				window.__MODULE_LIST_CACHE__.then(data => {
+					const suggestions = data.modules
+						.map(p => p.title)
+						.filter(t => t !== pageName.replace("Module:", "") && !t.includes("/doc"))
+						.map(title => {
+							let score = 0;
+							if (title.startsWith(query)) score = 100;
+							else if (title.includes(query)) score = 50;
+							else if (smartMatch(title, query)) score = 10;
+							return { title, score };
+						})
+						.filter(x => x.score > 0)
+						.sort((a, b) => b.score - a.score)
+						.map(x => ({
+							text: x.title,
+							displayText: x.title,
+							className: "intellisense-module",
+							render: (el, data, cur) => el.innerHTML = `<span>📦</span> ${cur.displayText}`
+						}));
+
+					callback({
+						list: suggestions,
+						from: CodeMirror.Pos(cursor.line, cursor.ch - query.length),
+						to: cursor
+					});
+				});
+
+				return;
+			}
+
+			/* =========================
+			   2. REQUIRE("X").EXPORTS
+			========================== */
+			const requirePropMatch = /require\s*\(\s*["']([^"']+)["']\s*\)\.(\w*)$/.exec(lineToCursor);
+			if (requirePropMatch) {
+				const moduleName = requirePropMatch[1];
+				const query = requirePropMatch[2] || "";
+
+				fetchModuleExports(moduleName).then(exports => {
+					const suggestions = exports
+						.map(name => {
+							let score = 0;
+							if (name.startsWith(query)) score = 100;
+							else if (name.includes(query)) score = 50;
+							else if (smartMatch(name, query)) score = 10;
+							return { name, score };
+						})
+						.filter(x => x.score > 0)
+						.sort((a, b) => b.score - a.score)
+						.map(x => ({
+							text: x.name,
+							displayText: x.name,
+							className: "intellisense-export",
+							render: (el, data, cur) => el.innerHTML = `<span>📤</span> ${cur.displayText}`
+						}));
+
+					callback({
+						list: suggestions,
+						from: CodeMirror.Pos(cursor.line, cursor.ch - query.length),
+						to: cursor
+					});
+				});
+
+				return;
+			}
+
+			/* =========================
+   3. VARIABLE → MODULE EXPORTS (supports destructuring)
+========================== */
+			const varPropMatch = /(\w+)\.(\w*)$/.exec(lineToCursor);
+			if (varPropMatch) {
+				const varName = varPropMatch[1];
+				const query = varPropMatch[2] || "";
+
+				// Get mappings from editor (variables → module, destructured)
+				const { varMap, destructuredMap } = getBindings(cm);
+
+				// Handle destructured variables
+				const destruct = destructuredMap[varName];
+				if (destruct) {
+					// We found the variable is a destructured export (e.g., 'kek').
+					// We return an empty list here so the logic falls through to 
+					// "4. DEFAULT INTELLISENSE", allowing standard JS methods to show up
+					// instead of suggesting 'kek.kek'.
+					callback({
+						list: [],
+						from: CodeMirror.Pos(cursor.line, cursor.ch - query.length),
+						to: cursor
+					});
+					return;
+				}
+
+				// Handle normal module variables (e.g., 'Utils.foo')
+				const moduleName = varMap[varName];
+				if (moduleName) {
+					fetchModuleExports(moduleName).then(exports => {
+						const suggestions = exports
+							.map(name => {
+								let score = 0;
+								if (name.startsWith(query)) score = 100;
+								else if (name.includes(query)) score = 50;
+								else if (smartMatch(name, query)) score = 10;
+								return { name, score };
+							})
+							.filter(x => x.score > 0)
+							.sort((a, b) => b.score - a.score)
+							.map(x => ({
+								text: x.name,
+								displayText: x.name,
+								className: "intellisense-export",
+								render: (el, data, cur) => el.innerHTML = `<span>📤</span> ${cur.displayText}`
+							}));
+
+						callback({
+							list: suggestions,
+							from: CodeMirror.Pos(cursor.line, cursor.ch - query.length),
+							to: cursor
+						});
+					});
+					return;
+				}
+			}
+
+			/* =========================
+			   4. DEFAULT INTELLISENSE
+			========================== */
+			const base = CodeMirror.hint["javascript-smart"](cm) || { list: [], from: cursor, to: cursor };
+			const word = line.slice(base.from.ch, cursor.ch);
+
+			// 🔥 Detect property access and skip base for module property autocompletes
+			const isProperty = /\.\w*$/.test(lineToCursor);
+			if (isProperty && base.list.length) {
+				callback(base);
+				return;
+			}
+
+			const lgmlKeywords = ["require", "requireData", "module", "exports"];
+			const normalize = item => typeof item === "string" ? { text: item, displayText: item } : item;
+
+			const merged = [
+				...new Map([...base.list, ...lgmlKeywords].map(normalize).map(i => [i.text, i])).values()
+			];
+
+			const ranked = merged
+				.map(item => {
+					const text = item.text.toLowerCase();
+					const w = word.toLowerCase();
+					let score = 0;
+					if (text.startsWith(w)) score = 100;
+					else if (text.includes(w)) score = 50;
+					else if (smartMatch(text, w)) score = 10;
+					return { item, score };
+				})
+				.filter(x => x.score > 0)
+				.sort((a, b) => b.score - a.score)
+				.map(x => x.item);
+
+			callback({ list: ranked, from: base.from, to: base.to });
+		});
+
+		// CRITICAL: Tell CodeMirror this helper uses a callback
+		CodeMirror.hint["lgml-javascript"].async = true;
 
 		// === LGWL Base Mode ===
 		CodeMirror.defineMode("lgwlBase", function (config) {
@@ -229,7 +713,7 @@ $(function () {
 
 					// === require("...") schema ===
 					// Highlight ONLY the word "require"
-					if (stream.match(/\brequire\b/, true)) {
+					if (stream.match(/\b(require|requireData)\b/, true)) {
 						return "keyword";
 					}
 
@@ -243,17 +727,24 @@ $(function () {
 			const jsMode = CodeMirror.getMode(config, "javascript");
 			const overlay = CodeMirror.getMode(config, "lgml-js-overlay");
 
-			return CodeMirror.overlayMode(jsMode, overlay);
+			const mode = CodeMirror.overlayMode(jsMode, overlay);
+
+			mode.name = "javascript"; // 🔥 prevent XML fallback
+
+			return mode;
 		});
 
 		// === Determine proper editor mode ===
 		let editorMode = "LGWL";
 
-		// Detect Module namespace but skip documentation subpages
 		if (pageName.startsWith("Module:") && !pageName.includes("/doc")) {
 			editorMode = "lgml-javascript";
-		} else if (pageName.endsWith(".css")) {
+		}
+		else if (pageName.endsWith(".css")) {
 			editorMode = "css";
+		}
+		else if (pageName.endsWith(".js")) {
+			editorMode = "javascript";
 		}
 
 		// === Editor Initialization ===
@@ -277,6 +768,21 @@ $(function () {
 					} catch (e) {
 						console.warn("Autosave failed:", e);
 					}
+				},
+				"Ctrl-Space": function (cm) {
+					let hint = CodeMirror.hint.anyword;
+
+					if (editorMode === "lgml-javascript") {
+						hint = CodeMirror.hint["lgml-javascript"];
+					}
+					else if (editorMode === "javascript") {
+						hint = CodeMirror.hint["javascript-smart"]; // 🔥 use strict version
+					}
+					else if (editorMode === "css") {
+						hint = CodeMirror.hint.css;
+					}
+
+					cm.showHint({ hint, useGlobalScope: false, completeSingle: false });
 				}
 			}
 		});
@@ -391,6 +897,34 @@ $(function () {
 				});
 			}
 		}
+
+		// === Autocomplete ===
+		editor.on("inputRead", function (cm, change) {
+			const cursor = cm.getCursor();
+			const line = cm.getLine(cursor.line);
+			const lineToCursor = line.slice(0, cursor.ch);
+
+			// 1. Check what was just typed
+			const typed = change.text[0];
+
+			// 2. Define our conditions
+			const isTriggerChar = /[\w.$]/.test(typed);
+			const isQuote = /["']/.test(typed);
+			const isInsideRequire = /require\s*\(\s*["']$/.test(lineToCursor);
+
+			// 3. Only trigger if it's a normal word OR a quote inside a require()
+			if (!cm.state.completionActive && (isTriggerChar || (isQuote && isInsideRequire))) {
+				let hintFn = editorMode === "lgml-javascript"
+					? CodeMirror.hint["lgml-javascript"]
+					: CodeMirror.hint["javascript-smart"];
+
+				cm.showHint({
+					hint: hintFn,
+					completeSingle: false,
+					async: hintFn.async
+				});
+			}
+		});
 
 		// === Make template and module marks clickable ===
 		editor.on('mousedown', function (cm, event) {
