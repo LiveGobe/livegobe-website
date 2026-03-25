@@ -49,7 +49,6 @@ $(function () {
 			":": ":"
 		};
 
-		// Add this helper function to find the object before the dot
 		function getObjectAtCursor(cm, cursor) {
 			const line = cm.getLine(cursor.line);
 			let end = cursor.ch;
@@ -102,33 +101,82 @@ $(function () {
 
 		function extractVariables(cm) {
 			const code = cm.getValue();
-			const vars = new Set();
+			const varMetadata = new Map();
 
-			// Updated regex to capture the entire declaration LHS
-			const regex = /\b(const|let|var|function)\s+([\w$]+|\{[\s\S]+?\})\s*=/g;
+			// Regex to capture the declaration and the RHS
+			const regex = /\b(const|let|var|function)\s+([\w$]+|\{[\s\S]+?\})\s*=?\s*([^;]*)/g;
 			let match;
 
+			const infer = (val) => {
+				let v = (val || "").trim();
+				if (!v) return { type: "object", isAsync: false };
+
+				const isAsyncSource =
+					v.includes("require") ||
+					v.includes("requireData") ||
+					v.startsWith("await ");
+
+				v = v.replace(/^(await|async)\s+/, "").trim();
+
+				let detectedType = "object";
+
+				// 🔥 literals
+				for (const rule of INFERENCE_RULES.literals) {
+					if (rule.test(v)) {
+						detectedType = rule.type;
+						break;
+					}
+				}
+
+				// 🔥 globals
+				for (const rule of INFERENCE_RULES.globals) {
+					if (rule.test(v)) {
+						detectedType = rule.type;
+						break;
+					}
+				}
+
+				return { type: detectedType, isAsync: isAsyncSource };
+			};
+
 			while ((match = regex.exec(code))) {
+				const typeKeyword = match[1]; // const, let, var, or function
 				const lhs = match[2].trim();
+				const rhs = (match[3] || "").trim();
 
 				if (lhs.startsWith("{")) {
-					// It's a destructuring assignment
+					// --- DESTRUCTURING CASE ---
+					const rhsMeta = infer(rhs);
 					const inside = lhs.slice(1, -1);
+
 					inside.split(",").forEach(part => {
-						// Handle "orig: alias" or just "name"
+						// Handle "originalName: aliasName" or just "name"
 						const pieces = part.split(":");
-						const name = (pieces.length > 1 ? pieces[1] : pieces[0]).trim();
-						// Filter out non-word characters (like trailing commas/whitespace)
-						const cleanName = name.match(/[a-zA-Z_$][\w$]*/);
-						if (cleanName) vars.add(cleanName[0]);
+						const namePart = (pieces.length > 1 ? pieces[1] : pieces[0]).trim();
+
+						// Clean up the variable name (remove whitespace/newlines)
+						const cleanNameMatch = namePart.match(/[a-zA-Z_$][\w$]*/);
+
+						if (cleanNameMatch) {
+							const cleanName = cleanNameMatch[0];
+							// Inherit the async/type status from the RHS
+							varMetadata.set(cleanName, {
+								type: "object",
+								isAsync: rhsMeta.isAsync
+							});
+						}
 					});
 				} else {
-					// Normal variable or function name
-					vars.add(lhs);
+					// --- NORMAL VARIABLE CASE ---
+					if (typeKeyword === "function") {
+						varMetadata.set(lhs, { type: "object", isAsync: false });
+					} else {
+						varMetadata.set(lhs, infer(rhs));
+					}
 				}
 			}
 
-			return [...vars];
+			return varMetadata;
 		}
 
 		function smartMatch(item, word) {
@@ -153,15 +201,21 @@ $(function () {
 				const part = p.trim();
 				if (!part) return;
 
-				// handle:
-				// foo
-				// foo: ...
-				// "foo": ...
-				// 'foo': ...
-				const match = /^["']?(\w+)["']?\s*:?\s*/.exec(part);
-				if (match) {
-					set.add(match[1]);
-				}
+				// Match: key: value OR key
+				const match = /^["']?(\w+)["']?\s*(?::\s*(.+))?$/.exec(part);
+				if (!match) return;
+
+				const key = match[1];
+				const value = match[2] || "";
+
+				const isAsync = /\basync\b/.test(value);
+				const isFunction = /\bfunction\b|\=\>/.test(value) || isAsync;
+
+				set.add({
+					name: key,
+					isAsync,
+					isFunction
+				});
 			});
 		}
 
@@ -215,45 +269,59 @@ $(function () {
 			return result;
 		}
 
+		function extractObjectBodies(code, keywordRegex) {
+			const bodies = [];
+			let match;
+
+			while ((match = keywordRegex.exec(code))) {
+				let i = match.index + match[0].length;
+				let depth = 1;
+				let start = i;
+
+				while (i < code.length && depth > 0) {
+					if (code[i] === '{') depth++;
+					else if (code[i] === '}') depth--;
+					i++;
+				}
+
+				const body = code.slice(start, i - 1);
+				bodies.push(body);
+			}
+
+			return bodies;
+		}
+
 		function extractExportsFromCode(code) {
-			const exportsSet = new Set();
+			const exportsMap = new Map();
 
-			/* =========================
-			   1. module.exports = { ... }
-			========================= */
-			const moduleObjMatch = /module\.exports\s*=\s*{([\s\S]*?)}/g;
-			let m;
+			const bodies = [
+				...extractObjectBodies(code, /module\.exports\s*=\s*{/g),
+				...extractObjectBodies(code, /\bexports\s*=\s*{/g)
+			];
 
-			while ((m = moduleObjMatch.exec(code))) {
-				extractObjectKeys(m[1], exportsSet);
+			bodies.forEach(body => {
+				const tempSet = new Set();
+				extractObjectKeys(body, tempSet);
+
+				tempSet.forEach(entry => {
+					exportsMap.set(entry.name, entry);
+				});
+			});
+
+			// Property Assignment: exports.foo = ...
+			const propRegex = /(?:module\.)?exports\.(\w+)\s*=\s*(async\s+)?/g;
+			let pm;
+			while ((pm = propRegex.exec(code))) {
+				const name = pm[1];
+				const isAsync = !!pm[2];
+				// For simple property assignments, we check the immediate right-hand side
+				const remainingLine = code.slice(pm.index).split('\n')[0];
+				const isFunction = isAsync || /\=\s*(function|\(|\w+\s*=>)/.test(remainingLine);
+
+				exportsMap.set(name, { name, isAsync, isFunction });
 			}
 
-			/* =========================
-			   2. exports = { ... }  🔥 FIX
-			========================= */
-			const exportsObjMatch = /\bexports\s*=\s*{([\s\S]*?)}/g;
-
-			while ((m = exportsObjMatch.exec(code))) {
-				extractObjectKeys(m[1], exportsSet);
-			}
-
-			/* =========================
-			   3. exports.foo = ...
-			========================= */
-			const propRegex = /exports\.(\w+)\s*=/g;
-			while ((m = propRegex.exec(code))) {
-				exportsSet.add(m[1]);
-			}
-
-			/* =========================
-			   4. module.exports.foo = ...
-			========================= */
-			const modPropRegex = /module\.exports\.(\w+)\s*=/g;
-			while ((m = modPropRegex.exec(code))) {
-				exportsSet.add(m[1]);
-			}
-
-			return [...exportsSet];
+			return Array.from(exportsMap.values());
 		}
 
 		async function fetchModuleExports(moduleName) {
@@ -264,7 +332,7 @@ $(function () {
 				const code = res.page.content || "";
 
 				const exports = extractExportsFromCode(code);
-
+				console.log("Exports Found:\n", exports);
 				MODULE_METADATA[moduleName] = exports;
 				return exports;
 			} catch (e) {
@@ -300,40 +368,47 @@ $(function () {
 			if (isProperty) {
 				const objName = getObjectAtCursor(cm, { line: cursor.line, ch: start - 1 });
 
-				// 🔥 Handle require("X").something
 				const requireMatch = /require\s*\(\s*["']([^"']+)["']\s*\)$/.exec(objName);
 				if (requireMatch) {
 					const moduleName = requireMatch[1];
 					candidates = MODULE_METADATA[moduleName] || [];
-				}
-				else {
+				} else {
 					candidates = getMembersOf(objName);
 				}
-			}
-			else {
-				const variables = extractVariables(cm);
+			} else {
+				const variableMap = extractVariables(cm);
+
+				// 🔥 FIX: Extract only the keys (names) from the Map for the global list
+				const variableNames = Array.from(variableMap.keys());
 
 				candidates = [
 					...JS_KEYWORDS,
-					...variables,
+					...variableNames,
 					...Object.getOwnPropertyNames(window)
 				];
 			}
 
-			// 🔥 Smart ranking
+			// 🔥 Smart ranking with Null Safety
 			const ranked = candidates
 				.map(item => {
-					const text = typeof item === "string" ? item : item.text;
-					let score = 0;
+					// Ensure we handle objects (from module metadata) or strings (from window/keywords)
+					const text = (typeof item === "string" ? item : (item && item.text ? item.text : ""));
 
-					if (text.startsWith(word)) score = 100;
-					else if (text.includes(word)) score = 50;
+					// 🔥 FIX: If text is undefined or empty, skip it to avoid .startsWith error
+					if (!text) return { item, score: 0 };
+
+					let score = 0;
+					const lowerText = text.toLowerCase();
+					const lowerWord = word.toLowerCase();
+
+					if (lowerText.startsWith(lowerWord)) score = 100;
+					else if (lowerText.includes(lowerWord)) score = 50;
 					else {
 						let i = 0;
-						for (let j = 0; j < text.length && i < word.length; j++) {
-							if (text[j] === word[i]) i++;
+						for (let j = 0; j < lowerText.length && i < lowerWord.length; j++) {
+							if (lowerText[j] === lowerWord[i]) i++;
 						}
-						if (i === word.length) score = 10;
+						if (i === lowerWord.length) score = 10;
 					}
 
 					return { item, score };
@@ -349,6 +424,232 @@ $(function () {
 			};
 		});
 
+		const INFERENCE_RULES = {
+			literals: [
+				{ test: v => v.startsWith("[") || v.includes("Array("), type: "array" },
+				{ test: v => /^['"`]/.test(v), type: "string" },
+				{ test: v => v === "true" || v === "false", type: "boolean" },
+				{ test: v => /^\d/.test(v), type: "number" }
+			],
+
+			methods: {
+				array: {
+					map: "array",
+					filter: "array",
+					slice: "array",
+					concat: "array",
+					sort: "array",
+					reverse: "array",
+					splice: "array",
+					pop: "any",
+					shift: "any",
+					find: "any",
+					every: "boolean",
+					some: "boolean",
+					includes: "boolean",
+					join: "string",
+					toString: "string"
+				},
+
+				string: {
+					split: "array",        // 🔥 important
+					trim: "string",
+					toUpperCase: "string",
+					toLowerCase: "string",
+					replace: "string",
+					substring: "string",
+					includes: "boolean",
+					startsWith: "boolean",
+					endsWith: "boolean",
+					match: "array",
+					toString: "string"
+				},
+
+				number: {
+					toFixed: "string",
+					toPrecision: "string",
+					toString: "string"
+				},
+
+				boolean: {}
+			},
+
+			// ✅ NEW: property inference
+			properties: {
+				array: {
+					length: "number"
+				},
+				string: {
+					length: "number"
+				},
+				object: {
+					length: "number" // fallback (for jQuery etc.)
+				}
+			},
+
+			// 🔥 Your wiki-specific logic (kept, slightly improved)
+			globals: [
+				{ test: v => v.includes("requireData("), type: "object" },
+				{ test: v => v.includes("require("), type: "object" },
+				{ test: v => v === "frame", type: "object" },
+				{ test: v => v === "module", type: "object" },
+				{ test: v => v === "exports", type: "object" },
+				{ test: v => v.startsWith("$"), type: "array" } // jQuery-like
+			]
+		};
+
+		/* =========================
+			FULL CHAIN WALKER
+		========================= */
+
+		function splitChain(rhs) {
+			let parts = [];
+			let current = "";
+			let depth = 0;
+
+			for (let i = 0; i < rhs.length; i++) {
+				const ch = rhs[i];
+
+				// 🔥 Track BOTH () and []
+				if (ch === '(' || ch === '[') depth++;
+				else if (ch === ')' || ch === ']') depth--;
+
+				if (ch === '.' && depth === 0) {
+					parts.push(current.trim());
+					current = "";
+				} else {
+					current += ch;
+				}
+			}
+
+			if (current.trim()) parts.push(current.trim());
+
+			// 🔥 Normalize (fix trailing dots like "length.")
+			return parts.map(p => p.replace(/\.$/, "").trim());
+		}
+
+		function parseSegment(segment) {
+			const methodMatch = /^(\w+)\s*\((.*)\)$/.exec(segment);
+
+			if (methodMatch) {
+				return {
+					type: "method",
+					name: methodMatch[1],
+					args: methodMatch[2]
+				};
+			}
+
+			return {
+				type: "property",
+				name: segment
+			};
+		}
+
+
+		/* =========================
+		   BASE TYPE INFERENCE
+		========================= */
+
+		function inferBaseType(rhs, varMetadata) {
+			// 1. literals
+			for (const rule of INFERENCE_RULES.literals) {
+				if (rule.test(rhs)) return rule.type;
+			}
+
+			// 2. globals
+			for (const rule of INFERENCE_RULES.globals) {
+				if (rule.test(rhs)) return rule.type;
+			}
+
+			// 3. variable reference
+			const varMatch = /^([\w$]+)/.exec(rhs);
+			if (varMatch && varMetadata.has(varMatch[1])) {
+				return varMetadata.get(varMatch[1]).type || "object";
+			}
+
+			return "object";
+		}
+
+
+		/* =========================
+		   FULL WALKER
+		========================= */
+
+		function inferFromFullChain(rhs, varMetadata) {
+			const parts = splitChain(rhs);
+			if (!parts.length) return "object";
+
+			// 🔥 Step 1: resolve base
+			let currentType = inferBaseType(parts[0], varMetadata);
+
+			// 🔥 Step 2: walk chain
+			for (let i = 1; i < parts.length; i++) {
+				const parsed = parseSegment(parts[i]);
+
+				if (parsed.type === "method") {
+					const methodMap = INFERENCE_RULES.methods[currentType] || {};
+
+					if (parsed.name in methodMap) {
+						currentType = methodMap[parsed.name];
+					}
+				}
+				else if (parsed.type === "property") {
+					const propMap = INFERENCE_RULES.properties[currentType] || {};
+
+					if (parsed.name in propMap) {
+						currentType = propMap[parsed.name];
+					}
+				}
+			}
+
+			return currentType;
+		}
+
+		function getChainBeforeCursor(lineToCursor) {
+			let i = lineToCursor.length - 1;
+			let depth = 0;
+			let inString = false;
+			let stringChar = null;
+
+			while (i >= 0 && /\s/.test(lineToCursor[i])) i--;
+
+			let end = i + 1;
+
+			while (i >= 0) {
+				const ch = lineToCursor[i];
+
+				// 🔥 string handling
+				if (inString) {
+					if (ch === stringChar) {
+						inString = false;
+						stringChar = null;
+					}
+					i--;
+					continue;
+				}
+
+				if (ch === '"' || ch === "'" || ch === "`") {
+					inString = true;
+					stringChar = ch;
+					i--;
+					continue;
+				}
+
+				// 🔥 depth tracking
+				if (ch === ')' || ch === ']') depth++;
+				else if (ch === '(' || ch === '[') depth--;
+
+				// 🔥 FIXED CONDITION (allow "(")
+				if (depth === 0 && !/[\w$.\[\]\(\)]/.test(ch)) {
+					break;
+				}
+
+				i--;
+			}
+
+			return lineToCursor.slice(i + 1, end).trim() || null;
+		}
+
 		const MODULE_METADATA = {}; // Cache of what modules export
 
 		CodeMirror.registerHelper("hint", "lgml-javascript", function (cm, callback) {
@@ -357,17 +658,23 @@ $(function () {
 			const line = cm.getLine(cursor.line);
 			const lineToCursor = line.slice(0, cursor.ch);
 
-			// 🚫 Block autocomplete inside normal strings (except require)
-			const requireMatch = /require\s*\(\s*["']([\w/:]*)$/.exec(lineToCursor);
+			// 1. Detect if we are accessing a property (e.g., "". or myVar.)
+			const isProperty = /\.\w*$/.test(lineToCursor);
+
+			// 2. Updated String Guard: 
+			// Allow if it's a require path OR if we just typed a dot (property access)
 			const isString = token.type && (token.type.includes("string") || token.type.includes("template"));
-			if (isString && !requireMatch) return;
+			const requireMatch = /require\s*\(\s*["']([\w/:]*)$/.exec(lineToCursor);
+
+			// 🔥 FIX: Added !isProperty to the guard so "". triggers the hinter
+			if (isString && !requireMatch && !isProperty) return;
 
 			/* =========================
 			   1. REQUIRE("...") PATH HINTS
 			========================== */
 			if (requireMatch) {
+				console.log("Found a Require Module Help");
 				const query = requireMatch[1];
-
 				if (!window.__MODULE_LIST_CACHE__) {
 					window.__MODULE_LIST_CACHE__ = $.getJSON(`/api/v2/wiki/${wikiName}/modules`);
 				}
@@ -376,13 +683,10 @@ $(function () {
 					const suggestions = data.modules
 						.map(p => p.title)
 						.filter(t => t !== pageName.replace("Module:", "") && !t.includes("/doc"))
-						.map(title => {
-							let score = 0;
-							if (title.startsWith(query)) score = 100;
-							else if (title.includes(query)) score = 50;
-							else if (smartMatch(title, query)) score = 10;
-							return { title, score };
-						})
+						.map(title => ({
+							title,
+							score: title.startsWith(query) ? 100 : (title.includes(query) ? 50 : (smartMatch(title, query) ? 10 : 0))
+						}))
 						.filter(x => x.score > 0)
 						.sort((a, b) => b.score - a.score)
 						.map(x => ({
@@ -392,14 +696,78 @@ $(function () {
 							render: (el, data, cur) => el.innerHTML = `<span>📦</span> ${cur.displayText}`
 						}));
 
-					callback({
-						list: suggestions,
-						from: CodeMirror.Pos(cursor.line, cursor.ch - query.length),
-						to: cursor
-					});
+					callback({ list: suggestions, from: CodeMirror.Pos(cursor.line, cursor.ch - query.length), to: cursor });
 				});
-
 				return;
+			}
+
+			/* =========================
+				1.5 DESTRUCTURING HINTS: const { foo, | } = require("module")
+			========================== */
+			const destructureMatch = /(?:const|let|var)\s+\{([\s\S]*?)\}\s*=\s*(?:await\s+)?require\(\s*["']([^"']+)["']\s*\)/.exec(line);
+			if (destructureMatch) {
+				console.log("Found destructuring");
+				const moduleName = destructureMatch[2];
+				const fullBraceContent = destructureMatch[1]; // e.g. " foo, bar: baz "
+
+				// Check if cursor is actually between the braces
+				const openBracePos = lineToCursor.lastIndexOf('{');
+				const closeBracePos = lineToCursor.lastIndexOf('}');
+
+				if (openBracePos > closeBracePos) {
+					// 1. Find already imported keys to HIDE them
+					const existingKeys = new Set();
+					fullBraceContent.split(',').forEach(part => {
+						const key = part.split(':')[0].trim(); // Get 'foo' from 'foo: alias'
+						if (key) existingKeys.add(key);
+					});
+
+					// 2. Determine what the user is currently typing
+					const currentParts = lineToCursor.slice(openBracePos + 1).split(",");
+					const lastPart = currentParts[currentParts.length - 1].trim();
+					const query = lastPart.split(":").shift().trim(); // Match the original key name
+
+					fetchModuleExports(moduleName).then(exports => {
+						// 1. Normalize everything into a metadata object format
+						const normalizedModule = exports.map(e => ({ name: e.name, isAsync: e.isAsync, type: 'module' }));
+
+						const combined = [...normalizedModule];
+
+						const suggestions = combined
+							.map(item => {
+								const n = item.name;
+
+								// ❌ Skip already destructured keys
+								if (existingKeys.has(n)) return null;
+
+								let score = n.startsWith(query)
+									? 100
+									: (n.includes(query)
+										? 50
+										: (smartMatch(n, query) ? 10 : 0));
+
+								if (item.type === 'module') score += 5;
+
+								return { ...item, score };
+							})
+							.filter(x => x && x.score > 0)
+							.sort((a, b) => b.score - a.score)
+							.map(x => ({
+								text: x.name,
+								displayText: x.name,
+								isAsync: x.isAsync,
+								className: x.type === 'module' ? "intellisense-export" : "intellisense-proto",
+								render: (el, data, cur) => {
+									const icon = x.isAsync ? "⏳" : (x.type === 'module' ? "📤" : "⚙️");
+									const asyncLabel = x.isAsync ? ' <small style="color: #e67e22;">(async)</small>' : '';
+									el.innerHTML = `<span>${icon}</span> ${cur.displayText}${asyncLabel}`;
+								}
+							}));
+
+						callback({ list: suggestions, from: CodeMirror.Pos(cursor.line, cursor.ch - query.length), to: cursor });
+					});
+					return;
+				}
 			}
 
 			/* =========================
@@ -407,18 +775,16 @@ $(function () {
 			========================== */
 			const requirePropMatch = /require\s*\(\s*["']([^"']+)["']\s*\)\.(\w*)$/.exec(lineToCursor);
 			if (requirePropMatch) {
+				console.log("Found Exports for Require");
 				const moduleName = requirePropMatch[1];
 				const query = requirePropMatch[2] || "";
 
 				fetchModuleExports(moduleName).then(exports => {
 					const suggestions = exports
-						.map(name => {
-							let score = 0;
-							if (name.startsWith(query)) score = 100;
-							else if (name.includes(query)) score = 50;
-							else if (smartMatch(name, query)) score = 10;
-							return { name, score };
-						})
+						.map(item => ({
+							name: item.name,
+							score: item.name.startsWith(query) ? 100 : (item.name.includes(query) ? 50 : (smartMatch(item.name, query) ? 10 : 0))
+						}))
 						.filter(x => x.score > 0)
 						.sort((a, b) => b.score - a.score)
 						.map(x => ({
@@ -428,106 +794,211 @@ $(function () {
 							render: (el, data, cur) => el.innerHTML = `<span>📤</span> ${cur.displayText}`
 						}));
 
-					callback({
-						list: suggestions,
-						from: CodeMirror.Pos(cursor.line, cursor.ch - query.length),
-						to: cursor
+					callback({ list: suggestions, from: CodeMirror.Pos(cursor.line, cursor.ch - query.length), to: cursor });
+				});
+				return;
+			}
+
+			/* =========================
+			   3. VARIABLE → MODULE EXPORTS
+			========================== */
+			const varPropMatch = /(\w+)\.(\w*)$/.exec(lineToCursor);
+			if (varPropMatch) {
+				console.log("Found Exports in a Variable")
+				const varName = varPropMatch[1];
+				const query = varPropMatch[2] || "";
+				const { varMap, destructuredMap } = getBindings(cm);
+
+				// If it's a known module variable (e.g., Utils.something)
+				const moduleName = varMap[varName];
+				if (moduleName && !destructuredMap[varName]) {
+					fetchModuleExports(moduleName).then(exports => {
+						// Combine module exports with standard Prototype methods (toString, etc.)
+						const standardProps = Object.getOwnPropertyNames(Object.prototype);
+						const combined = [...new Set([...exports, ...standardProps])];
+
+						const suggestions = combined.map(item => {
+							// If it's a string (from Prototypes), convert to our object format
+							const meta = typeof item === 'string' ? { name: item, isAsync: false } : item;
+							const isModuleExport = exports.some(e => e.name === meta.name);
+
+							return {
+								text: meta.name,
+								displayText: meta.name,
+								isAsync: meta.isAsync, // Pass this along for the renderer
+								className: isModuleExport ? "intellisense-export" : "intellisense-proto",
+								render: (el, data, cur) => {
+									const icon = cur.isAsync ? "⏳" : (isModuleExport ? "📤" : "⚙️");
+									const asyncLabel = cur.isAsync ? ' <small style="color: #e67e22; font-size: 0.8em;">(async)</small>' : '';
+									el.innerHTML = `<span>${icon}</span> <b>${cur.displayText}</b>${asyncLabel}`;
+								},
+								hint: (cm, data, completion) => {
+									const { from, to } = data;
+									let suffix = "";
+
+									// If it's a function, add parentheses
+									if (meta.isFunction) {
+										suffix = "()";
+									}
+
+									cm.replaceRange(completion.text + suffix, from, to);
+
+									// Move cursor inside the parentheses if it's a function
+									if (meta.isFunction) {
+										const cursor = cm.getCursor();
+										cm.setCursor(cursor.line, cursor.ch - 1);
+									}
+								}
+							};
+						});
+
+						callback({ list: suggestions, from: CodeMirror.Pos(cursor.line, cursor.ch - query.length), to: cursor });
 					});
+					return;
+				}
+			}
+
+			/* =========================
+				4. DEFAULT INTELLISENSE & FALLBACK
+			========================== */
+			let base = CodeMirror.hint["javascript-smart"](cm) || { list: [], from: cursor, to: cursor };
+
+			// 1. Get our Metadata Map once for use in both sections
+			const varMetadata = extractVariables(cm);
+
+			// 🔥 TYPE INFERENCE + CHAIN AUTOCOMPLETE
+			if (isProperty && (!base.list || base.list.length === 0)) {
+				console.log("Found Type Inference");
+
+				const lineToCursor = line.slice(0, cursor.ch);
+
+				// 🔥 Extract query (what user is typing after dot)
+				const queryMatch = /\.([\w$]*)$/.exec(lineToCursor);
+				const query = queryMatch ? queryMatch[1] : "";
+
+				// 🔥 Remove trailing dot BEFORE chain extraction
+				let safeLine = lineToCursor;
+				if (safeLine.endsWith(".")) {
+					safeLine = safeLine.slice(0, -1);
+				}
+
+				let chainExpr = getChainBeforeCursor(safeLine);
+
+				let inferredType = "object";
+
+				if (chainExpr) {
+					inferredType = inferFromFullChain(chainExpr, varMetadata);
+				} else {
+					const token = cm.getTokenAt(CodeMirror.Pos(cursor.line, cursor.ch - 1));
+
+					if (token.type?.includes("string")) inferredType = "string";
+					else if (token.type?.includes("number")) inferredType = "number";
+					else if (token.string === "]" || token.type?.includes("bracket")) inferredType = "array";
+					else if (token.string === "true" || token.string === "false") inferredType = "boolean";
+				}
+
+				// 🔥 Safety: never allow non-string types (like functions)
+				if (typeof inferredType !== "string") {
+					inferredType = "object";
+				}
+
+				console.log("Chain Expr:", chainExpr);
+				console.log("Inferred Type:", inferredType);
+				console.log("Query:", query);
+
+				// 🔥 Build suggestions from rules (NOT prototypes)
+				const methods = INFERENCE_RULES.methods[inferredType] || {};
+				const props = INFERENCE_RULES.properties[inferredType] || {};
+
+				let suggestions = [
+					...Object.keys(methods).map(name => ({
+						name,
+						type: "method"
+					})),
+					...Object.keys(props).map(name => ({
+						name,
+						type: "property"
+					}))
+				];
+
+				// 🔥 Filter by query
+				suggestions = suggestions.filter(item => {
+					if (!query) return true;
+					return item.name.startsWith(query);
+				});
+
+				// 🔥 Sort (better UX)
+				suggestions.sort((a, b) => {
+					const aStarts = a.name.startsWith(query);
+					const bStarts = b.name.startsWith(query);
+
+					if (aStarts && !bStarts) return -1;
+					if (!aStarts && bStarts) return 1;
+
+					return a.name.localeCompare(b.name);
+				});
+
+				// 🔥 Convert to CodeMirror format
+				base.list = suggestions.map(item => ({
+					text: item.type === "method" ? item.name + "()" : item.name,
+					displayText: item.name,
+					className: "intellisense-proto",
+					render: (el, data, cur) => {
+						const icon = item.type === "method" ? "ƒ" : "🔑";
+						el.innerHTML = `<span style="opacity:0.6;margin-right:5px;">${icon}</span>${cur.displayText}`;
+					}
+				}));
+
+				// 🔥 Replace ONLY the typed part
+				const from = CodeMirror.Pos(cursor.line, cursor.ch - query.length);
+
+				callback({
+					list: base.list,
+					from,
+					to: cursor
 				});
 
 				return;
 			}
 
-			/* =========================
-   3. VARIABLE → MODULE EXPORTS (supports destructuring)
-========================== */
-			const varPropMatch = /(\w+)\.(\w*)$/.exec(lineToCursor);
-			if (varPropMatch) {
-				const varName = varPropMatch[1];
-				const query = varPropMatch[2] || "";
-
-				// Get mappings from editor (variables → module, destructured)
-				const { varMap, destructuredMap } = getBindings(cm);
-
-				// Handle destructured variables
-				const destruct = destructuredMap[varName];
-				if (destruct) {
-					// We found the variable is a destructured export (e.g., 'kek').
-					// We return an empty list here so the logic falls through to 
-					// "4. DEFAULT INTELLISENSE", allowing standard JS methods to show up
-					// instead of suggesting 'kek.kek'.
-					callback({
-						list: [],
-						from: CodeMirror.Pos(cursor.line, cursor.ch - query.length),
-						to: cursor
-					});
-					return;
-				}
-
-				// Handle normal module variables (e.g., 'Utils.foo')
-				const moduleName = varMap[varName];
-				if (moduleName) {
-					fetchModuleExports(moduleName).then(exports => {
-						const suggestions = exports
-							.map(name => {
-								let score = 0;
-								if (name.startsWith(query)) score = 100;
-								else if (name.includes(query)) score = 50;
-								else if (smartMatch(name, query)) score = 10;
-								return { name, score };
-							})
-							.filter(x => x.score > 0)
-							.sort((a, b) => b.score - a.score)
-							.map(x => ({
-								text: x.name,
-								displayText: x.name,
-								className: "intellisense-export",
-								render: (el, data, cur) => el.innerHTML = `<span>📤</span> ${cur.displayText}`
-							}));
-
-						callback({
-							list: suggestions,
-							from: CodeMirror.Pos(cursor.line, cursor.ch - query.length),
-							to: cursor
-						});
-					});
-					return;
-				}
-			}
-
-			/* =========================
-			   4. DEFAULT INTELLISENSE
-			========================== */
-			const base = CodeMirror.hint["javascript-smart"](cm) || { list: [], from: cursor, to: cursor };
-			const word = line.slice(base.from.ch, cursor.ch);
-
-			// 🔥 Detect property access and skip base for module property autocompletes
-			const isProperty = /\.\w*$/.test(lineToCursor);
-			if (isProperty && base.list.length) {
+			if (isProperty) {
 				callback(base);
 				return;
 			}
 
-			const lgmlKeywords = ["require", "requireData", "module", "exports"];
+			// --- GLOBAL SCOPE LOGIC ---
+			const word = line.slice(base.from.ch, cursor.ch);
+			const lgmlKeywords = ["require", "requireData", "module", "exports", "frame"];
 			const normalize = item => typeof item === "string" ? { text: item, displayText: item } : item;
 
 			const merged = [
 				...new Map([...base.list, ...lgmlKeywords].map(normalize).map(i => [i.text, i])).values()
 			];
-
+			console.log("Fallback to Globals")
 			const ranked = merged
 				.map(item => {
 					const text = item.text.toLowerCase();
 					const w = word.toLowerCase();
-					let score = 0;
-					if (text.startsWith(w)) score = 100;
-					else if (text.includes(w)) score = 50;
-					else if (smartMatch(text, w)) score = 10;
+					let score = text.startsWith(w) ? 100 : (text.includes(w) ? 50 : (smartMatch(text, w) ? 10 : 0));
 					return { item, score };
 				})
 				.filter(x => x.score > 0)
 				.sort((a, b) => b.score - a.score)
-				.map(x => x.item);
+				.map(x => ({
+					text: x.item.text,
+					displayText: x.item.displayText,
+					render: (el, data, cur) => {
+						// 🔥 ASYNC ICON LOGIC:
+						const meta = varMetadata.get(cur.text);
+						let icon = "🌐";
+
+						if (lgmlKeywords.includes(cur.text)) icon = "🔑";
+						else if (meta && meta.isAsync) icon = "⏳"; // Visual feedback for async require
+						else if (meta) icon = "📤"; // Standard variable
+
+						el.innerHTML = `<span style="opacity:0.5; margin-right: 5px;">${icon}</span> ${cur.displayText}`;
+					}
+				}));
 
 			callback({ list: ranked, from: base.from, to: base.to });
 		});
@@ -901,6 +1372,8 @@ $(function () {
 		// === Autocomplete ===
 		editor.on("inputRead", function (cm, change) {
 			const cursor = cm.getCursor();
+			const token = cm.getTokenAt(cursor);
+			const isInString = token.type?.includes("string");
 			const line = cm.getLine(cursor.line);
 			const lineToCursor = line.slice(0, cursor.ch);
 
@@ -913,7 +1386,13 @@ $(function () {
 			const isInsideRequire = /require\s*\(\s*["']$/.test(lineToCursor);
 
 			// 3. Only trigger if it's a normal word OR a quote inside a require()
-			if (!cm.state.completionActive && (isTriggerChar || (isQuote && isInsideRequire))) {
+			if (
+				!cm.state.completionActive &&
+				(
+					(!isInString && isTriggerChar) ||   // 🔥 block triggers inside strings
+					(isQuote && isInsideRequire)
+				)
+			) {
 				let hintFn = editorMode === "lgml-javascript"
 					? CodeMirror.hint["lgml-javascript"]
 					: CodeMirror.hint["javascript-smart"];
