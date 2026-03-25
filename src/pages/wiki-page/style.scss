@@ -1566,13 +1566,14 @@ body {
    ============================================================ */
 
 .cm-template-link {
-	color: #50fa7b;              /* green */
-	text-decoration: underline;
-	cursor: pointer;
+  color: #50fa7b;
+  /* green */
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .cm-template-link:hover {
-	text-decoration-thickness: 2px;
+  text-decoration-thickness: 2px;
 }
 
 
@@ -1581,24 +1582,26 @@ body {
    ============================================================ */
 
 .cm-module-link {
-	color: #8be9fd;              /* cyan */
-	text-decoration: underline;
-	cursor: pointer;
+  color: #8be9fd;
+  /* cyan */
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .cm-module-link:hover {
-	text-decoration-thickness: 2px;
+  text-decoration-thickness: 2px;
 }
 
 /* Implicit Module:Foo ( require("Foo") ) */
 .cm-module-implicit {
-	text-decoration-style: dotted;
+  text-decoration-style: dotted;
 }
 
 /* Missing / unresolved module */
 .cm-module-missing {
-	color: #ff5555;              /* red */
-	text-decoration-style: wavy;
+  color: #ff5555;
+  /* red */
+  text-decoration-style: wavy;
 }
 
 
@@ -1608,23 +1611,23 @@ body {
 
 /* export, exports, module.exports */
 .cm-lgml-export {
-	color: #ff79c6;
-	font-weight: bold;
+  color: #ff79c6;
+  font-weight: bold;
 }
 
 /* require(...) call */
 .cm-lgml-require {
-	color: #bd93f9;
+  color: #bd93f9;
 }
 
 /* Module:Foo token */
 .cm-lgml-module {
-	color: #50fa7b;
+  color: #50fa7b;
 }
 
 /* frame, frame.args, frame.title, etc */
 .cm-lgml-frame {
-	color: #f1fa8c;
+  color: #f1fa8c;
 }
 
 
@@ -1635,14 +1638,14 @@ body {
 /* Allow marks to receive mouse events */
 .CodeMirror .cm-template-link,
 .CodeMirror .cm-module-link {
-	pointer-events: auto;
+  pointer-events: auto;
 }
 
 /* Subtle hover highlight */
 .CodeMirror .cm-template-link:hover,
 .CodeMirror .cm-module-link:hover {
-	background-color: rgba(255, 255, 255, 0.06);
-	border-radius: 3px;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
 }
 
 
@@ -1652,7 +1655,7 @@ body {
 
 .CodeMirror.cm-ctrl-held .cm-template-link,
 .CodeMirror.cm-ctrl-held .cm-module-link {
-	cursor: pointer;
+  cursor: pointer;
 }
 
 .wiki-content img,
@@ -2763,4 +2766,106 @@ body[data-theme="dark"] .wiki-search-title {
   font-size: 12px;
   opacity: 0.8;
   display: block;
+}
+
+/* Container for the autocomplete dropdown */
+.CodeMirror-hints {
+  position: absolute;
+  z-index: 1000;
+  overflow: hidden;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #d1d1d1;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 13px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+/* Dark theme support */
+body[data-theme="dark"] .CodeMirror-hints {
+  background: #252526;
+  border-color: #454545;
+  color: #cccccc;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Individual suggestion items */
+.CodeMirror-hint {
+  margin: 0;
+  padding: 4px 12px;
+  white-space: pre;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.1s ease;
+}
+
+/* Active/Hover state */
+.CodeMirror-hint-active {
+  background-color: #007acc !important;
+  color: white !important;
+}
+
+body[data-theme="dark"] .CodeMirror-hint-active {
+  background-color: #094771 !important;
+}
+
+/* The label/text part of the hint */
+.hint-text {
+  flex-grow: 1;
+  font-weight: 500;
+}
+
+/* Metadata styling (e.g., (async) or type info) */
+.CodeMirror-hint small {
+  font-family: monospace;
+  opacity: 0.6;
+  margin-left: 8px;
+  font-style: italic;
+}
+
+/* Highlight specific types if needed via classes */
+.intellisense-module {
+  color: #d8a657;
+}
+
+/* Gold for modules */
+.intellisense-export {
+  color: #85a583;
+}
+
+/* Green for exports */
+.intellisense-proto {
+  color: #a98fb3;
+}
+
+/* Purple for prototypes */
+
+/* Selection specific colors to ensure text remains readable when highlighted */
+.CodeMirror-hint-active .intellisense-module,
+.CodeMirror-hint-active .intellisense-export,
+.CodeMirror-hint-active .intellisense-proto,
+.CodeMirror-hint-active small {
+  color: #ffffff !important;
+  opacity: 0.9;
+}
+
+/* Scrollbar styling for a consistent look */
+.CodeMirror-hints::-webkit-scrollbar {
+  width: 6px;
+}
+
+.CodeMirror-hints::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+body[data-theme="dark"] .CodeMirror-hints::-webkit-scrollbar-thumb {
+  background: #555;
 }
