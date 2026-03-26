@@ -34,7 +34,7 @@ function renderFile(page) {
 // render static React templates
 let staticPages = glob.sync(`${config.pages.folderPath}${config.render.staticPrefix}*/${config.pages.pageName}.jsx`).map(val => path.resolve(val));
 // use babel to 'require' react components
-require("@babel/register")({only: [config.source.folder], presets: [ '@babel/preset-react', [ '@babel/preset-env', { targets: { node: 'current' } } ] ], plugins: ['@babel/transform-flow-strip-types'] })
+require("@babel/register")({ only: [config.source.folder], presets: ['@babel/preset-react', ['@babel/preset-env', { targets: { node: 'current' } }]], plugins: ['@babel/transform-flow-strip-types'] })
 staticPages.forEach((page) => {
     renderFile(page);
     if (process.argv.includes("--watch")) watch(page, () => {
@@ -62,6 +62,9 @@ module.exports = {
     experiments: {
         topLevelAwait: true
     },
+    resolve: {
+        extensions: ['.js', '.json']
+    },
     externals: config.public.externals || {},
     entry: entries,
     output: {
@@ -72,6 +75,10 @@ module.exports = {
     devtool: env == "production" ? undefined : "eval-source-map",
     module: {
         rules: [
+            {
+                test: /\.json$/,
+                type: 'json'
+            },
             {
                 test: /\.scss$/,
                 use: [

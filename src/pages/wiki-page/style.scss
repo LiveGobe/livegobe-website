@@ -2768,104 +2768,187 @@ body[data-theme="dark"] .wiki-search-title {
   display: block;
 }
 
-/* Container for the autocomplete dropdown */
+/* === Autocomplete container === */
 .CodeMirror-hints {
-  position: absolute;
-  z-index: 1000;
-  overflow: hidden;
-  list-style: none;
-  margin: 0;
-  padding: 4px 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: #1e1e1e;
+  border: 1px solid #333;
   border-radius: 6px;
-  background: #ffffff;
-  border: 1px solid #d1d1d1;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 4px 0;
   font-size: 13px;
-  max-height: 250px;
+  font-family: monospace;
+  max-height: 300px;
   overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 9999;
 }
 
-/* Dark theme support */
-body[data-theme="dark"] .CodeMirror-hints {
-  background: #252526;
-  border-color: #454545;
-  color: #cccccc;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-/* Individual suggestion items */
+/* === Individual item === */
 .CodeMirror-hint {
-  margin: 0;
-  padding: 4px 12px;
-  white-space: pre;
-  color: inherit;
+  padding: 4px 10px;
+  color: #ccc;
   cursor: pointer;
   display: flex;
   align-items: center;
-  transition: background 0.1s ease;
 }
 
-/* Active/Hover state */
+/* === Hover / selected === */
 .CodeMirror-hint-active {
-  background-color: #007acc !important;
-  color: white !important;
+  background: #2d2d2d;
+  color: #fff;
 }
 
-body[data-theme="dark"] .CodeMirror-hint-active {
-  background-color: #094771 !important;
+/* === Match highlight (typed part) === */
+.CodeMirror-hint .cm-matchhighlight {
+  color: #4da3ff;
+  font-weight: bold;
 }
 
-/* The label/text part of the hint */
-.hint-text {
-  flex-grow: 1;
-  font-weight: 500;
-}
-
-/* Metadata styling (e.g., (async) or type info) */
-.CodeMirror-hint small {
-  font-family: monospace;
-  opacity: 0.6;
-  margin-left: 8px;
-  font-style: italic;
-}
-
-/* Highlight specific types if needed via classes */
-.intellisense-module {
-  color: #d8a657;
-}
-
-/* Gold for modules */
-.intellisense-export {
-  color: #85a583;
-}
-
-/* Green for exports */
-.intellisense-proto {
-  color: #a98fb3;
-}
-
-/* Purple for prototypes */
-
-/* Selection specific colors to ensure text remains readable when highlighted */
-.CodeMirror-hint-active .intellisense-module,
-.CodeMirror-hint-active .intellisense-export,
-.CodeMirror-hint-active .intellisense-proto,
-.CodeMirror-hint-active small {
-  color: #ffffff !important;
-  opacity: 0.9;
-}
-
-/* Scrollbar styling for a consistent look */
+/* === Scrollbar (optional) === */
 .CodeMirror-hints::-webkit-scrollbar {
   width: 6px;
 }
 
 .CodeMirror-hints::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 10px;
+  background: #444;
+  border-radius: 4px;
 }
 
-body[data-theme="dark"] .CodeMirror-hints::-webkit-scrollbar-thumb {
-  background: #555;
+.CodeMirror-Tern-tooltip {
+  position: fixed !important; // 🔥 fixes weird placement
+  background: #1e1e1e;
+  color: #fff;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: monospace;
+  max-width: 300px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  z-index: 99999;
+}
+
+/* LGML highlight */
+.CodeMirror-Tern-tooltip strong {
+  color: #FFA500;
+}
+
+/* Function */
+.tern-completion-item.is-function {
+  color: #ffd166;
+}
+
+/* String */
+.tern-completion-item.is-string {
+  color: #7bd88f;
+}
+
+/* Number */
+.tern-completion-item.is-number {
+  color: #f78c6c;
+}
+
+/* Tooltip container */
+.cm-tern-completion-tip,
+.cm-tern-type-tip {
+  background: #1e1e1e;
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  max-width: 300px;
+}
+
+/* Name */
+.cm-tern-name {
+  font-weight: bold;
+  color: #4FC3F7;
+}
+
+/* Type */
+.cm-tern-type {
+  font-family: monospace;
+  color: #C5C8C6;
+}
+
+/* Description */
+.cm-tern-doc {
+  margin-top: 4px;
+  color: #DDD;
+}
+
+/* LGML highlight */
+.cm-tern-doc.is-lgml {
+  color: #FFA500;
+}
+
+/* Header layout */
+.cm-tern-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Base icon */
+.cm-tern-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-radius: 3px;
+  font-weight: bold;
+}
+
+/* Function */
+.cm-tern-icon.is-fn {
+  background: #ffd16622;
+  color: #ffd166;
+}
+
+.cm-tern-icon.is-fn::before {
+  content: "ƒ";
+}
+
+/* Object */
+.cm-tern-icon.is-obj {
+  background: #4fc3f722;
+  color: #4fc3f7;
+}
+
+.cm-tern-icon.is-obj::before {
+  content: "{}";
+  font-size: 10px;
+}
+
+/* String */
+.cm-tern-icon.is-string {
+  background: #7bd88f22;
+  color: #7bd88f;
+}
+
+.cm-tern-icon.is-string::before {
+  content: "“”";
+  font-size: 10px;
+}
+
+/* Number */
+.cm-tern-icon.is-number {
+  background: #f78c6c22;
+  color: #f78c6c;
+}
+
+.cm-tern-icon.is-number::before {
+  content: "123";
+  font-size: 10px;
+}
+
+/* Boolean */
+.cm-tern-icon.is-bool {
+  background: #c792ea22;
+  color: #c792ea;
+}
+
+.cm-tern-icon.is-bool::before {
+  content: "✓";
 }
