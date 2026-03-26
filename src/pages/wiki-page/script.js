@@ -170,10 +170,58 @@ $(function () {
 		else if (pageName.endsWith(".css")) editorMode = "css";
 		else if (pageName.endsWith(".js")) editorMode = "javascript";
 
+		const moduleCache = new Map();
+		const loadedDocs = new Set();
+
+		function extractRequiredModules(code) {
+			const regex = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
+			const modules = new Set();
+
+			let match;
+			while ((match = regex.exec(code))) {
+				let name = match[1];
+
+				// Normalize
+				if (!name.startsWith("Module:")) {
+					name = "Module:" + name;
+				}
+
+				modules.add(name);
+			}
+
+			return [...modules];
+		}
+
+		function syncModulesWithTern(cm) {
+			const code = cm.getValue();
+			const modules = extractRequiredModules(code);
+
+			modules.forEach(name => {
+				if (moduleCache.has(name)) {
+					const doc = new CodeMirror.Doc(moduleCache.get(name), "javascript");
+					ternServer.addDoc(name, doc);
+					return;
+				}
+
+				ternServer.options.getFile(name, (err, content) => {
+					moduleCache.set(name, content);
+					if (loadedDocs.has(name)) return;
+
+					loadedDocs.add(name);
+
+					const doc = new CodeMirror.Doc(content, "javascript");
+					ternServer.addDoc(name, doc);
+				});
+			});
+		}
+
 		// --- Initialize editor ---
 		const lgmlDefs = {
 			"requireData": { "!doc": "LGML helper function to load JSON-data modules", "!type": "fn(name: string) -> object" },
-			"require": { "!doc": "Require another module", "!type": "fn(name: string) -> any" },
+			"require": {
+				"!doc": "Require another module",
+				"!type": "fn(name: string) -> !customRequire"
+			},
 			"module.exports": { "!doc": "Alias to \"exports\"", "!type": "object" },
 			"exports": { "!doc": "Export object for this module", "!type": "object" }
 		};
@@ -193,6 +241,21 @@ $(function () {
 					completeSingle: false,
 					alignWithWord: true
 				}
+			},
+			getFile: (name, callback) => {
+				if (moduleCache.has(name)) {
+					callback(null, moduleCache.get(name));
+					return;
+				}
+
+				// 🔥 Fetch module from your backend
+				$.get(`/api/v2/wikis/${wikiName}/pages/${encodeURIComponent(name)}`)
+					.then(res => {
+						const code = res.content || "";
+						moduleCache.set(name, code);
+						callback(null, code);
+					})
+					.catch(() => callback(null, ""));
 			},
 			typeTip: (data) => {
 				if (!data) return null;
@@ -262,6 +325,39 @@ $(function () {
 			}
 		});
 
+		ternServer.server.addDefs({
+			"!name": "lgml-require",
+			"!define": {
+				"!customRequire": {
+					"!type": "fn(name: string) -> Promise<?>",
+					"!resolve": function (self, args) {
+						const nameNode = args && args[0];
+						if (!nameNode || !nameNode.value) return null;
+
+						let mod = nameNode.value;
+
+						if (!mod.startsWith("Module:")) {
+							mod = "Module:" + mod;
+						}
+
+						return mod;
+					}
+				}
+			}
+		});
+
+		// Define the provider with the required 2-argument signature
+		const ternHintProvider = function (cm, callback) {
+			ternServer.getHint(cm, (data) => {
+				if (data && data.list && data.list.length > 0) {
+					callback(data);
+				} else {
+					callback(null); // Closes menu if no matches
+				}
+			});
+		};
+		ternHintProvider.async = true; // Essential for CM5 to pass the callback function
+
 		const darkTheme = $("body").data("theme") === "dark";
 		const editor = CodeMirror.fromTextArea($editorTextarea[0], {
 			lineNumbers: true,
@@ -279,21 +375,40 @@ $(function () {
 						showSaveToast("Draft saved");
 					} catch { }
 				},
-				"Ctrl-Space": function (cm) {
-					// This is the bridge that actually opens the menu
+				"Ctrl-Space": (cm) => {
+					// Check once before opening to avoid flickering an empty box
 					ternServer.getHint(cm, (data) => {
-						cm.showHint({
-							hint: () => data, // Pass the Tern data to the UI
-							completeSingle: false
-						});
+						if (data && data.list && data.list.length > 0) {
+							cm.showHint({
+								hint: ternHintProvider,
+								async: true,
+								completeSingle: false,
+								closeOnUnfocus: true,
+								closeOnNoMatch: true,
+								updateOnCursorActivity: true, // Key for real-time filtering
+								container: document.body
+							});
+						}
 					});
 				},
 				"F12": (cm) => { ternServer.jumpToDef(cm); },
-				"Alt-.": (cm) => { ternServer.jumpToDef(cm); }, // VS Code Alt+Click equivalent
+				"Alt-.": (cm) => { ternServer.jumpToDef(cm); },
 				"Shift-F12": (cm) => { ternServer.showRefs(cm); },
 				"F2": (cm) => { ternServer.rename(cm); },
 				"Ctrl-I": (cm) => { ternServer.showType(cm); },
-				"Ctrl-Q": (cm) => { ternServer.rename(cm); }
+				"Ctrl-Q": (cm) => { ternServer.rename(cm); },
+				"Enter": (cm) => {
+					if (cm.state.completionActive) cm.state.completionActive.pick();
+					else return CodeMirror.Pass;
+				},
+				"Space": (cm) => {
+					if (cm.state.completionActive) cm.state.completionActive.close();
+					return CodeMirror.Pass;
+				},
+				"Esc": (cm) => {
+					if (cm.state.completionActive) cm.state.completionActive.close();
+					else return CodeMirror.Pass;
+				}
 			}
 		});
 
@@ -310,28 +425,72 @@ $(function () {
 			let typingTimeout;
 
 			editor.on("inputRead", function (cm, change) {
-				// 1. Basic safety checks
-				if (change.origin === "+delete" || cm.state.completionActive) return;
+				// 1. Exit early for "Passive" keys
+				if (change.origin === "+delete" || change.text[0] === " " || change.text[0] === ";") {
+					if (cm.state.completionActive) cm.state.completionActive.close();
+					return;
+				}
 
 				const cur = cm.getCursor();
 				const token = cm.getTokenAt(cur);
 
-				// 2. Clear the previous timeout correctly using the scoped variable
+				// 2. Clear previous timer
 				if (typingTimeout) clearTimeout(typingTimeout);
 
-				// 3. Trigger logic
-				if (change.text[0] === "." || token.type === "variable" || (token.string.length > 0 && token.type !== "comment")) {
-					typingTimeout = setTimeout(() => {
-						// Use the ternServer instance you defined earlier
-						ternServer.getHint(cm, (data) => {
-							if (!data) return;
+				// 3. The "Strict" Condition:
+				// - If user typed a dot (property access)
+				// - OR if the token is a variable/property and has at least 1 character
+				const isIdentifier = token.type === "variable" || token.type === "property" || token.type === "variable-2";
+				const isTriggerChar = change.text[0] === "." || change.text[0] === ":";
 
-							cm.showHint({
-								hint: () => data,
-								completeSingle: false,
-								// This helps the menu stay aligned with what you're typing
-								closeOnUnfocus: true
-							});
+				if (isTriggerChar || (isIdentifier && token.string.length > 0)) {
+					// Prevent triggering inside comments or strings
+					if (token.type === "comment" || token.type === "string") return;
+
+					// 1. Define the hint function once outside to ensure correct 'this' and 'async' handling
+					const ternHintProvider = function (cm, callback) {
+						ternServer.getHint(cm, (data) => {
+							if (data && data.list && data.list.length > 0) {
+								callback(data);
+							} else {
+								callback(null); // Closes the menu if no matches
+							}
+						});
+					};
+					// Explicitly flag as async for CodeMirror's internal check
+					ternHintProvider.async = true;
+
+					// 2. The trigger logic
+					if (typingTimeout) clearTimeout(typingTimeout);
+
+					typingTimeout = setTimeout(() => {
+						// Don't re-trigger if the menu is already active; 
+						// updateOnCursorActivity will handle the refresh loop.
+						if (cm.state.completionActive) return;
+
+						// Only trigger if we are in a valid context (not a string/comment)
+						const cur = cm.getCursor();
+						const token = cm.getTokenAt(cur);
+						if (token.type === "comment" || token.type === "string") return;
+
+						// Check if there is actually something to suggest before opening
+						ternServer.getHint(cm, (data) => {
+							if (data && data.list && data.list.length > 0) {
+								cm.showHint({
+									hint: ternHintProvider,
+									completeSingle: false,
+									closeOnUnfocus: true,
+									updateOnCursorActivity: true, // Re-runs ternHintProvider on every key
+									moveOnCursorChange: true,
+									// Match VS Code's subtle delay and behavior
+									closeOnNoMatch: true,
+									extraKeys: {
+										"Tab": (cm, handle) => handle.pick(),
+										"Esc": (cm, handle) => handle.close(),
+										"Enter": (cm, handle) => handle.pick()
+									}
+								});
+							}
 						});
 					}, 150);
 				}
@@ -341,6 +500,22 @@ $(function () {
 			editor.on("cursorActivity", (cm) => {
 				ternServer.updateArgHints(cm);
 			});
+
+			editor.on("cursorActivity", (cm) => {
+				const cur = cm.getCursor();
+				const token = cm.getTokenAt(cur);
+
+				// If the menu is open but the user backspaced to a point where there is no word
+				if (cm.state.completionActive && token.string.trim() === "" && token.type !== "property") {
+					cm.state.completionActive.close();
+				}
+			});
+
+			editor.on("change", (cm) => {
+				syncModulesWithTern(cm);
+			});
+
+			syncModulesWithTern(editor);
 		}
 
 		// --- Magic words ---

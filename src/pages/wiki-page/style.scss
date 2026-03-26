@@ -2814,17 +2814,24 @@ body[data-theme="dark"] .wiki-search-title {
 }
 
 .CodeMirror-Tern-tooltip {
-  position: fixed !important; // 🔥 fixes weird placement
-  background: #1e1e1e;
-  color: #fff;
-  border: 1px solid #333;
-  border-radius: 6px;
-  padding: 6px 8px;
+  position: absolute !important;
+  /* Change fixed to absolute */
+  background: #252526;
+  /* VS Code dark grey */
+  color: #cccccc;
+  border: 1px solid #454545;
+  border-radius: 3px;
+  padding: 8px;
   font-size: 12px;
-  font-family: monospace;
-  max-width: 300px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
-  z-index: 99999;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 100000;
+  /* Must be higher than .CodeMirror-hints */
+
+  /* Prevent it from being too wide or overlapping text */
+  max-width: 350px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 /* LGML highlight */
@@ -2951,4 +2958,8 @@ body[data-theme="dark"] .wiki-search-title {
 
 .cm-tern-icon.is-bool::before {
   content: "✓";
+}
+
+.CodeMirror-hints:empty {
+    display: none !important;
 }
