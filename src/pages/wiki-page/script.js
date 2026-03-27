@@ -171,59 +171,29 @@ $(function () {
 		else if (pageName.endsWith(".js")) editorMode = "javascript";
 
 		const moduleCache = new Map();
-		const loadedDocs = new Set();
-
-		function extractRequiredModules(code) {
-			const regex = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
-			const modules = new Set();
-
-			let match;
-			while ((match = regex.exec(code))) {
-				let name = match[1];
-
-				// Normalize
-				if (!name.startsWith("Module:")) {
-					name = "Module:" + name;
-				}
-
-				modules.add(name);
-			}
-
-			return [...modules];
-		}
-
-		function syncModulesWithTern(cm) {
-			const code = cm.getValue();
-			const modules = extractRequiredModules(code);
-
-			modules.forEach(name => {
-				if (moduleCache.has(name)) {
-					const doc = new CodeMirror.Doc(moduleCache.get(name), "javascript");
-					ternServer.addDoc(name, doc);
-					return;
-				}
-
-				ternServer.options.getFile(name, (err, content) => {
-					moduleCache.set(name, content);
-					if (loadedDocs.has(name)) return;
-
-					loadedDocs.add(name);
-
-					const doc = new CodeMirror.Doc(content, "javascript");
-					ternServer.addDoc(name, doc);
-				});
-			});
-		}
 
 		// --- Initialize editor ---
 		const lgmlDefs = {
 			"requireData": { "!doc": "LGML helper function to load JSON-data modules", "!type": "fn(name: string) -> object" },
 			"require": {
-				"!doc": "Require another module",
-				"!type": "fn(name: string) -> !customRequire"
+				"!type": "fn(name: string) -> ?",
+				// Inside your lgmlDefs.require definition
+				"!resolve": function (self, args, graph) {
+					const nameNode = args && args[0];
+					if (!nameNode || !nameNode.value) return null;
+
+					const varName = "__mod_" + nameNode.value.replace(/[:.-\/]/g, "_");
+
+					// Look up the variable in the top-level scope
+					const found = graph.lookup(varName, graph.ecma5);
+					return found ? found.getType() : "?";
+				}
 			},
-			"module.exports": { "!doc": "Alias to \"exports\"", "!type": "object" },
-			"exports": { "!doc": "Export object for this module", "!type": "object" }
+			"exports": { "!type": "object" },
+			"!define": {
+				// This acts as a registry for all your modules
+				"modules": {}
+			}
 		};
 
 		const editorDefs = [
@@ -236,26 +206,12 @@ $(function () {
 			defs: editorDefs,
 			plugins: { doc_comment: true },
 			autoClose: true,
+			ecmaVersion: 8,
 			cmOptions: {
 				hintOptions: {
 					completeSingle: false,
 					alignWithWord: true
 				}
-			},
-			getFile: (name, callback) => {
-				if (moduleCache.has(name)) {
-					callback(null, moduleCache.get(name));
-					return;
-				}
-
-				// 🔥 Fetch module from your backend
-				$.get(`/api/v2/wikis/${wikiName}/pages/${encodeURIComponent(name)}`)
-					.then(res => {
-						const code = res.content || "";
-						moduleCache.set(name, code);
-						callback(null, code);
-					})
-					.catch(() => callback(null, ""));
 			},
 			typeTip: (data) => {
 				if (!data) return null;
@@ -325,38 +281,127 @@ $(function () {
 			}
 		});
 
-		ternServer.server.addDefs({
-			"!name": "lgml-require",
-			"!define": {
-				"!customRequire": {
-					"!type": "fn(name: string) -> Promise<?>",
-					"!resolve": function (self, args) {
-						const nameNode = args && args[0];
-						if (!nameNode || !nameNode.value) return null;
+		window.ternServer = ternServer;
 
-						let mod = nameNode.value;
+		function syncDependencies(cm) {
+			const code = cm.getValue();
+			const requireRx = /require\s*\(\s*["'](.+?)["']\s*\)/g;
+			let match;
+			let needsRefresh = false;
 
-						if (!mod.startsWith("Module:")) {
-							mod = "Module:" + mod;
-						}
+			while ((match = requireRx.exec(code)) !== null) {
+				const modName = match[1];
+				if (!moduleCache.has(modName)) {
+					moduleCache.set(modName, "// loading...");
 
-						return mod;
-					}
+					const apiPath = modName.replace("Module:", "");
+					$.get(`/api/v2/wikis/${wikiName}/pages/${"Module:" + encodeURIComponent(apiPath)}`)
+						.then(res => {
+							const content = res.page.content || "";
+							// Sanitize name for JS variable usage
+							const varName = "__mod_" + modName.replace(/[:.-\/]/g, "_");
+
+							// Wrap the module so it exports to our virtual variable
+							const wrapped = `/** @type {Object} */ var ${varName} = (function(){\n var exports = {};\n ${content}\n return exports;\n})();\n`;
+
+							moduleCache.set(modName, wrapped);
+							updateVirtualDoc(cm);
+						});
 				}
 			}
-		});
+		}
 
-		// Define the provider with the required 2-argument signature
-		const ternHintProvider = function (cm, callback) {
-			ternServer.getHint(cm, (data) => {
-				if (data && data.list && data.list.length > 0) {
-					callback(data);
-				} else {
-					callback(null); // Closes menu if no matches
+		function updateVirtualDoc(cm) {
+			// Start with a clean prefix. Ensure exactly 1 newline at the end.
+			let prefix = "var exports = {}; var frame = { cache: {} };\n";
+
+			moduleCache.forEach((content, modName) => {
+				if (content && content !== "// loading..." && content.trim() !== "") {
+					const sanitized = "__mod_" + modName.replace(/[:.-\/]/g, "_");
+					// Ensure content doesn't already contain a 'var' for this name 
+					// and force a single newline separator.
+					prefix += `var ${sanitized} = ${content.trim()};\n`;
 				}
 			});
+
+			const wrapperHead = "(async function() {\n";
+			const userCode = cm.getValue();
+
+			// Replace require with padded __mod_ version to preserve horizontal 'ch'
+			const transformedCode = userCode.replace(/require\s*\(\s*["'](.+?)["']\s*\)/g, (match, modName) => {
+				const replacement = "__mod_" + modName.replace(/[:.-\/]/g, "_");
+				// Pad with spaces so the length matches exactly
+				return replacement.padEnd(match.length, " ");
+			});
+
+			const wrapperFoot = "\n})();";
+
+			// Update Tern - Use the exact same filename used in the query
+			ternServer.server.addFile("editor.js", prefix + wrapperHead + transformedCode + wrapperFoot);
+		}
+
+		function getTernLineOffset() {
+			let lines = 1; // Start at 1 for the global 'exports/frame' line
+
+			moduleCache.forEach((content) => {
+				if (content && content !== "// loading..." && content.trim() !== "") {
+					// Count every newline in the module content + 1 for our separator
+					const m = content.trim().match(/\n/g);
+					lines += (m ? m.length : 0) + 1;
+				}
+			});
+
+			// Add 1 for the "(async function() {" line
+			return lines + 1;
+		}
+
+		const ternHintProvider = function (cm, callback) {
+			updateVirtualDoc(cm);
+
+			const cur = cm.getCursor();
+			const line = cm.getLine(cur.line);
+			const offset = getTernLineOffset();
+
+			// 1. Find the start of the word manually to avoid token drift
+			// This regex looks backward from the cursor for the first non-word character
+			const wordPart = line.slice(0, cur.ch).match(/[\w$]+$/);
+			const startCh = wordPart ? cur.ch - wordPart[0].length : cur.ch;
+
+			const query = {
+				type: "completions",
+				file: "editor.js",
+				end: { line: cur.line + offset, ch: cur.ch },
+				types: true,
+				docs: true,
+				caseInsensitive: true
+			};
+
+			ternServer.server.request({ query }, (err, data) => {
+				if (err || !data || !data.completions) return callback(null);
+
+				const result = {
+					list: data.completions
+						.filter(c => !c.name.startsWith("__mod_"))
+						.map(c => ({
+							text: c.name,
+							render: (el) => {
+								const tip = ternServer.options.completionTip(c);
+								if (tip) el.appendChild(tip);
+								else el.textContent = c.name;
+							}
+						})),
+					// 2. THE ANCHOR: This defines exactly what gets replaced
+					// 'from' is the start of the word (e.g., the 'L' in 'LO')
+					// 'to' is the current cursor (the end of the word)
+					from: CodeMirror.Pos(cur.line, startCh),
+					to: cur
+				};
+
+				callback(result);
+			});
 		};
-		ternHintProvider.async = true; // Essential for CM5 to pass the callback function
+		// Critical for CodeMirror 5 async hints
+		ternHintProvider.async = true;
 
 		const darkTheme = $("body").data("theme") === "dark";
 		const editor = CodeMirror.fromTextArea($editorTextarea[0], {
@@ -369,6 +414,63 @@ $(function () {
 			indentWithTabs: false,
 			indentUnit: 0,
 			extraKeys: {
+				"Ctrl-L": (cm) => {
+					// 1. Force the virtual document update
+					updateVirtualDoc(cm);
+
+					// 2. We use a small delay to ensure Tern's internal buffer is flushed
+					setTimeout(() => {
+						const offset = getTernLineOffset();
+						const cur = cm.getCursor();
+						const editorLineContent = cm.getLine(cur.line);
+
+						// 3. We request the 'type' AND the 'context' to see if strings match
+						ternServer.server.request({
+							query: {
+								type: "type",
+								file: "editor.js",
+								end: { line: cur.line + offset, ch: cur.ch },
+								lineContexts: true // This helps us see the line Tern is looking at
+							}
+						}, (err, data) => {
+							console.group("Tern Offset Verification");
+
+							// Check if file exists in Tern at all
+							const ternFile = ternServer.server.findFile("editor.js");
+							if (!ternFile) {
+								console.error("❌ Tern cannot find 'editor.js'. Check addFile name.");
+								console.groupEnd();
+								return;
+							}
+
+							console.log("Editor Line Content:", editorLineContent);
+							console.log("Editor Cursor:", `Line: ${cur.line}, Ch: ${cur.ch}`);
+							console.log("Calculated Offset:", offset);
+							console.log("Targeting Tern Line:", cur.line + offset);
+
+							if (err) {
+								console.error("Tern Error:", err.message);
+								if (err.message.includes("outside of file")) {
+									console.log("Full Tern File Length:", ternFile.text.length, "chars");
+									console.log("Try moving your cursor to the start of the file.");
+								}
+							} else {
+								// The 'context' is the actual string Tern is parsing at that offset
+								const ternContext = data.context ? data.context.trim() : "Unknown";
+								console.log("Tern sees at this line:", ternContext);
+								console.log("Tern saw type:", data.type);
+
+								// Check for string alignment
+								if (editorLineContent.trim() !== ternContext && ternContext !== "Unknown") {
+									console.warn("⚠️ OFFSET MISMATCH: Editor and Tern are looking at different lines!");
+								} else {
+									console.log("✅ OFFSET MATCH: Tern and Editor are perfectly aligned.");
+								}
+							}
+							console.groupEnd();
+						});
+					}, 50); // 50ms is enough for the Tern loop to catch up
+				},
 				"Ctrl-S": (cm) => {
 					try {
 						localStorage.setItem(storageKey, cm.getValue());
@@ -376,22 +478,44 @@ $(function () {
 					} catch { }
 				},
 				"Ctrl-Space": (cm) => {
-					// Check once before opening to avoid flickering an empty box
-					ternServer.getHint(cm, (data) => {
-						if (data && data.list && data.list.length > 0) {
-							cm.showHint({
-								hint: ternHintProvider,
-								async: true,
-								completeSingle: false,
-								closeOnUnfocus: true,
-								closeOnNoMatch: true,
-								updateOnCursorActivity: true, // Key for real-time filtering
-								container: document.body
-							});
-						}
+					const cur = cm.getCursor();
+					const token = cm.getTokenAt(cur);
+
+					// 1. Check if we are inside a string. 
+					// If so, exit immediately and don't show the hint.
+					if (token.type && token.type.includes("string")) {
+						return;
+					}
+
+					// 2. Otherwise, sync and show as normal
+					updateVirtualDoc(cm);
+
+					cm.showHint({
+						hint: ternHintProvider,
+						async: true,
+						completeSingle: false,
+						closeOnUnfocus: true,
+						closeOnNoMatch: true,
+						updateOnCursorActivity: true
 					});
 				},
-				"F12": (cm) => { ternServer.jumpToDef(cm); },
+				"F12": (cm) => {
+					ternServer.jumpToDef(cm, (data) => {
+						if (!data || data.file !== "editor.js") return;
+
+						let lineOffset = 0;
+						moduleCache.forEach(c => {
+							if (c !== "// loading..." && c.trim() !== "") {
+								const lines = c.match(/\n/g);
+								lineOffset += (lines ? lines.length : 0) + (c.endsWith("\n") ? 0 : 1);
+							}
+						});
+
+						// Move cursor to the corrected line
+						cm.setCursor({ line: data.start.line - lineOffset, ch: data.start.ch });
+						cm.focus();
+					});
+				},
 				"Alt-.": (cm) => { ternServer.jumpToDef(cm); },
 				"Shift-F12": (cm) => { ternServer.showRefs(cm); },
 				"F2": (cm) => { ternServer.rename(cm); },
@@ -415,8 +539,13 @@ $(function () {
 		if (editorMode.includes("javascript")) {
 			editor.ternServer = ternServer;
 
-			// Register doc
-			ternServer.addDoc("editor.js", editor.getDoc());
+			editor.on("change", (cm) => {
+				clearTimeout(editor.syncTimeout);
+				editor.syncTimeout = setTimeout(() => {
+					syncDependencies(cm);
+					updateVirtualDoc(cm); // Refresh Tern's view of the code
+				}, 500);
+			});
 
 			editor.on("change", (cm, change) => {
 				ternServer.updateArgHints(cm);
@@ -425,97 +554,62 @@ $(function () {
 			let typingTimeout;
 
 			editor.on("inputRead", function (cm, change) {
-				// 1. Exit early for "Passive" keys
-				if (change.origin === "+delete" || change.text[0] === " " || change.text[0] === ";") {
-					if (cm.state.completionActive) cm.state.completionActive.close();
-					return;
-				}
+				// 1. Abort if the change comes from the completion itself
+				if (change.origin === "complete") return;
 
-				const cur = cm.getCursor();
-				const token = cm.getTokenAt(cur);
+				const typedChar = change.text[0];
+				if (!typedChar || typedChar === " " || typedChar === ";") return;
 
-				// 2. Clear previous timer
 				if (typingTimeout) clearTimeout(typingTimeout);
 
-				// 3. The "Strict" Condition:
-				// - If user typed a dot (property access)
-				// - OR if the token is a variable/property and has at least 1 character
-				const isIdentifier = token.type === "variable" || token.type === "property" || token.type === "variable-2";
-				const isTriggerChar = change.text[0] === "." || change.text[0] === ":";
+				typingTimeout = setTimeout(() => {
+					const cur = cm.getCursor();
+					const token = cm.getTokenAt(cur);
 
-				if (isTriggerChar || (isIdentifier && token.string.length > 0)) {
-					// Prevent triggering inside comments or strings
-					if (token.type === "comment" || token.type === "string") return;
+					// 2. THE FIX: Check for strings
+					// CodeMirror modes typically use "string" or "string-2"
+					const isInsideString = token.type && token.type.includes("string");
 
-					// 1. Define the hint function once outside to ensure correct 'this' and 'async' handling
-					const ternHintProvider = function (cm, callback) {
-						ternServer.getHint(cm, (data) => {
-							if (data && data.list && data.list.length > 0) {
-								callback(data);
-							} else {
-								callback(null); // Closes the menu if no matches
-							}
+					if (isInsideString) {
+						if (cm.state.completionActive) cm.state.completionActive.close();
+						return;
+					}
+
+					// 3. Normal trigger logic
+					const isTriggerChar = typedChar === "." || typedChar === ":";
+					const isIdentifier = /variable|property|type/.test(token.type);
+					const isWord = /[a-zA-Z0-9_$]/.test(typedChar);
+
+					if (isTriggerChar || isIdentifier || isWord) {
+						updateVirtualDoc(cm);
+
+						cm.showHint({
+							hint: ternHintProvider,
+							completeSingle: false,
+							updateOnCursorActivity: true,
+							closeOnNoMatch: true,
+							async: true
 						});
-					};
-					// Explicitly flag as async for CodeMirror's internal check
-					ternHintProvider.async = true;
-
-					// 2. The trigger logic
-					if (typingTimeout) clearTimeout(typingTimeout);
-
-					typingTimeout = setTimeout(() => {
-						// Don't re-trigger if the menu is already active; 
-						// updateOnCursorActivity will handle the refresh loop.
-						if (cm.state.completionActive) return;
-
-						// Only trigger if we are in a valid context (not a string/comment)
-						const cur = cm.getCursor();
-						const token = cm.getTokenAt(cur);
-						if (token.type === "comment" || token.type === "string") return;
-
-						// Check if there is actually something to suggest before opening
-						ternServer.getHint(cm, (data) => {
-							if (data && data.list && data.list.length > 0) {
-								cm.showHint({
-									hint: ternHintProvider,
-									completeSingle: false,
-									closeOnUnfocus: true,
-									updateOnCursorActivity: true, // Re-runs ternHintProvider on every key
-									moveOnCursorChange: true,
-									// Match VS Code's subtle delay and behavior
-									closeOnNoMatch: true,
-									extraKeys: {
-										"Tab": (cm, handle) => handle.pick(),
-										"Esc": (cm, handle) => handle.close(),
-										"Enter": (cm, handle) => handle.pick()
-									}
-								});
-							}
-						});
-					}, 150);
-				}
-			});
-
-			// Arg hints
-			editor.on("cursorActivity", (cm) => {
-				ternServer.updateArgHints(cm);
+					}
+				}, 120);
 			});
 
 			editor.on("cursorActivity", (cm) => {
+				// If the menu is NOT active, but the user is in the middle of a word
+				// we might want to trigger it automatically (like VS Code)
 				const cur = cm.getCursor();
 				const token = cm.getTokenAt(cur);
 
-				// If the menu is open but the user backspaced to a point where there is no word
+				if (!cm.state.completionActive && token.string.length >= 2 && token.type === "variable") {
+					// Optional: auto-trigger on backspace if 2+ chars remain
+					// cm.execCommand("autocomplete"); 
+				}
+
+				// Existing "Close if empty" logic
 				if (cm.state.completionActive && token.string.trim() === "" && token.type !== "property") {
 					cm.state.completionActive.close();
 				}
 			});
-
-			editor.on("change", (cm) => {
-				syncModulesWithTern(cm);
-			});
-
-			syncModulesWithTern(editor);
 		}
 
 		// --- Magic words ---

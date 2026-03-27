@@ -387,6 +387,9 @@ module.exports = function WikiPage(props) {
         doIndex={doIndex}
       >
         {mode === "edit" && <>
+          {/* Tern.js */}
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/acorn/8.11.1/acorn.min.js"></script>
+          
           {/* Core CSS */}
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
           <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css" />
@@ -410,14 +413,13 @@ module.exports = function WikiPage(props) {
 
           {/* Autocomplete core */}
           <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
-
-          {/* Tern.js */}
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/acorn/8.11.1/acorn.min.js"></script>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/tern/tern.min.js"></script>
         </>}
 
         <Bundle name="wiki-page.css" />
         <Bundle name="wiki-page.js" />
+        {mode === "edit" && <>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/tern/tern.min.js"></script>
+        </>}
         <meta name="description" content={description || `A page on ${wiki.title} Wiki, hosted on ${config.domainName}`} />
 
         {/* Editable common styles and scripts from wiki pages */}
