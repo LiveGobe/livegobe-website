@@ -378,7 +378,7 @@ $(function () {
 							const content = res.page.content || "";
 							const varName = "__mod_" + modName.replace(/[:.-\/]/g, "_");
 
-							const wrapped = `/** @type {Object} */ var ${varName}={};(function(){var exports={};${content}for(var k in exports)${varName}[k]=exports[k]})();\n`;
+							const wrapped = `/** @type {Object} */ var ${varName} = (function(){\n var exports = {};\n ${content}\n return exports;\n})();\n`;
 
 							moduleCache.set(modName, wrapped);
 							updateVirtualDoc(cm);
@@ -610,15 +610,7 @@ $(function () {
 
 									// Transform type string if present
 									if (patched.type) {
-										patched.type = patched.type.replace(/__(mod|data)_([\w$]+?)(_Schema)?/g, (match, prefix, name) => {
-											// prefix will be either 'mod' or 'data'
-											if (prefix === "mod") {
-												return `Module: ${name}`;
-											} else if (prefix === "data") {
-												return `Data Module: ${name}`;
-											}
-											return name; // Fallback
-										});
+										patched.type = patched.type.replace(/__(mod|data)_([\w$]+)(?:_Schema)?/g, "exports");
 
 										// Optional: Clean up the "fn" arrows so the tooltip looks like modern JS
 										patched.type = patched.type.replace(/fn\((.*?)\) -> (.*)/g, "($1) => $2");
