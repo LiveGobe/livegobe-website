@@ -171,22 +171,68 @@ $(function () {
 		else if (pageName.endsWith(".js")) editorMode = "javascript";
 
 		const moduleCache = new Map();
+		const dataCache = new Map();
+		const variableMap = new Map();
 
 		// --- Initialize editor ---
 		const lgmlDefs = {
-			"requireData": { "!doc": "LGML helper function to load JSON-data modules", "!type": "fn(name: string) -> object" },
+			"requireData": {
+				"!type": "fn(name: string) -> ?",
+				"!resolve": function (self, args, graph) {
+					const nameNode = args && args[0];
+					if (!nameNode) return null;
+
+					function resolveModule(modName) {
+						const varName = "__data_" + modName.replace(/[:.-\/]/g, "_");
+						const found = graph.lookup(varName, graph.ecma5);
+						return found ? found.getType() : null;
+					}
+
+					// --- 1. Literal ---
+					if (typeof nameNode.value === "string") {
+						const t = resolveModule(nameNode.value);
+						return t || "?";
+					}
+
+					// --- 2. Variable lookup (FIXED)
+					const varName =
+						(nameNode.node && nameNode.node.name) ||
+						nameNode.name;
+
+					if (varName && variableMap.has(varName)) {
+						const modName = variableMap.get(varName);
+						const t = resolveModule(modName);
+						if (t) return t;
+					}
+
+					// --- 3. Fallback
+					let union = null;
+
+					dataCache.forEach((_, modName) => {
+						const t = resolveModule(modName);
+						if (t) {
+							union = union ? (union.or ? union.or(t) : t) : t;
+						}
+					});
+
+					return union || "?";
+				}
+			},
 			"require": {
 				"!type": "fn(name: string) -> ?",
 				// Inside your lgmlDefs.require definition
 				"!resolve": function (self, args, graph) {
 					const nameNode = args && args[0];
-					if (!nameNode || !nameNode.value) return null;
+					if (!nameNode) return null;
 
-					const varName = "__mod_" + nameNode.value.replace(/[:.-\/]/g, "_");
+					// --- 1. Literal string ---
+					if (typeof nameNode.value === "string") {
+						const varName = "__mod_" + nameNode.value.replace(/[:.-\/]/g, "_");
+						const found = graph.lookup(varName, graph.ecma5);
+						return found ? found.getType() : "?";
+					}
 
-					// Look up the variable in the top-level scope
-					const found = graph.lookup(varName, graph.ecma5);
-					return found ? found.getType() : "?";
+					return null;
 				}
 			},
 			"exports": { "!type": "object" },
@@ -283,56 +329,211 @@ $(function () {
 
 		window.ternServer = ternServer;
 
+		function extractConstStrings(code) {
+			variableMap.clear();
+
+			// Matches:
+			// const a = "Module:Items"
+			// let b = 'Module:Test'
+			const regex = /\b(const|let|var)\s+([\w$]+)\s*=\s*["']([^"']+)["']/g;
+
+			let match;
+			while ((match = regex.exec(code)) !== null) {
+				const varName = match[2];
+				const value = match[3];
+
+				variableMap.set(varName, value);
+			}
+		}
+
 		function syncDependencies(cm) {
 			const code = cm.getValue();
-			const requireRx = /require\s*\(\s*["'](.+?)["']\s*\)/g;
-			let match;
-			let needsRefresh = false;
 
+			const requireRx = /require\s*\(\s*["'](.+?)["']\s*\)/g;
+			const requireDataRx = /requireData\s*\(\s*["'](.+?)["']\s*\)/g;
+			const requireDataVarRx = /requireData\s*\(\s*([\w$]+)\s*\)/g;
+
+			let match;
+
+			// -------------------------
+			// 1. require("module")
+			// -------------------------
 			while ((match = requireRx.exec(code)) !== null) {
 				const modName = match[1];
+
 				if (!moduleCache.has(modName)) {
 					moduleCache.set(modName, "// loading...");
 
 					const apiPath = modName.replace("Module:", "");
+
 					$.get(`/api/v2/wikis/${wikiName}/pages/${"Module:" + encodeURIComponent(apiPath)}`)
 						.then(res => {
+							if (!res || !res.exists || !res.page) {
+								console.warn("Module not found:", modName);
+								moduleCache.set(modName, "");
+								updateVirtualDoc(cm);
+								return;
+							}
+
 							const content = res.page.content || "";
-							// Sanitize name for JS variable usage
 							const varName = "__mod_" + modName.replace(/[:.-\/]/g, "_");
 
-							// Wrap the module so it exports to our virtual variable
-							const wrapped = `/** @type {Object} */ var ${varName} = (function(){\n var exports = {};\n ${content}\n return exports;\n})();\n`;
+							const wrapped = `/** @type {Object} */ var ${varName}={};(function(){var exports={};${content}for(var k in exports)${varName}[k]=exports[k]})();\n`;
 
 							moduleCache.set(modName, wrapped);
 							updateVirtualDoc(cm);
+						})
+						.fail(err => {
+							console.error("Failed to load module:", modName, err);
 						});
 				}
 			}
+
+			// -------------------------
+			// 2. requireData("module")
+			// -------------------------
+			while ((match = requireDataRx.exec(code)) !== null) {
+				const modName = match[1];
+
+				if (!dataCache.has(modName)) {
+					dataCache.set(modName, "// loading...");
+
+					const apiPath = modName.replace("Module:", "");
+
+					$.get(`/api/v2/wikis/${wikiName}/pages/${"Module:" + encodeURIComponent(apiPath)}`)
+						.then(res => {
+							if (!res || !res.exists || !res.page) {
+								console.warn("Data module not found:", modName);
+								const safe = "__data_" + modName.replace(/[:.-\/]/g, "_");
+								dataCache.set(modName, `var ${safe} = {};\n`);
+								updateVirtualDoc(cm);
+								return;
+							}
+
+							const content = res.page.content || "";
+
+							let parsed;
+							try {
+								parsed = content ? JSON.parse(content) : {};
+							} catch {
+								parsed = {};
+							}
+
+							const varName = "__data_" + modName.replace(/[:.-\/]/g, "_");
+							const wrapped = `var ${varName} = ${JSON.stringify(parsed, null, 2)};\n`;
+
+							dataCache.set(modName, wrapped);
+							updateVirtualDoc(cm);
+						})
+						.fail(err => {
+							console.error("Failed to load data module:", modName, err);
+						});
+				}
+			}
+
+			// -------------------------
+			// 3. requireData(variable)
+			// -------------------------
+
+			// Collect ONLY variables used in requireData(...)
+			const usedDataVars = new Set();
+
+			while ((match = requireDataVarRx.exec(code)) !== null) {
+				usedDataVars.add(match[1]);
+			}
+
+			// Load ONLY those variables from variableMap
+			variableMap.forEach((modName, varName) => {
+				if (!usedDataVars.has(varName)) return;
+
+				if (!dataCache.has(modName)) {
+					dataCache.set(modName, "// loading...");
+
+					const apiPath = modName.replace("Module:", "");
+
+					$.get(`/api/v2/wikis/${wikiName}/pages/${"Module:" + encodeURIComponent(apiPath)}`)
+						.then(res => {
+							if (!res || !res.exists || !res.page) {
+								console.warn("Data module not found:", modName);
+
+								const safe = "__data_" + modName.replace(/[:.-\/]/g, "_");
+								dataCache.set(modName, `var ${safe} = {};\n`);
+
+								updateVirtualDoc(cm);
+								return;
+							}
+
+							const content = res.page.content || "";
+
+							let parsed;
+							try {
+								parsed = content ? JSON.parse(content) : {};
+							} catch {
+								parsed = {};
+							}
+
+							const varNameSafe = "__data_" + modName.replace(/[:.-\/]/g, "_");
+							const wrapped = `var ${varNameSafe} = ${JSON.stringify(parsed, null, 2)};\n`;
+
+							dataCache.set(modName, wrapped);
+							updateVirtualDoc(cm);
+						})
+						.fail(err => {
+							console.error("Failed to load data module (var):", modName, err);
+						});
+				}
+			});
 		}
 
 		function updateVirtualDoc(cm) {
 			// Start with a clean prefix. Ensure exactly 1 newline at the end.
 			let prefix = "var exports = {}; var frame = { cache: {} };\n";
 
-			moduleCache.forEach((content, modName) => {
+			moduleCache.forEach((content) => {
 				if (content && content !== "// loading..." && content.trim() !== "") {
-					const sanitized = "__mod_" + modName.replace(/[:.-\/]/g, "_");
-					// Ensure content doesn't already contain a 'var' for this name 
-					// and force a single newline separator.
-					prefix += `var ${sanitized} = ${content.trim()};\n`;
+					prefix += content.trim() + "\n";
+				}
+			});
+
+			// Inject data modules
+			dataCache.forEach((content, modName) => {
+				if (content && content !== "// loading..." && content.trim() !== "") {
+					prefix += content.trim() + "\n";
 				}
 			});
 
 			const wrapperHead = "(async function() {\n";
 			const userCode = cm.getValue();
 
+			extractConstStrings(userCode);
+
 			// Replace require with padded __mod_ version to preserve horizontal 'ch'
-			const transformedCode = userCode.replace(/require\s*\(\s*["'](.+?)["']\s*\)/g, (match, modName) => {
-				const replacement = "__mod_" + modName.replace(/[:.-\/]/g, "_");
-				// Pad with spaces so the length matches exactly
-				return replacement.padEnd(match.length, " ");
-			});
+			const transformedCode = userCode
+				.replace(/require\s*\(\s*["'](.+?)["']\s*\)/g, (match, modName) => {
+					const replacement = "__mod_" + modName.replace(/[:.-\/]/g, "_");
+					return replacement.padEnd(match.length, " ");
+				})
+				.replace(/requireData\s*\(\s*([^)]+)\s*\)/g, (match, argRaw) => {
+					const arg = argRaw.trim();
+
+					// Case 1: literal string
+					const literalMatch = arg.match(/^["'](.+?)["']$/);
+					if (literalMatch) {
+						const modName = literalMatch[1];
+						const replacement = "__data_" + modName.replace(/[:.-\/]/g, "_");
+						return replacement.padEnd(match.length, " ");
+					}
+
+					// Case 2: variable → resolve via variableMap
+					if (variableMap.has(arg)) {
+						const modName = variableMap.get(arg);
+						const replacement = "__data_" + modName.replace(/[:.-\/]/g, "_");
+						return replacement.padEnd(match.length, " ");
+					}
+
+					// fallback → leave untouched (important)
+					return match;
+				});
 
 			const wrapperFoot = "\n})();";
 
@@ -341,17 +542,25 @@ $(function () {
 		}
 
 		function getTernLineOffset() {
-			let lines = 1; // Start at 1 for the global 'exports/frame' line
+			let lines = 1; // exports/frame line
 
+			// JS modules
 			moduleCache.forEach((content) => {
 				if (content && content !== "// loading..." && content.trim() !== "") {
-					// Count every newline in the module content + 1 for our separator
 					const m = content.trim().match(/\n/g);
 					lines += (m ? m.length : 0) + 1;
 				}
 			});
 
-			// Add 1 for the "(async function() {" line
+			// ✅ JSON data modules
+			dataCache.forEach((content) => {
+				if (content && content !== "// loading..." && content.trim() !== "") {
+					const m = content.trim().match(/\n/g);
+					lines += (m ? m.length : 0) + 1;
+				}
+			});
+
+			// async wrapper
 			return lines + 1;
 		}
 
@@ -381,15 +590,54 @@ $(function () {
 
 				const result = {
 					list: data.completions
-						.filter(c => !c.name.startsWith("__mod_"))
-						.map(c => ({
-							text: c.name,
-							render: (el) => {
-								const tip = ternServer.options.completionTip(c);
-								if (tip) el.appendChild(tip);
-								else el.textContent = c.name;
+						.filter(c => !c.name.startsWith("__mod_") && !c.name.startsWith("__data_"))
+						.map(c => {
+							let displayName = c.name;
+
+							if (displayName.startsWith("__data_")) {
+								displayName = displayName.slice("__data_".length);
 							}
-						})),
+
+							if (displayName.startsWith("__mod_")) {
+								displayName = displayName.slice("__mod_".length);
+							}
+
+							return {
+								text: c.name, // IMPORTANT: keep actual insert
+								render: (el) => {
+									// Clone completion object so we don't mutate Tern internals
+									const patched = { ...c };
+
+									// Transform type string if present
+									if (patched.type) {
+										patched.type = patched.type.replace(/__(mod|data)_([\w$]+?)(_Schema)?/g, (match, prefix, name) => {
+											// prefix will be either 'mod' or 'data'
+											if (prefix === "mod") {
+												return `Module: ${name}`;
+											} else if (prefix === "data") {
+												return `Data Module: ${name}`;
+											}
+											return name; // Fallback
+										});
+
+										// Optional: Clean up the "fn" arrows so the tooltip looks like modern JS
+										patched.type = patched.type.replace(/fn\((.*?)\) -> (.*)/g, "($1) => $2");
+									}
+
+									const tip = ternServer.options.completionTip(patched);
+
+									if (tip) {
+										// Override visible name inside tip
+										const nameEl = tip.querySelector(".cm-tern-name");
+										if (nameEl) nameEl.textContent = displayName;
+
+										el.appendChild(tip);
+									} else {
+										el.textContent = displayName;
+									}
+								}
+							};
+						}),
 					// 2. THE ANCHOR: This defines exactly what gets replaced
 					// 'from' is the start of the word (e.g., the 'L' in 'LO')
 					// 'to' is the current cursor (the end of the word)
@@ -542,6 +790,8 @@ $(function () {
 			editor.on("change", (cm) => {
 				clearTimeout(editor.syncTimeout);
 				editor.syncTimeout = setTimeout(() => {
+					const code = cm.getValue();
+					extractConstStrings(code);
 					syncDependencies(cm);
 					updateVirtualDoc(cm); // Refresh Tern's view of the code
 				}, 500);
@@ -610,6 +860,23 @@ $(function () {
 					cm.state.completionActive.close();
 				}
 			});
+
+			// --- Initial sync ---
+			(function initEditorState() {
+				const value = editor.getValue();
+
+				// Sync textarea
+				$editorTextarea.val(value);
+
+				// Build variable map
+				extractConstStrings(value);
+
+				// Load dependencies (require + requireData)
+				syncDependencies(editor);
+
+				// Build Tern virtual doc
+				updateVirtualDoc(editor);
+			})();
 		}
 
 		// --- Magic words ---
@@ -701,6 +968,45 @@ $(function () {
 			let $toast = $(".save-toast"); if (!$toast.length) $toast = $("<div class='save-toast'></div>").appendTo("body");
 			$toast.text(text).addClass("visible"); setTimeout(() => $toast.removeClass("visible"), 2000);
 		}
+
+		// Intercept wiki edit form submission
+		$("form.wiki-edit-form").on("submit", async function (e) {
+			e.preventDefault();
+			const $form = $(this);
+			const content = editor.getValue();
+			const summary = $form.find("input[name=summary]").val() || "";
+			const minor = $form.find("input[name=minor]").is(":checked");
+
+			if (!wikiName || !pageName) {
+				alert("Missing wiki or page name.");
+				return;
+			}
+
+			try {
+				$form.find("button, input, textarea").prop("disabled", true);
+
+				const resp = await $.ajax({
+					url: `/api/v2/wikis/${encodeURIComponent(wikiName)}/pages/${encodeURIComponent(pageName)}`,
+					method: "POST",
+					data: JSON.stringify({ content, summary, minor }),
+					contentType: "application/json",
+					dataType: "json"
+				});
+
+				if (resp && resp.message) alert(resp.message);
+
+				// Clear local draft
+				try { localStorage.removeItem(storageKey); } catch (e) { }
+
+				// Redirect to page view
+				window.location = `/wikis/${wikiName}/${pageName}`;
+			} catch (err) {
+				console.error(err);
+				alert("Failed to save page: " + (err.responseJSON?.message || err.statusText || err));
+			} finally {
+				$form.find("button, input, textarea").prop("disabled", false);
+			}
+		});
 	}
 
 	// === Preview Modal ===
