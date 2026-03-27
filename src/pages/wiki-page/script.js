@@ -265,8 +265,12 @@ $(function () {
 				const div = document.createElement("div");
 				div.className = "cm-tern-type-tip";
 
-				const firstLine = data.doc?.split("\n").find(l => l.trim());
-				div.textContent = firstLine || data.doc || data.name || "";
+				// Show the Type (e.g. fn(obj: ?, key: ?)) if no Doc exists
+				// This helps you debug why things are "?" 
+				const typeLabel = data.type ? `Type: ${data.type}` : "";
+				const docText = data.doc ? data.doc.split("\n")[0] : "";
+
+				div.textContent = docText || typeLabel || data.name || "No type info found";
 
 				return div;
 			},
@@ -654,63 +658,6 @@ $(function () {
 			indentWithTabs: false,
 			indentUnit: 0,
 			extraKeys: {
-				"Ctrl-L": (cm) => {
-					// 1. Force the virtual document update
-					updateVirtualDoc(cm);
-
-					// 2. We use a small delay to ensure Tern's internal buffer is flushed
-					setTimeout(() => {
-						const offset = getTernLineOffset();
-						const cur = cm.getCursor();
-						const editorLineContent = cm.getLine(cur.line);
-
-						// 3. We request the 'type' AND the 'context' to see if strings match
-						ternServer.server.request({
-							query: {
-								type: "type",
-								file: "editor.js",
-								end: { line: cur.line + offset, ch: cur.ch },
-								lineContexts: true // This helps us see the line Tern is looking at
-							}
-						}, (err, data) => {
-							console.group("Tern Offset Verification");
-
-							// Check if file exists in Tern at all
-							const ternFile = ternServer.server.findFile("editor.js");
-							if (!ternFile) {
-								console.error("❌ Tern cannot find 'editor.js'. Check addFile name.");
-								console.groupEnd();
-								return;
-							}
-
-							console.log("Editor Line Content:", editorLineContent);
-							console.log("Editor Cursor:", `Line: ${cur.line}, Ch: ${cur.ch}`);
-							console.log("Calculated Offset:", offset);
-							console.log("Targeting Tern Line:", cur.line + offset);
-
-							if (err) {
-								console.error("Tern Error:", err.message);
-								if (err.message.includes("outside of file")) {
-									console.log("Full Tern File Length:", ternFile.text.length, "chars");
-									console.log("Try moving your cursor to the start of the file.");
-								}
-							} else {
-								// The 'context' is the actual string Tern is parsing at that offset
-								const ternContext = data.context ? data.context.trim() : "Unknown";
-								console.log("Tern sees at this line:", ternContext);
-								console.log("Tern saw type:", data.type);
-
-								// Check for string alignment
-								if (editorLineContent.trim() !== ternContext && ternContext !== "Unknown") {
-									console.warn("⚠️ OFFSET MISMATCH: Editor and Tern are looking at different lines!");
-								} else {
-									console.log("✅ OFFSET MATCH: Tern and Editor are perfectly aligned.");
-								}
-							}
-							console.groupEnd();
-						});
-					}, 50); // 50ms is enough for the Tern loop to catch up
-				},
 				"Ctrl-S": (cm) => {
 					try {
 						localStorage.setItem(storageKey, cm.getValue());
@@ -756,11 +703,8 @@ $(function () {
 						cm.focus();
 					});
 				},
-				"Alt-.": (cm) => { ternServer.jumpToDef(cm); },
 				"Shift-F12": (cm) => { ternServer.showRefs(cm); },
 				"F2": (cm) => { ternServer.rename(cm); },
-				"Ctrl-I": (cm) => { ternServer.showType(cm); },
-				"Ctrl-Q": (cm) => { ternServer.rename(cm); },
 				"Enter": (cm) => {
 					if (cm.state.completionActive) cm.state.completionActive.pick();
 					else return CodeMirror.Pass;
@@ -770,8 +714,33 @@ $(function () {
 					return CodeMirror.Pass;
 				},
 				"Esc": (cm) => {
-					if (cm.state.completionActive) cm.state.completionActive.close();
-					else return CodeMirror.Pass;
+					// Close autocomplete
+					if (cm.state.completionActive) {
+						cm.state.completionActive.close();
+						return CodeMirror.Pass;
+					}
+
+					// 🔥 Close Tern tooltips
+					document.querySelectorAll(".CodeMirror-Tern-tooltip")
+						.forEach(el => el.remove());
+
+					return CodeMirror.Pass;
+				},
+				"Shift-Ctrl-Space": (cm) => {
+					// 1. Sync the virtual doc so Tern knows the latest code state
+					updateVirtualDoc(cm);
+
+					// 2. This specifically triggers the parameter/argument tooltip
+					// It is more robust for functions than .showType()
+					ternServer.updateArgHints(cm);
+
+					// 3. Fallback: If updateArgHints doesn't show (e.g., not inside parens),
+					// request the full type info manually
+					const data = ternServer.request(cm, "type", (err, data) => {
+						if (data && !document.querySelector(".CodeMirror-Tern-tooltip")) {
+							ternServer.showType(cm);
+						}
+					});
 				}
 			}
 		});

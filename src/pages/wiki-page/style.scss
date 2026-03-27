@@ -2825,13 +2825,16 @@ body[data-theme="dark"] .wiki-search-title {
   font-size: 12px;
   line-height: 1.4;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  z-index: 100000;
+  z-index: 10000;
   /* Must be higher than .CodeMirror-hints */
 
   /* Prevent it from being too wide or overlapping text */
   max-width: 350px;
   white-space: pre-wrap;
   word-wrap: break-word;
+
+  transform: translate(-4px, calc(-100% - 16px));
+  transform-origin: bottom left;
 }
 
 /* LGML highlight */
@@ -2961,5 +2964,5 @@ body[data-theme="dark"] .wiki-search-title {
 }
 
 .CodeMirror-hints:empty {
-    display: none !important;
+  display: none !important;
 }
