@@ -185,7 +185,8 @@ async function generateOGImage(data) {
                         style: {
                           width: "90%",
                           height: "90%",
-                          objectFit: "contain"
+                          objectFit: "contain",
+                          imageRendering: "pixelated"
                         }
                       }
                     }
@@ -303,7 +304,7 @@ async function generateOGImage(data) {
     {
       width,
       height,
-      fonts
+      fonts,
     }
   );
 
