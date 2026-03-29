@@ -428,6 +428,7 @@ module.exports = function WikiPage(props) {
             <meta property="og:description" content={safePage.meta.og.description || description} />
             <meta property="og:image" content={safePage.meta.og.image} />
             <meta property="og:type" content={safePage.meta.og.type} />
+            <meta name="twitter:card" content={safePage.meta.og.type} />
             <meta property="og:url" content={safePage.meta.og.url} />
           </>
         )}
