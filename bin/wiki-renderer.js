@@ -2262,9 +2262,6 @@ async function renderWikiText(text, options = {}) {
     }
   }
 
-  // Ensure absolute URL
-  ogImage = ensureAbsolute(ogImage);
-
   // Final OG object
   const og = {
     title: ogTitle,
