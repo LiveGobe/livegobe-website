@@ -294,7 +294,7 @@ async function generateOGImage(data) {
                 fontSize: "22px",
                 color: "rgba(255,255,255,0.5)"
               },
-              children: "TechPendium"
+              children: data.branding || "LGWS"
             }
           }
         ].filter(Boolean)
