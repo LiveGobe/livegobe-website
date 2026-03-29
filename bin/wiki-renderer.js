@@ -1926,12 +1926,6 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
             clean = staticUrl(
               `wikis/${options.wikiName}/uploads/${encodeURIComponent(fileName)}`
             );
-
-            if (!/^https?:\/\//i.test(clean)) {
-              clean = process.env.NODE_ENV === "development"
-                ? `http://localhost:${config.port}${clean}`
-                : `${config.public.staticLinkProd}${clean}`;
-            }
           } else {
             clean = "";
           }
@@ -2266,7 +2260,7 @@ async function renderWikiText(text, options = {}) {
   const og = {
     title: ogTitle,
     description: ogDescription,
-    image: ogImage,
+    image: staticUrl(ogImage),
     type: options.og?.type || "article",
     url: ensureAbsolute(`/wikis/${wikiName}/${pageName}`)
   };
