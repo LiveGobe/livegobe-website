@@ -1930,7 +1930,7 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
             if (!/^https?:\/\//i.test(clean)) {
               clean = process.env.NODE_ENV === "development"
                 ? `http://localhost:${config.port}${clean}`
-                : `https://${config.domainName}${clean}`;
+                : `${config.public.staticLinkProd}${clean}`;
             }
           } else {
             clean = "";
