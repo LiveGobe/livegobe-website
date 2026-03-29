@@ -422,7 +422,7 @@ module.exports = function WikiPage(props) {
         </>}
         <meta name="description" content={description || `A page on ${wiki.title} Wiki, hosted on ${config.domainName}`} />
 
-        {safePage?.meta.og && (
+        {safePage?.meta?.og && (
           <>
             <meta property="og:title" content={safePage.meta.og.title} />
             <meta property="og:description" content={safePage.meta.og.description || description} />
