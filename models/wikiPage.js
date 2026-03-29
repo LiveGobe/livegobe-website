@@ -257,7 +257,6 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
     };
 
     let FRAME_SIZE = null;
-    let OG = null;
 
     try {
         // Use cached page index when available to avoid heavy DB scan
@@ -284,7 +283,6 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         });
 
         FRAME_SIZE = frameSize;
-        OG = og;
         this.noIndex = noIndex;
         // Persist rendered HTML to file storage
         if (!dryRun) {
@@ -296,6 +294,8 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         this.meta = meta || {};
         if (og) {
             this.meta.og = og;
+        } else {
+            this.meta.og = null;
         }
 
         // If there's any missing page links, ensure it's categorised
@@ -324,7 +324,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         setImmediate(async () => { await this.purgeCache(); });
     }
 
-    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, meta: this.meta, og: OG, frameSize: FRAME_SIZE };
+    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, meta: this.meta, og: this.meta.og || null, frameSize: FRAME_SIZE };
 };
 
 // Instance method to add a new revision (stores text on disk; keeps metadata in DB)

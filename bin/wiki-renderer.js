@@ -1570,7 +1570,11 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
         return `<span class="error">[Cannot invoke documentation page: ${moduleName}]</span>`;
 
       try {
-        return await executeWikiModule(options, moduleName, functionName, args) ?? "";
+        const moduleResult = await executeWikiModule(options, moduleName, functionName, args);
+        if (typeof moduleResult === "string") {
+          return await expandTemplates(moduleResult, options, depth + 1, visited);
+        }
+        return moduleResult ?? "";
       } catch (err) {
         console.error(`[LGML] Error in #invoke ${moduleName}.${functionName}:`, err);
         return `<span class="error">[LGML execution error]</span>`;
