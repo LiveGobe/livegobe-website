@@ -1,6 +1,7 @@
 // wikiRenderer.js
 const DOMPurify = require("isomorphic-dompurify");
 const { staticUrl } = require("./utils");
+const config = require("../config");
 const fs = require("fs");
 const path = require("path");
 const wikiFileStorage = require("./wiki-file-storage");
@@ -1577,6 +1578,79 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
     }
 
     /* ---------------------------
+      OG meta handler
+    ---------------------------- */
+    if (/^#og\s*:/i.test(trimmed)) {
+      const colonIdx = trimmed.indexOf(":");
+      const rawArgs = trimmed.slice(colonIdx + 1).trim();
+
+      const parts = splitTemplateArgs(rawArgs);
+
+      if (!options.og) options.og = {};
+
+      // Key aliases (UX improvement)
+      const keyMap = {
+        desc: "description",
+        img: "image",
+        title_text: "title"
+      };
+
+      for (const part of parts) {
+        if (!part) continue;
+
+        let key, value;
+
+        if (part.includes("=")) {
+          [key, value] = part.split("=", 2).map(s => s.trim());
+        } else {
+          key = part.trim();
+          value = "";
+        }
+
+        if (!key) continue;
+
+        // Expand nested templates
+        const withMagic = expandMagicWords(value);
+        const expanded = await expandTemplates(withMagic, options, depth + 1, visited);
+
+        // Normalize key
+        let normalizedKey = key.toLowerCase().replace(/\s+/g, "_");
+        normalizedKey = keyMap[normalizedKey] || normalizedKey;
+
+        // --- Clean text (VERY important)
+        let clean = expanded
+          .replace(/\[\[([^\]|]+)(\|([^\]]+))?\]\]/g, (_, link, __, label) => label || link) // [[A|B]] → B
+          .replace(/\{\{.*?\}\}/g, "") // remove templates
+          .replace(/<.*?>/g, "")       // strip HTML
+          .trim();
+
+        // --- Resolve image (OG-safe, inline)
+        if (normalizedKey === "image") {
+          let fileName = clean
+            .replace(/^File:/i, "")
+            .trim();
+
+          if (fileName) {
+            clean = staticUrl(
+              `wikis/${options.wikiName}/uploads/${encodeURIComponent(fileName)}`
+            );
+
+            // Ensure absolute URL for OG
+            if (!/^https?:\/\//i.test(clean)) {
+              clean = `https://${config.domainName}${clean}`;
+            }
+          } else {
+            clean = "";
+          }
+        }
+
+        options.og[normalizedKey] = clean;
+      }
+
+      return "";
+    }
+
+    /* ---------------------------
       Page meta built-ins
     ---------------------------- */
     if (/^#(name|description):/i.test(trimmed)) {
@@ -1812,7 +1886,8 @@ async function renderWikiText(text, options = {}) {
   // --- Process includes & templates ---
   working = processIncludeBlocks(working, isTemplateView);
   working = expandMagicWords(working, options);
-  working = await expandTemplates(working, { ...options });
+  working = await expandTemplates(working, options);
+  if (!options.og) options.og = {};
 
   //if (isTemplateView) working = wrapNowiki(working);
 
@@ -1838,8 +1913,44 @@ async function renderWikiText(text, options = {}) {
   // --- Restore <nowiki> after parsing ---
   const restoredHtml = restoreNowikiBlocks(html, nowikiBlocks);
 
+  // --- Build OpenGraph data ---
+
+  function ensureAbsolute(url) {
+    if (!url) return "";
+    if (/^https?:\/\//i.test(url)) return url;
+    if (/^\/\//.test(url)) return `https:${url}`;
+    if (url.startsWith("/")) return `https://${config.domainName}${url}`;
+    return `https://${config.domainName}/${url.replace(/^\/+/, "")}`;
+  }
+
+  // Fallbacks
+  const ogTitle =
+    options.og?.title ||
+    options.meta?.name ||
+    pageName?.replace(/_/g, " ") ||
+    "";
+
+  const ogDescription =
+    options.og?.description ||
+    options.meta?.description ||
+    "";
+
+  let ogImage = options.og?.image || "";
+
+  // Ensure absolute URL
+  ogImage = ensureAbsolute(ogImage);
+
+  // Final OG object
+  const og = {
+    title: ogTitle,
+    description: ogDescription,
+    image: ogImage,
+    type: options.og?.type || "article",
+    url: ensureAbsolute(`/wikis/${wikiName}/${pageName}`)
+  };
+
   // Return both HTML and categories
-  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex, meta: options.meta, frameSize: Buffer.byteLength(JSON.stringify(options.frame), 'utf-8') };
+  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex, meta: options.meta, og, frameSize: Buffer.byteLength(JSON.stringify(options.frame), 'utf-8') };
 }
 
 module.exports = { renderWikiText, resolveLink };

@@ -422,6 +422,16 @@ module.exports = function WikiPage(props) {
         </>}
         <meta name="description" content={description || `A page on ${wiki.title} Wiki, hosted on ${config.domainName}`} />
 
+        {safePage.meta.og && (
+          <>
+            <meta property="og:title" content={safePage.meta.og.title} />
+            <meta property="og:description" content={safePage.meta.og.description || description} />
+            <meta property="og:image" content={safePage.meta.og.image} />
+            <meta property="og:type" content={safePage.meta.og.type} />
+            <meta property="og:url" content={safePage.meta.og.url} />
+          </>
+        )}
+
         {/* Editable common styles and scripts from wiki pages */}
         {safePage.commonCss && <style dangerouslySetInnerHTML={{ __html: safePage.commonCss }} />}
         {safePage.commonJs && <script dangerouslySetInnerHTML={{ __html: safePage.commonJs }} />}

@@ -128,6 +128,36 @@ const WikiPageSchema = new mongoose.Schema({
             default: null,
             trim: true,
             maxLength: 50
+        },
+        og: {
+            title: {
+                type: String,
+                default: null,
+                trim: true,
+                maxlength: 160
+            },
+            description: {
+                type: String,
+                default: null,
+                trim: true,
+                maxlength: 300
+            },
+            image: {
+                type: String,
+                default: null,
+                trim: true
+            },
+            type: {
+                type: String,
+                default: null,
+                trim: true,
+                maxlength: 50
+            },
+            url: {
+                type: String,
+                default: null,
+                trim: true
+            }
         }
     }
 });
@@ -227,6 +257,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
     };
 
     let FRAME_SIZE = null;
+    let OG = null;
 
     try {
         // Use cached page index when available to avoid heavy DB scan
@@ -241,7 +272,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         }
 
         // --- Render LGWL content ---
-        const { html, categories, tags, noIndex, meta, frameSize } = await renderWikiText(currentContent, {
+        const { html, categories, tags, noIndex, meta = {}, og, frameSize } = await renderWikiText(currentContent, {
             wikiName: this.wiki.name,
             wikiId: this.wiki._id,
             pageName: this.path,
@@ -253,6 +284,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         });
 
         FRAME_SIZE = frameSize;
+        OG = og;
         this.noIndex = noIndex;
         // Persist rendered HTML to file storage
         if (!dryRun) {
@@ -261,7 +293,10 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         this.html = html; // in-memory for immediate response
         this.categories = categories;
         this.tags = tags;
-        this.meta = meta;
+        this.meta = meta || {};
+        if (og) {
+            this.meta.og = og;
+        }
 
         // If there's any missing page links, ensure it's categorised
         if (this.namespace != "Special" && /\bwiki-missing\b/.test(html) && !this.categories.includes("Pages_with_broken_links")) {
@@ -289,7 +324,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         setImmediate(async () => { await this.purgeCache(); });
     }
 
-    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, meta: this.meta, frameSize: FRAME_SIZE };
+    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, meta: this.meta, og: OG, frameSize: FRAME_SIZE };
 };
 
 // Instance method to add a new revision (stores text on disk; keeps metadata in DB)
