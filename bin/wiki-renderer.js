@@ -4,6 +4,8 @@ const { staticUrl } = require("./utils");
 const config = require("../config");
 const fs = require("fs");
 const path = require("path");
+const satori = require("satori").default;
+const { Resvg } = require("@resvg/resvg-js");
 const wikiFileStorage = require("./wiki-file-storage");
 
 // Helper to get existing uploaded files for a wiki
@@ -14,6 +16,24 @@ function getExistingFiles(wikiName) {
   const files = fs.readdirSync(uploadsDir);
   return new Set(files);
 }
+
+const fonts = [
+  {
+    name: "Inter",
+    data: fs.readFileSync(path.join(__dirname, "..", "Fonts", "Inter_18pt-Regular.ttf")),
+    weight: 400
+  },
+  {
+    name: "Inter",
+    data: fs.readFileSync(path.join(__dirname, "..", "Fonts", "Inter_18pt-Medium.ttf")),
+    weight: 600
+  },
+  {
+    name: "Inter",
+    data: fs.readFileSync(path.join(__dirname, "..", "Fonts", "Inter_18pt-Bold.ttf")),
+    weight: 700
+  }
+];
 
 /* ---------------------------
    Sanitizer Configuration
@@ -94,6 +114,203 @@ function normalizeModuleName(name) {
     .replace(/^Module:/, "")
     .trim()
     .replace(/\s+/g, "_");
+}
+
+async function generateOGImage(data) {
+  const width = 1200;
+  const height = 630;
+
+  const accent = data.accent || "#22c55e";
+
+  const svg = await satori(
+    {
+      type: "div",
+      props: {
+        style: {
+          width: "1200px",
+          height: "630px",
+          display: "flex",
+          flexDirection: "column",
+          background: "linear-gradient(135deg, #020617, #0f172a)",
+          fontFamily: "sans-serif",
+          position: "relative"
+        },
+        children: [
+          /* ---------------------------
+             Top Accent Bar
+          ---------------------------- */
+          {
+            type: "div",
+            props: {
+              style: {
+                width: "100%",
+                height: "8px",
+                background: accent
+              }
+            }
+          },
+
+          /* ---------------------------
+             Main Content Row
+          ---------------------------- */
+          {
+            type: "div",
+            props: {
+              style: {
+                display: "flex",
+                flexDirection: "row",
+                padding: "48px",
+                flex: 1
+              },
+              children: [
+                /* --- Left Icon --- */
+                data.image && {
+                  type: "div",
+                  props: {
+                    style: {
+                      width: "256px",
+                      height: "256px",
+                      borderRadius: "20px",
+                      background: "#020617",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: "48px",
+                      boxShadow: `0 0 40px ${accent}`
+                    },
+                    children: {
+                      type: "img",
+                      props: {
+                        src: data.image,
+                        style: {
+                          width: "90%",
+                          height: "90%",
+                          objectFit: "contain"
+                        }
+                      }
+                    }
+                  }
+                },
+
+                /* --- Right Text Block --- */
+                {
+                  type: "div",
+                  props: {
+                    style: {
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      flex: 1
+                    },
+                    children: [
+                      /* Title */
+                      {
+                        type: "div",
+                        props: {
+                          style: {
+                            fontSize: "64px",
+                            fontWeight: "800",
+                            color: "#ffffff",
+                            lineHeight: "1.1",
+                            marginBottom: "12px"
+                          },
+                          children: data.title || "Untitled"
+                        }
+                      },
+
+                      /* Subtitle */
+                      data.subtitle && {
+                        type: "div",
+                        props: {
+                          style: {
+                            fontSize: "28px",
+                            color: "#94a3b8",
+                            marginBottom: "16px"
+                          },
+                          children: data.subtitle
+                        }
+                      },
+
+                      /* Primary */
+                      data.primary && {
+                        type: "div",
+                        props: {
+                          style: {
+                            fontSize: "36px",
+                            fontWeight: "600",
+                            color: accent,
+                            marginBottom: "10px"
+                          },
+                          children: data.primary
+                        }
+                      },
+
+                      /* Secondary */
+                      data.secondary && {
+                        type: "div",
+                        props: {
+                          style: {
+                            fontSize: "28px",
+                            color: "#e5e7eb"
+                          },
+                          children: data.secondary
+                        }
+                      }
+                    ].filter(Boolean)
+                  }
+                }
+              ].filter(Boolean)
+            }
+          },
+
+          /* ---------------------------
+             Footer
+          ---------------------------- */
+          data.footer && {
+            type: "div",
+            props: {
+              style: {
+                position: "absolute",
+                bottom: "32px",
+                left: "48px",
+                right: "48px",
+                fontSize: "24px",
+                color: "#64748b"
+              },
+              children: data.footer
+            }
+          },
+
+          /* ---------------------------
+             Branding
+          ---------------------------- */
+          {
+            type: "div",
+            props: {
+              style: {
+                position: "absolute",
+                bottom: "28px",
+                right: "36px",
+                fontSize: "22px",
+                color: "rgba(255,255,255,0.5)"
+              },
+              children: "TechPendium"
+            }
+          }
+        ].filter(Boolean)
+      }
+    },
+    {
+      width,
+      height,
+      fonts
+    }
+  );
+
+  const resvg = new Resvg(svg);
+  const png = resvg.render();
+
+  return png.asPng();
 }
 
 async function buildWikiBundle(options, entryModule) {
@@ -1655,6 +1872,77 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
     }
 
     /* ---------------------------
+      OG Image handler
+    ---------------------------- */
+    if (/^#og_image\s*:/i.test(trimmed)) {
+      const colonIdx = trimmed.indexOf(":");
+      const rawArgs = trimmed.slice(colonIdx + 1).trim();
+
+      const parts = splitTemplateArgs(rawArgs);
+
+      if (!options.ogImage) options.ogImage = {};
+
+      // Optional aliases
+      const keyMap = {
+        img: "image",
+        icon: "image"
+      };
+
+      for (const part of parts) {
+        if (!part) continue;
+
+        let key, value;
+
+        if (part.includes("=")) {
+          [key, value] = part.split("=", 2).map(s => s.trim());
+        } else {
+          key = part.trim();
+          value = "";
+        }
+
+        if (!key) continue;
+
+        // Expand nested templates
+        const withMagic = expandMagicWords(value);
+        const expanded = await expandTemplates(withMagic, options, depth + 1, visited);
+
+        // Normalize key
+        let normalizedKey = key.toLowerCase().replace(/\s+/g, "_");
+        normalizedKey = keyMap[normalizedKey] || normalizedKey;
+
+        // --- Clean text
+        let clean = expanded
+          .replace(/\[\[([^\]|]+)(\|([^\]]+))?\]\]/g, (_, link, __, label) => label || link)
+          .replace(/\{\{.*?\}\}/g, "")
+          .replace(/<.*?>/g, "")
+          .trim();
+
+        // --- Resolve image fields
+        if (normalizedKey === "image") {
+          let fileName = clean.replace(/^File:/i, "").trim();
+
+          if (fileName) {
+            clean = staticUrl(
+              `wikis/${options.wikiName}/uploads/${encodeURIComponent(fileName)}`
+            );
+
+            if (!/^https?:\/\//i.test(clean)) {
+              clean = process.env.NODE_ENV === "development"
+                ? `http://localhost:${config.port}${clean}`
+                : `https://${config.domainName}${clean}`;
+            }
+          } else {
+            clean = "";
+          }
+        }
+
+        options.ogImage[normalizedKey] = clean;
+      }
+
+      return "";
+    }
+
+    /* ---------------------------
       Page meta built-ins
     ---------------------------- */
     if (/^#(name|description):/i.test(trimmed)) {
@@ -1859,23 +2147,22 @@ function restoreNowikiBlocks(text, nowikiBlocks) {
 async function renderWikiText(text, options = {}) {
   if (!text) return { html: "", categories: [] };
 
-  // Ensure a per-request module cache exists. This Map stores module exports
-  // keyed by module name so repeated `require`/#invoke calls reuse the same
-  // compiled module during a single render request.
   if (!options._moduleCache) options._moduleCache = new Map();
   if (!options.meta) options.meta = {};
   if (!options.frame) options.frame = {};
+  if (!options.og) options.og = {};
+  if (!options.ogImage) options.ogImage = {};
 
   const { wikiName, pageName, currentNamespace, WikiPage, currentPageId } = options;
 
   // --- Skip parser for Special pages ---
   const isSpecial = currentNamespace === "Special" || pageName.startsWith("Special:");
   if (isSpecial) {
-    return { html: text, categories: [] }; // return raw content unparsed
+    return { html: text, categories: [] };
   }
 
-  const pageCategories = new Set(); // collect categories
-  const pageTags = new Set();       // collect tags
+  const pageCategories = new Set();
+  const pageTags = new Set();
 
   // --- Prepare existing files set ---
   const existingFiles = getExistingFiles(wikiName);
@@ -1891,43 +2178,47 @@ async function renderWikiText(text, options = {}) {
   working = processIncludeBlocks(working, isTemplateView);
   working = expandMagicWords(working, options);
   working = await expandTemplates(working, options);
-  if (!options.og) options.og = {};
-
-  //if (isTemplateView) working = wrapNowiki(working);
 
   if (WikiPage && currentPageId) {
     await WikiPage.updateOne(
       { _id: currentPageId },
-      { $set: { templatesUsed: [] } } // optional: track templates
+      { $set: { templatesUsed: [] } }
     ).catch(() => { });
   }
 
-  // --- Tokenize and parse normally ---
+  // --- Tokenize and parse ---
   working = await parseTables(working, expandTemplates, { ...options });
   const tokens = tokenize(working, { categories: pageCategories, tags: pageTags });
-  let html = parse(tokens, options); // parse now returns object
+  let html = parse(tokens, options);
 
-  // Detect and strip __NOINDEX__
+  // --- NOINDEX ---
   let noIndex = false;
   if (/__NOINDEX__/i.test(html)) {
     noIndex = true;
     html = html.replace(/__NOINDEX__/gi, "");
   }
 
-  // --- Restore <nowiki> after parsing ---
+  // --- Restore nowiki ---
   const restoredHtml = restoreNowikiBlocks(html, nowikiBlocks);
 
-  // --- Build OpenGraph data ---
-
+  /* ---------------------------
+     OG Builder
+  ---------------------------- */
   function ensureAbsolute(url) {
     if (!url) return "";
     if (/^https?:\/\//i.test(url)) return url;
     if (/^\/\//.test(url)) return `https:${url}`;
-    if (url.startsWith("/")) return `https://${config.domainName}${url}`;
-    return `https://${config.domainName}/${url.replace(/^\/+/, "")}`;
+    if (url.startsWith("/")) {
+      return process.env.NODE_ENV === "development"
+        ? `http://localhost:${config.port}${url}`
+        : `https://${config.domainName}${url}`;
+    }
+    return process.env.NODE_ENV === "development"
+      ? `http://localhost:${config.port}/${url.replace(/^\/+/, "")}`
+      : `https://${config.domainName}/${url.replace(/^\/+/, "")}`;
   }
 
-  // Fallbacks
+  // --- Base fields
   const ogTitle =
     options.og?.title ||
     options.meta?.name ||
@@ -1941,6 +2232,35 @@ async function renderWikiText(text, options = {}) {
 
   let ogImage = options.og?.image || "";
 
+  /* ---------------------------
+     OG IMAGE GENERATION (ALWAYS)
+  ---------------------------- */
+  if (!options.dryRun && options.ogImage && Object.keys(options.ogImage).length > 0) {
+    const safeName = pageName.toLowerCase().replace(/\//g, "_");
+    const ogFileName = `${safeName}.png`;
+
+    const relativePath = `/wikis/${wikiName}/OG/${ogFileName}`;
+    const absolutePath = path.join(process.cwd(), "public", "wikis", wikiName, "OG", ogFileName);
+
+    ogImage = relativePath;
+
+    try {
+      // Ensure directory exists
+      await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
+
+      // 🔥 Always regenerate (cache-safe)
+      const buffer = await generateOGImage({
+        ...options.ogImage,
+        title: options.ogImage.title || ogTitle,
+        description: options.ogImage.description || ogDescription
+      });
+
+      await fs.promises.writeFile(absolutePath, buffer);
+    } catch (err) {
+      console.error("[OG] Failed to generate image:", err);
+    }
+  }
+
   // Ensure absolute URL
   ogImage = ensureAbsolute(ogImage);
 
@@ -1953,8 +2273,16 @@ async function renderWikiText(text, options = {}) {
     url: ensureAbsolute(`/wikis/${wikiName}/${pageName}`)
   };
 
-  // Return both HTML and categories
-  return { html: restoredHtml, categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean), tags: Array.from(pageTags), noIndex, meta: options.meta, og, frameSize: Buffer.byteLength(JSON.stringify(options.frame), 'utf-8') };
+  // --- Return
+  return {
+    html: restoredHtml,
+    categories: Array.from(pageCategories).map(c => c.replace(/ /g, "_")).filter(Boolean),
+    tags: Array.from(pageTags),
+    noIndex,
+    meta: options.meta,
+    og,
+    frameSize: Buffer.byteLength(JSON.stringify(options.frame), "utf-8")
+  };
 }
 
 module.exports = { renderWikiText, resolveLink };

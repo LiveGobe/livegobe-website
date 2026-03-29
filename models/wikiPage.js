@@ -279,7 +279,8 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
             WikiPage,
             getPage,
             currentPageId: this._id,
-            existingPages
+            existingPages,
+            dryRun
         });
 
         FRAME_SIZE = frameSize;
