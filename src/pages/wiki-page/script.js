@@ -173,6 +173,17 @@ $(function () {
 		const moduleCache = new Map();
 		const dataCache = new Map();
 		const variableMap = new Map();
+		let lastUserCode = "";
+		let lastVirtualDoc = "";
+		let lastPrefix = "";
+		let virtualDocDirty = true;
+		let cachedTernLineOffset = 0;
+		let lineOffsetDirty = true;
+
+		function markVirtualDocDirty() {
+			virtualDocDirty = true;
+			lineOffsetDirty = true;
+		}
 
 		// --- Initialize editor ---
 		const lgmlDefs = {
@@ -357,135 +368,92 @@ $(function () {
 			const requireDataRx = /requireData\s*\(\s*["'](.+?)["']\s*\)/g;
 			const requireDataVarRx = /requireData\s*\(\s*([\w$]+)\s*\)/g;
 
+			const missingModuleNames = new Set();
+			const missingDataNames = new Set();
+			const usedDataVars = new Set();
 			let match;
 
-			// -------------------------
-			// 1. require("module")
-			// -------------------------
+			function normalizeApiPath(modName) {
+				return `/api/v2/wikis/${wikiName}/pages/${"Module:" + encodeURIComponent(modName.replace("Module:", ""))}`;
+			}
+
+			function loadModule(modName) {
+				return $.get(normalizeApiPath(modName)).then(res => {
+					if (!res || !res.exists || !res.page) {
+						console.warn("Module not found:", modName);
+						moduleCache.set(modName, "");
+						markVirtualDocDirty();
+						return;
+					}
+
+					const content = res.page.content || "";
+					const varName = "__mod_" + modName.replace(/[:.-\/]/g, "_");
+					const wrapped = `/** @type {Object} */ var ${varName} = (function(){\n var exports = {};\n ${content}\n return exports;\n})();\n`;
+					moduleCache.set(modName, wrapped);
+					markVirtualDocDirty();
+				});
+			}
+
+			function loadDataModule(modName) {
+				return $.get(normalizeApiPath(modName)).then(res => {
+					if (!res || !res.exists || !res.page) {
+						console.warn("Data module not found:", modName);
+						const safe = "__data_" + modName.replace(/[:.-\/]/g, "_");
+						dataCache.set(modName, `var ${safe} = {};\n`);
+						markVirtualDocDirty();
+						return;
+					}
+
+					const content = res.page.content || "";
+					let parsed;
+					try {
+						parsed = content ? JSON.parse(content) : {};
+					} catch {
+						parsed = {};
+					}
+
+					const varName = "__data_" + modName.replace(/[:.-\/]/g, "_");
+					const wrapped = `var ${varName} = ${JSON.stringify(parsed, null, 2)};\n`;
+					dataCache.set(modName, wrapped);
+					markVirtualDocDirty();
+				});
+			}
+
 			while ((match = requireRx.exec(code)) !== null) {
 				const modName = match[1];
-
-				if (!moduleCache.has(modName)) {
+				if (!moduleCache.has(modName) && !missingModuleNames.has(modName)) {
 					moduleCache.set(modName, "// loading...");
-
-					const apiPath = modName.replace("Module:", "");
-
-					$.get(`/api/v2/wikis/${wikiName}/pages/${"Module:" + encodeURIComponent(apiPath)}`)
-						.then(res => {
-							if (!res || !res.exists || !res.page) {
-								console.warn("Module not found:", modName);
-								moduleCache.set(modName, "");
-								updateVirtualDoc(cm);
-								return;
-							}
-
-							const content = res.page.content || "";
-							const varName = "__mod_" + modName.replace(/[:.-\/]/g, "_");
-
-							const wrapped = `/** @type {Object} */ var ${varName} = (function(){\n var exports = {};\n ${content}\n return exports;\n})();\n`;
-
-							moduleCache.set(modName, wrapped);
-							updateVirtualDoc(cm);
-						})
-						.fail(err => {
-							console.error("Failed to load module:", modName, err);
-						});
+					missingModuleNames.add(modName);
 				}
 			}
 
-			// -------------------------
-			// 2. requireData("module")
-			// -------------------------
 			while ((match = requireDataRx.exec(code)) !== null) {
 				const modName = match[1];
-
-				if (!dataCache.has(modName)) {
+				if (!dataCache.has(modName) && !missingDataNames.has(modName)) {
 					dataCache.set(modName, "// loading...");
-
-					const apiPath = modName.replace("Module:", "");
-
-					$.get(`/api/v2/wikis/${wikiName}/pages/${"Module:" + encodeURIComponent(apiPath)}`)
-						.then(res => {
-							if (!res || !res.exists || !res.page) {
-								console.warn("Data module not found:", modName);
-								const safe = "__data_" + modName.replace(/[:.-\/]/g, "_");
-								dataCache.set(modName, `var ${safe} = {};\n`);
-								updateVirtualDoc(cm);
-								return;
-							}
-
-							const content = res.page.content || "";
-
-							let parsed;
-							try {
-								parsed = content ? JSON.parse(content) : {};
-							} catch {
-								parsed = {};
-							}
-
-							const varName = "__data_" + modName.replace(/[:.-\/]/g, "_");
-							const wrapped = `var ${varName} = ${JSON.stringify(parsed, null, 2)};\n`;
-
-							dataCache.set(modName, wrapped);
-							updateVirtualDoc(cm);
-						})
-						.fail(err => {
-							console.error("Failed to load data module:", modName, err);
-						});
+					missingDataNames.add(modName);
 				}
 			}
-
-			// -------------------------
-			// 3. requireData(variable)
-			// -------------------------
-
-			// Collect ONLY variables used in requireData(...)
-			const usedDataVars = new Set();
 
 			while ((match = requireDataVarRx.exec(code)) !== null) {
 				usedDataVars.add(match[1]);
 			}
 
-			// Load ONLY those variables from variableMap
 			variableMap.forEach((modName, varName) => {
-				if (!usedDataVars.has(varName)) return;
-
-				if (!dataCache.has(modName)) {
+				if (usedDataVars.has(varName) && !dataCache.has(modName) && !missingDataNames.has(modName)) {
 					dataCache.set(modName, "// loading...");
-
-					const apiPath = modName.replace("Module:", "");
-
-					$.get(`/api/v2/wikis/${wikiName}/pages/${"Module:" + encodeURIComponent(apiPath)}`)
-						.then(res => {
-							if (!res || !res.exists || !res.page) {
-								console.warn("Data module not found:", modName);
-
-								const safe = "__data_" + modName.replace(/[:.-\/]/g, "_");
-								dataCache.set(modName, `var ${safe} = {};\n`);
-
-								updateVirtualDoc(cm);
-								return;
-							}
-
-							const content = res.page.content || "";
-
-							let parsed;
-							try {
-								parsed = content ? JSON.parse(content) : {};
-							} catch {
-								parsed = {};
-							}
-
-							const varNameSafe = "__data_" + modName.replace(/[:.-\/]/g, "_");
-							const wrapped = `var ${varNameSafe} = ${JSON.stringify(parsed, null, 2)};\n`;
-
-							dataCache.set(modName, wrapped);
-							updateVirtualDoc(cm);
-						})
-						.fail(err => {
-							console.error("Failed to load data module (var):", modName, err);
-						});
+					missingDataNames.add(modName);
 				}
+			});
+
+			const allFetches = [];
+			missingModuleNames.forEach(modName => allFetches.push(loadModule(modName)));
+			missingDataNames.forEach(modName => allFetches.push(loadDataModule(modName)));
+
+			if (!allFetches.length) return;
+
+			Promise.all(allFetches).catch(() => { /* ignore individual failures */ }).then(() => {
+				updateVirtualDoc(cm);
 			});
 		}
 
@@ -509,9 +477,6 @@ $(function () {
 			const wrapperHead = "(async function() {\n";
 			const userCode = cm.getValue();
 
-			extractConstStrings(userCode);
-
-			// Replace require with padded __mod_ version to preserve horizontal 'ch'
 			const transformedCode = userCode
 				.replace(/require\s*\(\s*["'](.+?)["']\s*\)/g, (match, modName) => {
 					const replacement = "__mod_" + modName.replace(/[:.-\/]/g, "_");
@@ -540,15 +505,25 @@ $(function () {
 				});
 
 			const wrapperFoot = "\n})();";
+			const newVirtualDoc = prefix + wrapperHead + transformedCode + wrapperFoot;
 
-			// Update Tern - Use the exact same filename used in the query
-			ternServer.server.addFile("editor.js", prefix + wrapperHead + transformedCode + wrapperFoot);
+			if (!virtualDocDirty && newVirtualDoc === lastVirtualDoc && userCode === lastUserCode && prefix === lastPrefix) {
+				return;
+			}
+
+			ternServer.server.addFile("editor.js", newVirtualDoc);
+			lastVirtualDoc = newVirtualDoc;
+			lastUserCode = userCode;
+			lastPrefix = prefix;
+			virtualDocDirty = false;
+			lineOffsetDirty = true;
 		}
 
 		function getTernLineOffset() {
+			if (!lineOffsetDirty) return cachedTernLineOffset;
+
 			let lines = 1; // exports/frame line
 
-			// JS modules
 			moduleCache.forEach((content) => {
 				if (content && content !== "// loading..." && content.trim() !== "") {
 					const m = content.trim().match(/\n/g);
@@ -556,7 +531,6 @@ $(function () {
 				}
 			});
 
-			// ✅ JSON data modules
 			dataCache.forEach((content) => {
 				if (content && content !== "// loading..." && content.trim() !== "") {
 					const m = content.trim().match(/\n/g);
@@ -564,8 +538,9 @@ $(function () {
 				}
 			});
 
-			// async wrapper
-			return lines + 1;
+			cachedTernLineOffset = lines + 1;
+			lineOffsetDirty = false;
+			return cachedTernLineOffset;
 		}
 
 		const ternHintProvider = function (cm, callback) {
@@ -754,6 +729,7 @@ $(function () {
 					const code = cm.getValue();
 					extractConstStrings(code);
 					syncDependencies(cm);
+					markVirtualDocDirty();
 					updateVirtualDoc(cm); // Refresh Tern's view of the code
 				}, 500);
 			});
