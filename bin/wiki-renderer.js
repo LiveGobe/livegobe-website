@@ -122,6 +122,48 @@ async function generateOGImage(data) {
 
   const accent = data.accent || "#22c55e";
 
+  function normalizeOGImageUrl(src) {
+    if (!src || typeof src !== "string") return src;
+    const trimmed = src.trim();
+    if (/^(?:https?:\/\/|data:|blob:|file:|\/\/)/i.test(trimmed)) {
+      if (/^\/\//.test(trimmed)) return `https:${trimmed}`;
+      return trimmed;
+    }
+
+    const normalized = `/${trimmed.replace(/^\/+/, "")}`;
+    return process.env.NODE_ENV === "development"
+      ? `http://localhost:${config.port}${normalized}`
+      : `https://${config.domainName}${normalized}`;
+  }
+
+  const imageSrc = normalizeOGImageUrl(data.image);
+
+  function sanitizeOGText(text) {
+    if (!text || typeof text !== "string") return "";
+
+    let plain = String(text);
+
+    // Remove nowiki and HTML tags, because OG text must be plain text.
+    plain = plain.replace(/<\/?nowiki>/gi, "");
+    plain = plain.replace(/<[^>]+>/g, "");
+
+    // Strip internal links [[Page|Label]] and external links [URL Label].
+    plain = plain.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, page, label) => label || page);
+    plain = plain.replace(/\[([a-z]+:\/\/[^"]+?)(?:\s+([^\]]+))?\]/gi, (_, url, label) => label || url);
+
+    // Strip wiki formatting markers.
+    plain = plain.replace(/'''''(.*?)'''''/g, "$1");
+    plain = plain.replace(/'''(.*?)'''/g, "$1");
+    plain = plain.replace(/''(.*?)''/g, "$1");
+    plain = plain.replace(/~~(.*?)~~/g, "$1");
+    plain = plain.replace(/`([^`]+)`/g, "$1");
+
+    // Remove simple templates and brace blocks.
+    plain = plain.replace(/\{\{[^{}]*\}\}/g, "");
+
+    return plain.replace(/\s+/g, " ").trim();
+  }
+
   const svg = await satori(
     {
       type: "div",
@@ -159,8 +201,7 @@ async function generateOGImage(data) {
               style: {
                 display: "flex",
                 flexDirection: "row",
-                padding: "48px",
-                flex: 1
+                padding: "48px"
               },
               children: [
                 /* --- Left Icon --- */
@@ -168,28 +209,45 @@ async function generateOGImage(data) {
                   type: "div",
                   props: {
                     style: {
-                      width: "256px",
-                      height: "256px",
-                      borderRadius: "20px",
-                      background: "#020617",
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
-                      justifyContent: "center",
                       marginRight: "48px",
-                      boxShadow: `0 0 40px ${accent}`
+                      width: "256px"
                     },
-                    children: {
-                      type: "img",
-                      props: {
-                        src: data.image,
-                        style: {
-                          width: "90%",
-                          height: "90%",
-                          objectFit: "contain",
-                          imageRendering: "pixelated"
+                    children: [
+                      {
+                        type: "div",
+                        props: {
+                          style: {
+                            width: "256px",
+                            height: "256px",
+                            borderRadius: "20px",
+                            background: "#020617",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            boxShadow: `0 0 40px ${accent}`,
+                            padding: "20px",
+                            boxSizing: "border-box"
+                          },
+                          children: {
+                            type: "img",
+                            props: {
+                              src: imageSrc,
+                              style: {
+                                width: "140px",
+                                height: "140px",
+                                objectFit: "contain",
+                                imageRendering: "pixelated",
+                                MozImageRendering: "crisp-edges",
+                                msInterpolationMode: "nearest-neighbor"
+                              }
+                            }
+                          }
                         }
                       }
-                    }
+                    ].filter(Boolean)
                   }
                 },
 
@@ -200,7 +258,8 @@ async function generateOGImage(data) {
                     style: {
                       display: "flex",
                       flexDirection: "column",
-                      justifyContent: "center",
+                      justifyContent: "flex-start",
+                      alignItems: "flex-start",
                       flex: 1
                     },
                     children: [
@@ -215,7 +274,7 @@ async function generateOGImage(data) {
                             lineHeight: "1.1",
                             marginBottom: "12px"
                           },
-                          children: data.title || "Untitled"
+                          children: sanitizeOGText(data.title) || "Untitled"
                         }
                       },
 
@@ -228,7 +287,7 @@ async function generateOGImage(data) {
                             color: "#94a3b8",
                             marginBottom: "16px"
                           },
-                          children: data.subtitle
+                          children: sanitizeOGText(data.subtitle)
                         }
                       },
 
@@ -242,7 +301,7 @@ async function generateOGImage(data) {
                             color: accent,
                             marginBottom: "10px"
                           },
-                          children: data.primary
+                          children: sanitizeOGText(data.primary)
                         }
                       },
 
@@ -254,13 +313,29 @@ async function generateOGImage(data) {
                             fontSize: "28px",
                             color: "#e5e7eb"
                           },
-                          children: data.secondary
+                          children: sanitizeOGText(data.secondary)
                         }
                       }
                     ].filter(Boolean)
                   }
                 }
               ].filter(Boolean)
+            }
+          },
+          data.description && {
+            type: "div",
+            props: {
+              style: {
+                width: "100%",
+                padding: "0 48px",
+                marginTop: "24px",
+                marginBottom: "24px",
+                color: "#bebebe",
+                fontSize: "20px",
+                textAlign: "left",
+                lineHeight: "1.4"
+              },
+              children: sanitizeOGText(data.description)
             }
           },
 
@@ -278,7 +353,7 @@ async function generateOGImage(data) {
                 fontSize: "24px",
                 color: "#64748b"
               },
-              children: data.footer
+              children: sanitizeOGText(data.footer)
             }
           },
 
@@ -295,7 +370,7 @@ async function generateOGImage(data) {
                 fontSize: "22px",
                 color: "rgba(255,255,255,0.5)"
               },
-              children: data.branding || "LGWS"
+              children: sanitizeOGText(data.branding) || "LGWS"
             }
           }
         ].filter(Boolean)
