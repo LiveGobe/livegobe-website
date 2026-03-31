@@ -2308,7 +2308,7 @@ async function renderWikiText(text, options = {}) {
 
   // --- Extract <nowiki> first ---
   const { protectedText, nowikiBlocks } = protectNowikiBlocks(text);
-  let working = (typeof options?.frame?.__header === "string" ? options.frame.__header : "") + protectedText + (typeof options?.frame?.__footer === "string" ? options.frame.__footer : "");
+  let working = protectedText;
 
   const isTemplateView = currentNamespace === "Template";
 
@@ -2325,6 +2325,7 @@ async function renderWikiText(text, options = {}) {
   }
 
   // --- Tokenize and parse ---
+  working = (typeof options?.frame?.__header === "string" ? options.frame.__header + "\n" : "") + working + (typeof options?.frame?.__footer === "string" ? "\n" + options.frame.__footer : "");
   working = await parseTables(working, expandTemplates, { ...options });
   const tokens = tokenize(working, { categories: pageCategories, tags: pageTags });
   let html = parse(tokens, options);
