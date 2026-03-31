@@ -170,7 +170,9 @@ async function generateOGImage(data) {
 
     return plain.replace(/\s+/g, " ").trim();
   }
-
+  console.log(data.description);
+  console.log("");
+  console.log(sanitizeOGText(data.description));
   const svg = await satori(
     {
       type: "div",
