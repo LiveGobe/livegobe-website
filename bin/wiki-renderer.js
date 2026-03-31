@@ -2308,7 +2308,7 @@ async function renderWikiText(text, options = {}) {
 
   // --- Extract <nowiki> first ---
   const { protectedText, nowikiBlocks } = protectNowikiBlocks(text);
-  let working = (frame?.__header || "") + protectedText + (frame?.__footer || "");
+  let working = (typeof options?.frame?.__header === "string" ? options.frame.__header : "") + protectedText + (typeof options?.frame?.__footer === "string" ? options.frame.__footer : "");
 
   const isTemplateView = currentNamespace === "Template";
 
