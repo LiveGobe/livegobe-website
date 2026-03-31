@@ -144,12 +144,8 @@ async function generateOGImage(data) {
     let plain = String(text);
 
     // Remove invisible HTML elements before any remaining tag stripping.
-    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\bhidden\b[^>]*>[\s\S]*?<\/\1>/gi, "");
-    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\baria-hidden=(?:"|')?true(?:"|')?[^>]*>[\s\S]*?<\/\1>/gi, "");
-    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\bstyle=(['"])(?:(?:(?!\2).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\2)[^>]*>[\s\S]*?<\/\1>/gi, "");
-    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\bhidden\b[^>]*\/?>/gi, "");
-    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\baria-hidden=(?:"|')?true(?:"|')?[^>]*\/?>/gi, "");
-    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\bstyle=(['"])(?:(?:(?!\2).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\2)[^>]*\/?>/gi, "");
+    plain = plain.replace(/<[^>]*\b(?:hidden|aria-hidden\s*=\s*(?:"|')?true(?:"|')?|style\s*=\s*(['"])(?:(?:(?!\1).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\1))[^>]*>[\s\S]*?<\/[^>]*>/gi, "");
+    plain = plain.replace(/<[^>]*\b(?:hidden|aria-hidden\s*=\s*(?:"|')?true(?:"|')?|style\s*=\s*(['"])(?:(?:(?!\1).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\1))[^>]*\/?>/gi, "");
 
     // Remove nowiki and HTML tags, because OG text must be plain text.
     plain = plain.replace(/<\/?nowiki>/gi, "");
