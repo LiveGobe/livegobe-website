@@ -2287,7 +2287,7 @@ async function renderWikiText(text, options = {}) {
 
   if (!options._moduleCache) options._moduleCache = new Map();
   if (!options.meta) options.meta = {};
-  if (!options.frame) options.frame = {};
+  if (!options.frame) options.frame = { __header: "", __footer: "" };
   if (!options.og) options.og = {};
   if (!options.ogImage) options.ogImage = {};
 
@@ -2308,7 +2308,7 @@ async function renderWikiText(text, options = {}) {
 
   // --- Extract <nowiki> first ---
   const { protectedText, nowikiBlocks } = protectNowikiBlocks(text);
-  let working = protectedText;
+  let working = (frame?.__header || "") + protectedText + (frame?.__footer || "");
 
   const isTemplateView = currentNamespace === "Template";
 
