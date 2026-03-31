@@ -1816,7 +1816,67 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
     text = text.replace(regex, entity);
   }
 
-  const templateRegex = /\{\{([^{}]+?)\}\}(?!\})/g;
+  async function replaceDoubleBracesAsync(str, asyncReplacer) {
+    let out = "";
+    let i = 0;
+
+    while (i < str.length) {
+      const start = str.indexOf("{{", i);
+      if (start === -1) {
+        out += str.slice(i);
+        break;
+      }
+
+      out += str.slice(i, start);
+      let depth = 1;
+      let j = start + 2;
+
+      while (j < str.length && depth > 0) {
+        if (str.slice(j, j + 3) === "{{{") {
+          let tripleDepth = 1;
+          j += 3;
+          while (j < str.length && tripleDepth > 0) {
+            if (str.slice(j, j + 3) === "{{{") {
+              tripleDepth += 1;
+              j += 3;
+            } else if (str.slice(j, j + 3) === "}}}") {
+              tripleDepth -= 1;
+              j += 3;
+            } else {
+              j += 1;
+            }
+          }
+          continue;
+        }
+
+        if (str.slice(j, j + 2) === "{{") {
+          depth += 1;
+          j += 2;
+          continue;
+        }
+
+        if (str.slice(j, j + 2) === "}}") {
+          depth -= 1;
+          j += 2;
+          continue;
+        }
+
+        j += 1;
+      }
+
+      if (depth > 0) {
+        out += str.slice(start);
+        break;
+      }
+
+      const whole = str.slice(start, j);
+      const inner = whole.slice(2, -2);
+      out += await asyncReplacer(whole, inner);
+      i = j;
+    }
+
+    return out;
+  }
 
   async function replaceTemplate(match, inner) {
     const trimmed = inner.trim();
@@ -2138,16 +2198,9 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
   /* ---------------------------
      Main loop
   ---------------------------- */
-  let result = "";
-  let lastIndex = 0;
-  let match;
-  while ((match = templateRegex.exec(text)) !== null) {
-    result += text.slice(lastIndex, match.index);
-    result += await replaceTemplate(match[0], match[1]);
-    lastIndex = templateRegex.lastIndex;
-  }
-  result += text.slice(lastIndex);
-  return result;
+  return await replaceDoubleBracesAsync(text, async (whole, inner) => {
+    return await replaceTemplate(whole, inner);
+  });
 }
 
 function processIncludeBlocks(content, isTemplateView) {
