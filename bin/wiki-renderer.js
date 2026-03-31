@@ -143,9 +143,20 @@ async function generateOGImage(data) {
 
     let plain = String(text);
 
+    // Remove invisible HTML elements before any remaining tag stripping.
+    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\bhidden\b[^>]*>[\s\S]*?<\/\1>/gi, "");
+    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\baria-hidden=(?:"|')?true(?:"|')?[^>]*>[\s\S]*?<\/\1>/gi, "");
+    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\bstyle=(['"])(?:(?:(?!\2).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\2)[^>]*>[\s\S]*?<\/\1>/gi, "");
+    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\bhidden\b[^>]*\/?>/gi, "");
+    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\baria-hidden=(?:"|')?true(?:"|')?[^>]*\/?>/gi, "");
+    plain = plain.replace(/<([a-z][a-z0-9]*)\b[^>]*\bstyle=(['"])(?:(?:(?!\2).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\2)[^>]*\/?>/gi, "");
+
     // Remove nowiki and HTML tags, because OG text must be plain text.
     plain = plain.replace(/<\/?nowiki>/gi, "");
     plain = plain.replace(/<[^>]+>/g, "");
+
+    // Remove Image syntax from title/description, since they won't render as images in OG and just add noise.
+    plain = plain.replace(/^\s*File:[^\s|]+(?:\s*\|[^|]*)*$/gmi, "");
 
     // Strip internal links [[Page|Label]] and external links [URL Label].
     plain = plain.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, page, label) => label || page);
