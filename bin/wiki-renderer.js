@@ -143,32 +143,6 @@ async function generateOGImage(data) {
 
     let plain = String(text);
 
-    function stripMediaLinks(value) {
-      return value.replace(/\[\[\s*(?:File|Image):([^\]]+?)\]\]/gi, (_, inner) => {
-        const parts = inner.split("|").map(p => p.trim()).filter(Boolean);
-        if (!parts.length) return "";
-
-        let altText = "";
-        for (const part of parts.slice(1)) {
-          const altMatch = part.match(/^alt\s*=\s*(.*)$/i);
-          if (altMatch) {
-            altText = altMatch[1].trim();
-            break;
-          }
-        }
-
-        if (altText) return altText;
-
-        const last = parts[parts.length - 1];
-        if (/^(?:\d+px|thumb(nail)?|inline|plain|noframe|upright|center|left|right|link=.*)$/i.test(last)) {
-          return "";
-        }
-        return last;
-      });
-    }
-
-    plain = stripMediaLinks(plain);
-
     // Remove invisible HTML elements before any remaining tag stripping.
     plain = plain.replace(/<[^>]*\b(?:hidden|aria-hidden\s*=\s*(?:"|')?true(?:"|')?|style\s*=\s*(['"])(?:(?:(?!\1).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\1))[^>]*>[\s\S]*?<\/[^>]*>/gi, "");
     plain = plain.replace(/<[^>]*\b(?:hidden|aria-hidden\s*=\s*(?:"|')?true(?:"|')?|style\s*=\s*(['"])(?:(?:(?!\1).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\1))[^>]*\/?>/gi, "");
@@ -196,6 +170,7 @@ async function generateOGImage(data) {
 
     return plain.replace(/\s+/g, " ").trim();
   }
+
   const svg = await satori(
     {
       type: "div",
@@ -1969,6 +1944,21 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
     /* ---------------------------
       OG meta handler
     ---------------------------- */
+    function cleanInlineMetadata(text) {
+      if (!text || typeof text !== "string") return "";
+      return String(text)
+        .replace(/\[\[([^\]|]+)(\|([^\]]+))?\]\]/g, (_, page, __, label) => label || page)
+        .replace(/\{\{.*?\}\}/g, "")
+        .replace(/<.*?>/g, "")
+        .replace(/'''''(.*?)'''''/g, "$1")
+        .replace(/'''(.*?)'''/g, "$1")
+        .replace(/''(.*?)''/g, "$1")
+        .replace(/~~(.*?)~~/g, "$1")
+        .replace(/`([^`]+)`/g, "$1")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
     if (/^#og\s*:/i.test(trimmed)) {
       const colonIdx = trimmed.indexOf(":");
       const rawArgs = trimmed.slice(colonIdx + 1).trim();
@@ -2007,11 +1997,7 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
         normalizedKey = keyMap[normalizedKey] || normalizedKey;
 
         // --- Clean text (VERY important)
-        let clean = expanded
-          .replace(/\[\[([^\]|]+)(\|([^\]]+))?\]\]/g, (_, link, __, label) => label || link) // [[A|B]] → B
-          .replace(/\{\{.*?\}\}/g, "") // remove templates
-          .replace(/<.*?>/g, "")       // strip HTML
-          .trim();
+        let clean = cleanInlineMetadata(expanded);
 
         // --- Resolve image (OG-safe, inline)
         if (normalizedKey === "image") {
@@ -2079,11 +2065,7 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
         normalizedKey = keyMap[normalizedKey] || normalizedKey;
 
         // --- Clean text
-        let clean = expanded
-          .replace(/\[\[([^\]|]+)(\|([^\]]+))?\]\]/g, (_, link, __, label) => label || link)
-          .replace(/\{\{.*?\}\}/g, "")
-          .replace(/<.*?>/g, "")
-          .trim();
+        let clean = cleanInlineMetadata(expanded);
 
         // --- Resolve image fields
         if (normalizedKey === "image") {
@@ -2120,9 +2102,9 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
       if (!options.meta) options.meta = {};
 
       if (type === "name") {
-        options.meta.name = expanded;
+        options.meta.name = cleanInlineMetadata(expanded);
       } else if (type === "description") {
-        options.meta.description = expanded;
+        options.meta.description = cleanInlineMetadata(expanded);
       }
 
       // Do not render visible output
@@ -2409,7 +2391,6 @@ async function renderWikiText(text, options = {}) {
         title: options.ogImage.title || ogTitle,
         description: options.ogImage.description || ogDescription
       });
-
       await fs.promises.writeFile(absolutePath, buffer);
     } catch (err) {
       console.error("[OG] Failed to generate image:", err);
