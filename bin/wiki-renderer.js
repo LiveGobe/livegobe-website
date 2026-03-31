@@ -2306,16 +2306,23 @@ async function renderWikiText(text, options = {}) {
   const existingFiles = getExistingFiles(wikiName);
   options.existingFiles = existingFiles;
 
-  // --- Extract <nowiki> first ---
   const { protectedText, nowikiBlocks } = protectNowikiBlocks(text);
   let working = protectedText;
 
   const isTemplateView = currentNamespace === "Template";
 
-  // --- Process includes & templates ---
+  // --- Process includes & templates (MAIN CONTENT FIRST)
   working = processIncludeBlocks(working, isTemplateView);
   working = expandMagicWords(working, options);
   working = await expandTemplates(working, options);
+
+  // 🔥 NOW frame has been mutated by modules
+
+  // --- Inject header/footer INTO working
+  let frameHeader = options?.frame?.__header + "\n" || "";
+  let frameFooter = "\n" + options?.frame?.__footer || "";
+
+  working = frameHeader + working + frameFooter;
 
   if (WikiPage && currentPageId) {
     await WikiPage.updateOne(
@@ -2325,7 +2332,6 @@ async function renderWikiText(text, options = {}) {
   }
 
   // --- Tokenize and parse ---
-  working = (typeof options?.frame?.__header === "string" ? options.frame.__header + "\n" : "") + working + (typeof options?.frame?.__footer === "string" ? "\n" + options.frame.__footer : "");
   working = await parseTables(working, expandTemplates, { ...options });
   const tokens = tokenize(working, { categories: pageCategories, tags: pageTags });
   let html = parse(tokens, options);
