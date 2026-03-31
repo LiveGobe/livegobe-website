@@ -1947,6 +1947,7 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
     function cleanInlineMetadata(text) {
       if (!text || typeof text !== "string") return "";
       return String(text)
+        .replace(/\[\[File:(.*?)\|(.*?)\]\]/g, (_, fileName, label) => label || fileName)
         .replace(/\[\[([^\]|]+)(\|([^\]]+))?\]\]/g, (_, page, __, label) => label || page)
         .replace(/\{\{.*?\}\}/g, "")
         .replace(/<.*?>/g, "")
