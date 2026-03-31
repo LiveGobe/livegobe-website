@@ -143,6 +143,32 @@ async function generateOGImage(data) {
 
     let plain = String(text);
 
+    function stripMediaLinks(value) {
+      return value.replace(/\[\[\s*(?:File|Image):([^\]]+?)\]\]/gi, (_, inner) => {
+        const parts = inner.split("|").map(p => p.trim()).filter(Boolean);
+        if (!parts.length) return "";
+
+        let altText = "";
+        for (const part of parts.slice(1)) {
+          const altMatch = part.match(/^alt\s*=\s*(.*)$/i);
+          if (altMatch) {
+            altText = altMatch[1].trim();
+            break;
+          }
+        }
+
+        if (altText) return altText;
+
+        const last = parts[parts.length - 1];
+        if (/^(?:\d+px|thumb(nail)?|inline|plain|noframe|upright|center|left|right|link=.*)$/i.test(last)) {
+          return "";
+        }
+        return last;
+      });
+    }
+
+    plain = stripMediaLinks(plain);
+
     // Remove invisible HTML elements before any remaining tag stripping.
     plain = plain.replace(/<[^>]*\b(?:hidden|aria-hidden\s*=\s*(?:"|')?true(?:"|')?|style\s*=\s*(['"])(?:(?:(?!\1).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\1))[^>]*>[\s\S]*?<\/[^>]*>/gi, "");
     plain = plain.replace(/<[^>]*\b(?:hidden|aria-hidden\s*=\s*(?:"|')?true(?:"|')?|style\s*=\s*(['"])(?:(?:(?!\1).)*?\b(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0)\b.*?)(\1))[^>]*\/?>/gi, "");
@@ -170,9 +196,6 @@ async function generateOGImage(data) {
 
     return plain.replace(/\s+/g, " ").trim();
   }
-  console.log(data.description);
-  console.log("");
-  console.log(sanitizeOGText(data.description));
   const svg = await satori(
     {
       type: "div",
