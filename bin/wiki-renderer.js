@@ -137,7 +137,6 @@ async function generateOGImage(data) {
   }
 
   const imageSrc = normalizeOGImageUrl(data.image);
-
   function sanitizeOGText(text) {
     if (!text || typeof text !== "string") return "";
 
@@ -212,7 +211,7 @@ async function generateOGImage(data) {
               },
               children: [
                 /* --- Left Icon --- */
-                data.image && {
+                imageSrc && {
                   type: "div",
                   props: {
                     style: {
