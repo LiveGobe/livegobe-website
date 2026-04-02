@@ -2169,34 +2169,47 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
     async function RTB(whole, key) {
       key = key.trim();
 
-      // Extract parameters and fallback, if the latter exists
-      const pIdx = key.indexOf("|");
-      let paramKey = key;
-      if (pIdx !== -1) {
-        paramKey = key.slice(0, pIdx).trim();
-      }
+      // --- Split paramKey | fallback ---
+      const pipeIdx = key.indexOf("|");
+      let paramKey = pipeIdx !== -1 ? key.slice(0, pipeIdx).trim() : key;
+      let fallback = pipeIdx !== -1 ? key.slice(pipeIdx + 1) : null;
 
+      // ✅ Expand paramKey itself (CRITICAL)
+      paramKey = await replaceTripleBracesAsync(paramKey, RTB);
+      paramKey = paramKey.trim();
+
+      // ---------------------------
       // Named parameter
+      // ---------------------------
       for (const p of parts) {
         if (p.includes("=")) {
           const [k, v] = p.split("=", 2).map(s => s.trim());
+
           if (k === paramKey) {
-            return expandMagicWords(v);
+            // ✅ FULL expansion
+            const withMagic = expandMagicWords(v);
+            return await expandTemplates(withMagic, options, depth + 1, visited);
           }
         }
       }
 
+      // ---------------------------
       // Positional parameter
+      // ---------------------------
       const idx = Number(paramKey);
       if (!isNaN(idx) && idx > 0 && parts[idx - 1]) {
-        return expandMagicWords(parts[idx - 1].trim());
+        const val = parts[idx - 1].trim();
+        const withMagic = expandMagicWords(val);
+        return await expandTemplates(withMagic, options, depth + 1, visited);
       }
 
+      // ---------------------------
       // Fallback
-      const pipeIdx = key.indexOf("|");
-      if (pipeIdx !== -1) {
-        const fallback = key.slice(pIdx + 1).trim();
-        return replaceTripleBracesAsync(fallback, RTB);
+      // ---------------------------
+      if (fallback !== null) {
+        const tripleExpanded = await replaceTripleBracesAsync(fallback, RTB);
+        const withMagic = expandMagicWords(tripleExpanded);
+        return await expandTemplates(withMagic, options, depth + 1, visited);
       }
 
       return "";
