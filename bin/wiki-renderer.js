@@ -169,7 +169,6 @@ async function generateOGImage(data) {
 
     return plain.replace(/\s+/g, " ").trim();
   }
-
   const svg = await satori(
     {
       type: "div",
@@ -211,7 +210,7 @@ async function generateOGImage(data) {
               },
               children: [
                 /* --- Left Icon --- */
-                imageSrc && {
+                data.image && data.existingFiles.has(data.image.split("/").pop()) && {
                   type: "div",
                   props: {
                     style: {
@@ -2409,7 +2408,8 @@ async function renderWikiText(text, options = {}) {
       const buffer = await generateOGImage({
         ...options.ogImage,
         title: options.ogImage.title || ogTitle,
-        description: options.ogImage.description || ogDescription
+        description: options.ogImage.description || ogDescription,
+        existingFiles
       });
       await fs.promises.writeFile(absolutePath, buffer);
     } catch (err) {
