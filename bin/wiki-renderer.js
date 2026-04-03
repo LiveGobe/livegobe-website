@@ -552,6 +552,16 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
     }
   }
 
+  const argsObject = {};
+
+  for (let i = 0; i < positionalArgs.length; i++) {
+    argsObject[i] = positionalArgs[i];
+  }
+
+  for (const key in namedArgs) {
+    argsObject[key] = namedArgs[key];
+  }
+
   let bundleCode;
 
   try {
@@ -591,7 +601,7 @@ ${bundleCode}
     moduleHash: sourceHash,
     code: finalCode,
     functionName,
-    args: positionalArgs.length ? positionalArgs : [namedArgs],
+    args: argsObject,
     wikiId: String(options.wikiId),
     frame: JSON.parse(JSON.stringify(options.frame || {})),
     existingPages: options.existingPages
