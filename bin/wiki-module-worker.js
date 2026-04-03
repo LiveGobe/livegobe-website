@@ -98,10 +98,10 @@ async function executeTask(workerData) {
         result = exported;
     }
     else if (typeof exported === "function") {
-        result = await exported.apply(null, args);
+        result = await exported(args);
     }
     else if (exported && typeof exported[functionName] === "function") {
-        result = await exported[functionName].apply(null, args);
+        result = await exported[functionName](args);
     }
     else {
         throw new Error(
