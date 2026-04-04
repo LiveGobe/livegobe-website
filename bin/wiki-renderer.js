@@ -169,6 +169,7 @@ async function generateOGImage(data) {
 
     return plain.replace(/\s+/g, " ").trim();
   }
+
   const svg = await satori(
     {
       type: "div",
@@ -2034,6 +2035,35 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
       return "";
     }
 
+    function splitKeyValue(str) {
+      let inSingle = false;
+      let inDouble = false;
+      let inTag = false;
+
+      for (let i = 0; i < str.length; i++) {
+        const ch = str[i];
+
+        if (ch === "'" && !inDouble && !inTag) {
+          inSingle = !inSingle;
+        } else if (ch === '"' && !inSingle && !inTag) {
+          inDouble = !inDouble;
+        } else if (!inSingle && !inDouble) {
+          if (ch === "<") {
+            inTag = true;
+          } else if (ch === ">") {
+            inTag = false;
+          } else if (ch === "=" && !inTag) {
+            return [
+              str.slice(0, i).trim(),
+              str.slice(i + 1).trim()
+            ];
+          }
+        }
+      }
+
+      return [str.trim(), ""];
+    }
+
     /* ---------------------------
       OG Image handler
     ---------------------------- */
@@ -2045,7 +2075,6 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
 
       if (!options.ogImage) options.ogImage = {};
 
-      // Optional aliases
       const keyMap = {
         img: "image",
         icon: "image"
@@ -2054,14 +2083,11 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
       for (const part of parts) {
         if (!part) continue;
 
-        let key, value;
+        // ✅ SAFE split (fixes your bug)
+        const [keyRaw, valueRaw] = splitKeyValue(part);
 
-        if (part.includes("=")) {
-          [key, value] = part.split("=", 2).map(s => s.trim());
-        } else {
-          key = part.trim();
-          value = "";
-        }
+        const key = keyRaw;
+        const value = valueRaw;
 
         if (!key) continue;
 
@@ -2073,10 +2099,10 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
         let normalizedKey = key.toLowerCase().replace(/\s+/g, "_");
         normalizedKey = keyMap[normalizedKey] || normalizedKey;
 
-        // --- Clean text
+        // Clean text
         let clean = cleanInlineMetadata(expanded);
 
-        // --- Resolve image fields
+        // Resolve image fields
         if (normalizedKey === "image") {
           let fileName = clean.replace(/^File:/i, "").trim();
 
