@@ -1034,6 +1034,24 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
                 return res.status(403).json({ message: req.t("api.nopermission") });
             }
 
+            // Special permission check for User namespace pages
+            // Only platform admin, wiki admin, and the page owner can edit User namespace pages
+            if (namespace === "User") {
+                // Extract the page owner name (first segment of the path before any /)
+                const pageOwnerName = fullPath.split("/")[0];
+                
+                // Check if user is the page owner, platform admin, or wiki admin
+                const isPageOwner = req.user.username === pageOwnerName;
+                const isPlatformAdmin = req.user.hasRole("admin");
+                const isWikiAdmin = wiki.isAdmin(req.user);
+                
+                if (!isPageOwner && !isPlatformAdmin && !isWikiAdmin) {
+                    return res.status(403).json({ 
+                        message: req.t("api.wikis.user_namespace_edit_denied")
+                    });
+                }
+            }
+
             // Try to find existing page
             let page = await WikiPage.findOne({
                 wiki: wiki._id,
@@ -1139,12 +1157,29 @@ router.route("/wikis/:wikiName/pages/:pageTitle*")
             // Must be logged in
             if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
 
-            // Only global admins or wiki admins can delete pages
-            if (!req.user.hasRole?.("admin") && !wiki.isAdmin(req.user)) {
-                return res.status(403).json({ message: req.t("api.adminonly") });
+            // Build full path for permission checks
+            const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
+
+            // Permission check: depends on namespace
+            if (namespace === "User") {
+                // For User namespace pages: owner, platform admin, or wiki admin can delete
+                const pageOwnerName = fullPath.split("/")[0];
+                const isPageOwner = req.user.username === pageOwnerName;
+                const isPlatformAdmin = req.user.hasRole("admin");
+                const isWikiAdmin = wiki.isAdmin(req.user);
+                
+                if (!isPageOwner && !isPlatformAdmin && !isWikiAdmin) {
+                    return res.status(403).json({ 
+                        message: req.t("api.wikis.user_namespace_delete_denied")
+                    });
+                }
+            } else {
+                // For other namespaces: only platform admin or wiki admin can delete
+                if (!req.user.hasRole?.("admin") && !wiki.isAdmin(req.user)) {
+                    return res.status(403).json({ message: req.t("api.adminonly") });
+                }
             }
 
-            const fullPath = subPath ? `${pageTitle}${subPath}` : pageTitle;
             const page = await WikiPage.findOne({ wiki: wiki._id, namespace, path: fullPath });
             if (!page) return res.status(404).json({ message: req.t("api.wikis.page_not_found", { page: fullPath }) });
 

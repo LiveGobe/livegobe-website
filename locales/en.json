@@ -42,7 +42,9 @@
       "all_purged": "Wiki cache purged successfully",
       "search_term_required": "Search term is required",
       "search_results": "{0} results found for '{1}'",
-      "modules_list": "Modules list retrieved successfully"
+      "modules_list": "Modules list retrieved successfully",
+      "user_namespace_edit_denied": "Only the page owner, platform admin, or wiki admin can edit User namespace pages",
+      "user_namespace_delete_denied": "Only the page owner, platform admin, or wiki admin can delete User namespace pages"
     },
     "filestorage": {
       "exists": "Filestorage already exists",
