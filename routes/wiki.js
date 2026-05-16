@@ -95,7 +95,7 @@ async function getPageLocaleVariants(wiki, namespace, basePath) {
 router.get("/", async (req, res) => {
     try {
         const wikis = await Wiki.findAccessible(req.user);
-        res.serve("wikis", { wikis });
+        res.serve("wikis", { wikis, canonicalLink: "/wikis" });
     } catch (err) {
         console.error("Error loading wikis:", err);
         res.serve("500", { message: err });
@@ -189,7 +189,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                     canDelete: wiki.isAdmin(req.user),
                     t: req.t,
                     query: req.query,
-                    language: req.language
+                    language: req.language,
+                    canonicalLink: `/wikis/${wiki.name}/Special:${pageTitle}${req.query.mode ? `?mode=${req.query.mode}` : ""}` // for SEO, point to the clean URL without ?noredirect or ?oldid
                 });
             }
 
@@ -239,7 +240,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                         query: req.query,
                         canEdit: wiki.canEdit(req.user),
                         canDelete: wiki.isAdmin(req.user),
-                        t: req.t
+                        t: req.t,
+                        canonicalLink: `/wikis/${wiki.name}/Special:AllPages?namespace=${encodeURIComponent(namespace)}`
                     });
                 }
 
@@ -273,7 +275,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                         query: req.query,
                         canEdit: wiki.canEdit(req.user),
                         canDelete: wiki.isAdmin(req.user),
-                        t: req.t
+                        t: req.t,
+                        canonicalLink: `/wikis/${wiki.name}/Special:RecentChanges?days=${days}`
                     });
                 }
                 case "permissions":
@@ -298,6 +301,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                 query: req.query,
                 canEdit: wiki.canEdit(req.user),
                 canDelete: wiki.isAdmin(req.user),
+                canonicalLink: `/wikis/${wiki.name}/Special:${pageTitle.replace(/\s+/g, "_")}`
             });
 
         } catch (err) {
@@ -652,7 +656,8 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             canEdit: canAccessMode(wiki, req.user, "edit"),
             canDelete: canAccessMode(wiki, req.user, "delete"),
             currentLocale: requestedLocale,
-            localeVariants
+            localeVariants,
+            canonicalLink: `/wikis/${wiki.name}/${namespace != "Main" ? `${namespace}:` : ""}${basePath || pagePathToLoad}${requestedLocale ? `/${requestedLocale}` : ""}${req.query.mode ? `?mode=${req.query.mode}` : ""}` // for SEO, point to the clean URL without ?noredirect or ?oldid
         });
     } catch (err) {
         console.error("Error loading wiki page:", err);

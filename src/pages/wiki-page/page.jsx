@@ -385,6 +385,7 @@ module.exports = function WikiPage(props) {
       <Head
         title={fullTitle == "Main_Page" ? wiki.title : t("page.wiki.title", { 1: wiki.title, 0: safePage.meta?.name || fullTitle.replace(/_/g, " ") })}
         doIndex={doIndex}
+        canonicalLink={props.canonicalLink}
       >
         {mode === "edit" && <>
           {/* Tern.js */}

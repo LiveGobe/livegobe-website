@@ -68,6 +68,19 @@ function getAvailableLocales() {
     }
 }
 
+function createCanonicalLink(baseUrl) {
+    if (!baseUrl) return null;
+
+    try {
+        const url = new URL(`https://${config.domainName}${baseUrl}`);
+        url.search = "";
+        return url.toString();
+    } catch (e) {
+        console.warn('Failed to create canonical link:', e);
+        return null;
+    }
+}
+
 module.exports = {
     formatBytes,
     filenameValid,
@@ -76,6 +89,7 @@ module.exports = {
     bundleUrl,
     sanitizeFilename,
     versionValid,
+    createCanonicalLink,
     getSupportedNamespaces,
     getAvailableLocales
 }

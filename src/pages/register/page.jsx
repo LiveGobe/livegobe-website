@@ -7,7 +7,7 @@ const config = require("../../../config");
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.register.title")}>
+            <Head title={props.t("page.register.title")} canonicalLink={props.canonicalLink}>
                 <Bundle name="register.js" />
                 <Bundle name="register.css" />
                 <meta property="og:title" content={`Register`} />

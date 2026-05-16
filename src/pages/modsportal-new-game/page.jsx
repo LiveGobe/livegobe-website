@@ -5,7 +5,7 @@ const Bundle = require("../../components/bundle");
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.modsportal.newgamepagename")}>
+            <Head title={props.t("page.modsportal.newgamepagename")} canonicalLink={props.canonicalLink}>
                 <Bundle name="modsportal-new-game.js" />
                 <Bundle name="modsportal-new-game.css" />
             </Head>

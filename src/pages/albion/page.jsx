@@ -5,7 +5,7 @@ const Bundle = require("../../components/bundle");
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.albion.pagename")}>
+            <Head title={props.t("page.albion.pagename")} canonicalLink={props.canonicalLink}>
                 <Bundle name="albion.js" />
                 <Bundle name="albion.css" />
             </Head>

@@ -14,6 +14,7 @@ function Head(props) {
             <link rel="icon" type="image/ico" href={utils.staticUrl("favicon.ico")} />
             <link rel="mask-icon" href={utils.staticUrl("safari-pinned-tab.svg")} color="#555555" />
             <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossOrigin="anonymous" />
+            {props.canonicalLink ? <link rel="canonical" href={utils.createCanonicalLink(props.canonicalLink)} /> : ""}
             {props.children}
         </head>
     );

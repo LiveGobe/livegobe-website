@@ -24,7 +24,7 @@ function UserButton(props) {
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.index.name")} doIndex>
+            <Head title={props.t("page.index.name")} doIndex canonicalLink={props.canonicalLink}>
                 <Bundle name="index.js" />
                 <Bundle name="index.css" />
                 <meta name="description" content="LG Website is a collection of tools/apps hosted by LiveGobe" />

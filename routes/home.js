@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 router.get("/", (req, res) => {
-    res.serve("index");
+    res.serve("index", { canonicalLink: "/" });
 });
 
 module.exports = router;

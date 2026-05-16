@@ -8,7 +8,7 @@ const ModsPortalGame = require("../models/modsportalGame");
 function browsePortal(req, res) {
     const link = req.originalUrl;
     const permission = req.user?.permissions?.join(" ");
-    res.serve("modsportal", { link, permission });
+    res.serve("modsportal", { link, permission, canonicalLink: link });
 }
 
 router.get('/', (req, res) => {
@@ -37,14 +37,14 @@ router.get("/d/:gameName/:modId/:modVersion", (req, res) => {
 router.get("/game/new", (req, res) => {
     if (!req.user) return res.redirect("/login?redirect=/mods_portal/game/new");
 
-    res.serve("modsportal-new-game");
+    res.serve("modsportal-new-game", { canonicalLink: "/mods_portal/game/new" });
 });
 
 router.get("/mod/new", (req, res) => {
     if (!req.user) return res.redirect("/login?redirect=/mods_portal/mod/new");
 
     ModsPortalGame.find({}, "-mods").sort({ name: -1 }).then(games => {
-        res.serve("modsportal-new-mod", { games, selectedGame: req.query.game });
+        res.serve("modsportal-new-mod", { games, selectedGame: req.query.game, canonicalLink: "/mods_portal/mod/new" });
     });
 });
 
@@ -54,7 +54,7 @@ router.get("/mod/update/:modId", (req, res) => {
     ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}, { name: true, mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
         if (!game) return res.redirect("/mods_portal/browse");
 
-        res.serve("modsportal-update-mod", { game });
+        res.serve("modsportal-update-mod", { game, canonicalLink: `/mods_portal/mod/update/${req.params.modId}` });
     });
 });
 
@@ -64,7 +64,7 @@ router.get("/mod/edit/:modId", (req, res) => {
     ModsPortalGame.findOne({ mods: { $elemMatch: { _id: req.params.modId }}}, { name: true, mods: { $elemMatch: { _id: req.params.modId }}}).then(game => {
         if (!game) return res.redirect("/mods_portal/browse");
 
-        res.serve("modsportal-edit-mod", { game });
+        res.serve("modsportal-edit-mod", { game, canonicalLink: `/mods_portal/mod/edit/${req.params.modId}` });
     });
 });
 

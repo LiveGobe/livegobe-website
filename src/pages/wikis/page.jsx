@@ -39,7 +39,7 @@ function WikiCard({ wiki, t }) {
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.wikis.name")} doIndex>
+            <Head title={props.t("page.wikis.name")} doIndex canonicalLink={props.canonicalLink}>
                 <Bundle name="wikis.css" />
                 <Bundle name="wikis.js" />
                 <meta name="description" content="A list of Wikis hosted on LiveGobe.ru" />

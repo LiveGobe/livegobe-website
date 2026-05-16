@@ -7,7 +7,7 @@ const utils = require("../../../bin/utils");
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.modsportal.pagename")} doIndex>
+            <Head title={props.t("page.modsportal.pagename")} doIndex canonicalLink={props.canonicalLink}>
                 <Bundle name="modsportal.js" />
                 <Bundle name="modsportal.css" />
                 <meta property="og:title" content="LG Mods Portal" />

@@ -5,7 +5,7 @@ const Bundle = require("../../components/bundle");
 module.exports = function(props) {
     return (
         <html lang={props.language}>
-            <Head title={props.t("page.login.name")}>
+            <Head title={props.t("page.login.name")} canonicalLink={props.canonicalLink}>
                 <Bundle name="login.js" />
                 <Bundle name="login.css" />
             </Head>

@@ -13,7 +13,7 @@ router.get("/", (req, res) => {
 
     Promise.all([userDocuments, userFilestorageDocuments, aggregation]).then(([usersTotal, usersFilestorage, filestorage]) => {
         filestorage = filestorage[0];
-        res.serve("admin", { usersTotal, usersFilestorage, spaceTotal: filestorage.maxSize, spaceUsed: filestorage.size });
+        res.serve("admin", { usersTotal, usersFilestorage, spaceTotal: filestorage?.maxSize || 0, spaceUsed: filestorage?.size || 0, canonicalLink: "/admin" });
     }).catch(error => {
         res.status(500).send(error.toString());
     });

@@ -9,7 +9,7 @@ function FilePage(props) {
     return (
         <html lang={props.language}>
             <head>
-                <Head title={props.t("filestorage.file.title", { file: props.file.name })}>
+                <Head title={props.t("filestorage.file.title", { file: props.file.name })} canonicalLink={props.canonicalLink}>
                     <Bundle name="filestorage-file.js" />
                     <Bundle name="filestorage-file.css" />
                     <meta property="og:title" content={`Download ${props.file.name}`} />
