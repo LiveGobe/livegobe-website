@@ -1226,6 +1226,7 @@ body {
   overflow-wrap: break-word;
   word-wrap: break-word;
   word-break: break-word;
+  min-width: 0;
 }
 
 /* === BLOCKQUOTES, HR, CODE BLOCKS === */
