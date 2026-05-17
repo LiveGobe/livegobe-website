@@ -92,6 +92,18 @@ const PURIFY_CONFIG = {
   ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|ftp|tel|data|#):|[^a-z]|[a-z+.-]+:)/i
 };
 
+// External links should have "rel" attributes for security and SEO best practices
+DOMPurify.addHook("afterSanitizeAttributes", function(node) {
+  if (node.tagName === "A" && node.hasAttribute("href")) {
+    const href = node.getAttribute("href");
+
+    if (/^(https?:|mailto:|ftp:|tel:)/i.test(href)) {
+      node.setAttribute("target", "_blank");
+      node.setAttribute("rel", "noopener noreferrer nofollow ugc");
+    }
+  }
+});
+
 DOMPurify.setConfig(PURIFY_CONFIG);
 const sanitize = DOMPurify.sanitize;
 
@@ -1233,7 +1245,7 @@ function renderInline(parts, { wikiName, currentNamespace, existingFiles = new S
 
     if (part.type === "externalLink") {
       const safeUrl = encodeURI(part.url.trim());
-      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${sanitize(part.label || safeUrl, PURIFY_CONFIG)}</a>`;
+      return `<a href="${safeUrl}" target="_blank">${sanitize(part.label || safeUrl, PURIFY_CONFIG)}</a>`;
     }
 
     return "";
