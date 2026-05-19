@@ -213,7 +213,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                     const fileStorage = require("../bin/wiki-file-storage");
                     const nonRedirectPages = [];
                     for (const p of pages) {
-                        const content = await fileStorage.readContent(p.wiki, p.namespace, p.path);
+                        const content = await fileStorage.readContent(wiki._id, p.namespace, p.path);
                         if (!/^#redirect\s+\[\[.+?\]\]/i.test(content || "")) nonRedirectPages.push(p);
                     }
 
@@ -221,7 +221,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
                     const allPages = await WikiPage.find({ wiki: wiki._id, namespace }).lean();
                     let totalNonRedirect = 0;
                     for (const p of allPages) {
-                        const content = await fileStorage.readContent(p.wiki, p.namespace, p.path);
+                        const content = await fileStorage.readContent(wiki._id, p.namespace, p.path);
                         if (!/^#redirect\s+\[\[.+?\]\]/i.test(content || "")) totalNonRedirect++;
                     }
                     const total = allPages.length;

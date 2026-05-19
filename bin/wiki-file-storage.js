@@ -4,6 +4,20 @@ const path = require('path');
 const MAX_CONTENT_SIZE = 50 * 1024 * 1024; // 50MB
 const TEMP_SUFFIX = '.tmp';
 
+// File-level write locks to prevent concurrent writes to the same file
+const writeLocks = new Map(); // Maps file path -> Promise chain
+
+function getWriteLock(filePath) {
+    if (!writeLocks.has(filePath)) {
+        writeLocks.set(filePath, Promise.resolve());
+    }
+    return writeLocks.get(filePath);
+}
+
+function setWriteLock(filePath, promise) {
+    writeLocks.set(filePath, promise.catch(() => {})); // Keep lock chain even if error occurs
+}
+
 function log(level, msg, err) {
     const timestamp = new Date().toISOString();
     const logMsg = err ? `${msg} - ${err.message}` : msg;
@@ -51,19 +65,29 @@ async function writeFileAtomic(filePath, content) {
     const tempPath = filePath + TEMP_SUFFIX;
     const dir = path.dirname(filePath);
     
-    try {
-        await ensureDir(dir);
-        // Write to temp file first
-        await fs.writeFile(tempPath, content, 'utf8');
-        // Atomic rename
-        await fs.rename(tempPath, filePath);
-        log('DEBUG', `Wrote ${filePath}`);
-    } catch (e) {
-        log('ERROR', `Failed to write ${filePath}`, e);
-        // Cleanup temp file
-        try { await fs.unlink(tempPath).catch(() => {}); } catch (ignore) { }
-        throw e;
-    }
+    // Wait for any ongoing writes to this file to complete
+    const existingLock = getWriteLock(filePath);
+    
+    const writePromise = existingLock.then(async () => {
+        try {
+            await ensureDir(dir);
+            // Write to temp file first
+            await fs.writeFile(tempPath, content, 'utf8');
+            // Atomic rename
+            await fs.rename(tempPath, filePath);
+            log('DEBUG', `Wrote ${filePath}`);
+        } catch (e) {
+            log('ERROR', `Failed to write ${filePath}`, e);
+            // Cleanup temp file
+            try { await fs.unlink(tempPath).catch(() => {}); } catch (ignore) { }
+            throw e;
+        }
+    });
+    
+    // Update lock chain for this file path
+    setWriteLock(filePath, writePromise);
+    
+    return writePromise;
 }
 
 async function getFallbackFromDb(wikiId, namespace, pagePath, field) {

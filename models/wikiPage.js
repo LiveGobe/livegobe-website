@@ -227,7 +227,7 @@ WikiPageSchema.virtual("fullTitle").get(function () {
 });
 
 // Instance method to render markdown content to sanitized HTML
-WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sourceContent = null, dryRun = false } = {}) {
+WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sourceContent = null, dryRun = false, skipWrite = false } = {}) {
     if (!this.populated('wiki')) await this.populate('wiki');
 
     // Determine source content: provided override or stored file
@@ -285,8 +285,8 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
 
         FRAME_SIZE = frameSize;
         this.noIndex = noIndex;
-        // Persist rendered HTML to file storage
-        if (!dryRun) {
+        // Persist rendered HTML to file storage (unless caller handles it)
+        if (!dryRun && !skipWrite) {
             try { await fileStorage.writeHtml(this.wiki._id, this.namespace, this.path, html); } catch (e) { }
         }
         this.html = html; // in-memory for immediate response
@@ -367,71 +367,94 @@ WikiPageSchema.methods.addRevision = async function (content, author, comment = 
     return this;
 };
 
-// Recursively purge and re-render a page and its dependents
-WikiPageSchema.methods.purgeCache = async function (visited = new Set()) {
+// Enqueue a page for purging via the render queue (non-blocking)
+// Prevents duplicate queueing via renderQueue's built-in deduplication
+WikiPageSchema.methods.enqueuePurge = function () {
     const WikiPage = this.constructor;
-    const pageIdStr = this._id.toString();
-    // Iterative purge using an explicit queue to avoid deep recursion
-    const queue = [this._id.toString()];
-    const toVisit = new Set();
+    const pageId = this._id;
+    const pageIdStr = pageId.toString();
 
-    while (queue.length) {
-        const id = queue.shift();
-        if (toVisit.has(id)) continue;
-        toVisit.add(id);
+    // Enqueue via renderQueue with page ID as key for automatic deduplication
+    renderQueue.enqueue(pageIdStr, async () => {
+        try {
+            const page = await WikiPage.findById(pageId);
+            if (!page) return;
 
-        // Attempt to claim an expiring lock (purgeLock) atomically
-        const now = new Date();
-        const lock = await WikiPage.findOneAndUpdate(
-            { _id: id, $or: [{ 'purgeLock.expiresAt': { $lt: now } }, { 'purgeLock.expiresAt': null }, { purgeLock: { $exists: false } }] },
-            { $set: { 'purgeLock.by': process.pid + ':' + Date.now(), 'purgeLock.expiresAt': new Date(Date.now() + 60 * 1000) } },
-            { new: true }
-        );
+            // Attempt to claim an expiring lock (purgeLock) atomically
+            const now = new Date();
+            const lock = await WikiPage.findOneAndUpdate(
+                { _id: pageId, $or: [{ 'purgeLock.expiresAt': { $lt: now } }, { 'purgeLock.expiresAt': null }, { purgeLock: { $exists: false } }] },
+                { $set: { 'purgeLock.by': process.pid + ':' + Date.now(), 'purgeLock.expiresAt': new Date(Date.now() + 60 * 1000) } },
+                { new: true }
+            );
 
-        if (!lock) continue; // someone else is purging or lock held
+            if (!lock) return; // someone else is purging or lock held
 
             try {
-                const page = await WikiPage.findById(id);
-                if (!page) continue;
+                // Re-fetch fresh page state for rendering
+                const freshPage = await WikiPage.findById(pageId);
+                if (!freshPage) return;
 
-                // Force re-render and persist with updateOne to avoid triggering hooks
-                const { html, categories, tags, meta } = await page.renderContent();
+                // Force re-render (skipWrite: true to avoid duplicate writes since we persist below)
+                const { html, categories, tags, meta } = await freshPage.renderContent({ skipWrite: true });
                 // write HTML to file and update DB metadata
-                try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
-                await WikiPage.updateOne({ _id: id }, { $set: { categories, tags, lastModifiedAt: new Date(), meta } });
+                try { await fileStorage.writeHtml(freshPage.wiki._id, freshPage.namespace, freshPage.path, html); } catch (e) { }
+                await WikiPage.updateOne({ _id: pageId }, { $set: { categories, tags, lastModifiedAt: new Date(), meta } });
 
-                // Queue dependents
-                if (page.templateUsedBy?.length) {
-                    for (const depId of page.templateUsedBy) queue.push(String(depId));
+                // Enqueue dependents (renderQueue prevents duplicates automatically)
+                if (freshPage.templateUsedBy?.length) {
+                    for (const depId of freshPage.templateUsedBy) {
+                        const depPage = await WikiPage.findById(depId);
+                        if (depPage) depPage.enqueuePurge();
+                    }
                 }
             } catch (err) {
-                console.error(`[Purge] Error purging id=${id}:`, err);
+                console.error(`[Purge] Error purging id=${pageId}:`, err);
             } finally {
                 // Release lock
-                await WikiPage.updateOne({ _id: id }, { $set: { 'purgeLock.by': null, 'purgeLock.expiresAt': null } }).catch(() => { });
+                await WikiPage.updateOne({ _id: pageId }, { $set: { 'purgeLock.by': null, 'purgeLock.expiresAt': null } }).catch(() => { });
             }
-    }
+        } catch (err) {
+            console.error(`[Purge] Failed to process purge for id=${pageIdStr}:`, err);
+        }
+    });
+};
 
+// Recursively purge and re-render a page and its dependents (non-blocking via render queue)
+WikiPageSchema.methods.purgeCache = function () {
+    this.enqueuePurge();
     return { success: true };
 };
 
-WikiPageSchema.statics.purgeByTitle = async function (wikiId, namespace, path) {
-    const page = await this.findOne({ wiki: wikiId, namespace, path });
-    if (!page) throw new Error(`Page not found: ${namespace}:${path}`);
-
-    await page.purgeCache();
-    console.log(`[Purge] Completed for ${namespace}:${path}`);
+WikiPageSchema.statics.purgeByTitle = function (wikiId, namespace, path) {
+    this.findOne({ wiki: wikiId, namespace, path }).then(page => {
+        if (!page) {
+            console.error(`[Purge] Page not found: ${namespace}:${path}`);
+            return;
+        }
+        page.purgeCache();
+        console.log(`[Purge] Enqueued purge for ${namespace}:${path}`);
+    }).catch(err => {
+        console.error(`[Purge] Error in purgeByTitle: ${namespace}:${path}`, err);
+    });
 };
 
-// Static: Purge all pages in the wiki
+// Static: Purge all pages in the wiki (non-blocking)
 WikiPageSchema.statics.purgeAll = function (wikiId) {
-    this.find({ wiki: wikiId }).then(pages => {
+    this.find({ wiki: wikiId }).lean().then(pages => {
         for (const page of pages) {
-            page.purgeCache().catch(() => { });
+            // Re-fetch with proper methods attached for purge
+            this.findById(page._id).then(fullPage => {
+                if (fullPage) fullPage.purgeCache();
+            }).catch(err => {
+                console.error(`[Purge] Error fetching page ${page._id} for purge:`, err);
+            });
         }
+    }).catch(err => {
+        console.error(`[Purge] Error fetching pages for purgeAll:`, err);
     });
 
-    console.log(`[Purge] Purge scheduled for wiki ${wikiId}`);
+    console.log(`[Purge] Purge enqueued for all pages in wiki ${wikiId}`);
 };
 
 // Static method to create a new page
@@ -553,12 +576,31 @@ WikiPageSchema.statics.findByCategory = async function (wiki, category) {
 
 // Static method to list all pages in a namespace
 WikiPageSchema.statics.listPages = function (wiki, namespace = "Main", limit = 100, skip = 0) {
-    return this.find({ wiki, namespace })
-    .select("title path namespace lastModifiedAt lastModifiedBy")
-        .sort("path")
-        .skip(skip)
-        .limit(limit)
-        .populate("lastModifiedBy", "name");
+    return this.aggregate([
+        { $match: { wiki, namespace } },
+        // Deduplicate by path, keeping the latest modified version
+        { $sort: { lastModifiedAt: -1 } },
+        { $group: { 
+            _id: "$path",
+            title: { $first: "$title" },
+            path: { $first: "$path" },
+            namespace: { $first: "$namespace" },
+            lastModifiedAt: { $first: "$lastModifiedAt" },
+            lastModifiedBy: { $first: "$lastModifiedBy" }
+        }},
+        { $sort: { path: 1 } },
+        { $skip: skip },
+        { $limit: limit },
+        { $lookup: { from: "users", localField: "lastModifiedBy", foreignField: "_id", as: "lastModifiedByData" } },
+        { $project: { 
+            title: 1, 
+            path: 1, 
+            namespace: 1, 
+            lastModifiedAt: 1,
+            lastModifiedBy: { $arrayElemAt: ["$lastModifiedByData.name", 0] },
+            _id: 1
+        }}
+    ]);
 };
 
 // Background render helper used by the render queue
@@ -567,7 +609,7 @@ WikiPageSchema.statics.backgroundRender = async function (id) {
     if (!page) return false;
 
     try {
-        const { html, categories, tags, noIndex, meta } = await page.renderContent();
+        const { html, categories, tags, noIndex, meta } = await page.renderContent({ skipWrite: true });
         try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
         await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, lastModifiedAt: new Date(), meta } });
         // invalidate per-wiki page cache so redlink detection stays fresh
