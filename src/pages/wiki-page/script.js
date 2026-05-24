@@ -1,8 +1,5 @@
 import i18n from "../../js/repack-locales";
-import * as tern from "tern";
 import LSPProxyClient from "../../js/lsp-proxy-client";
-
-window.tern = tern;
 
 // Initialize locale helper
 await i18n.init();
