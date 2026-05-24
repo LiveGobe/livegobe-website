@@ -1,5 +1,6 @@
 import i18n from "../../js/repack-locales";
 import * as tern from "tern";
+import LSPProxyClient from "../../js/lsp-proxy-client";
 
 window.tern = tern;
 
@@ -170,6 +171,31 @@ $(function () {
 		else if (pageName.endsWith(".css")) editorMode = "css";
 		else if (pageName.endsWith(".js")) editorMode = "javascript";
 
+		// ============================================
+		// LSP Proxy Client Setup (replaces Tern.js)
+		// ============================================
+		let lspClient = null;
+
+		// Initialize LSP Proxy Client
+		async function initializeLSPClient() {
+			try {
+				lspClient = new LSPProxyClient({
+					baseUrl: '/api/lsp',
+					wikiName: wikiName,
+					editorId: undefined, // Will auto-generate unique editor ID per tab
+					debug: false
+				});
+
+				await lspClient.connect();
+				console.log('[LSP] Connected via proxy');
+				return true;
+			} catch (error) {
+				console.error('[LSP] Failed to initialize:', error);
+				return false;
+			}
+		}
+
+		/* ===== COMMENTED OUT: Tern.js based analysis =====
 		const moduleCache = new Map();
 		const dataCache = new Map();
 		const variableMap = new Map();
@@ -252,375 +278,302 @@ $(function () {
 				"modules": {}
 			}
 		};
+		===== END TERN.JS COMMENTED OUT =====
+		*/
 
-		const editorDefs = [
-			require("../../../node_modules/tern/defs/ecmascript.json"),
-			require("../../../node_modules/tern/defs/browser.json"),
-			lgmlDefs
-		];
+		// LSP Proxy hint provider (replaces ternHintProvider)
+		const lspHintProvider = async function (cm, callback) {
+			function getCompletionRange(cm, cur) {
+				const line = cm.getLine(cur.line);
 
-		const ternServer = new CodeMirror.TernServer({
-			defs: editorDefs,
-			plugins: { doc_comment: true },
-			autoClose: true,
-			ecmaVersion: 8,
-			cmOptions: {
-				hintOptions: {
-					completeSingle: false,
-					alignWithWord: true
-				}
-			},
-			typeTip: (data) => {
-				if (!data) return null;
+				let start = cur.ch;
+				let end = cur.ch;
 
-				const div = document.createElement("div");
-				div.className = "cm-tern-type-tip";
-
-				// Show the Type (e.g. fn(obj: ?, key: ?)) if no Doc exists
-				// This helps you debug why things are "?" 
-				const typeLabel = data.type ? `Type: ${data.type}` : "";
-				const docText = data.doc ? data.doc.split("\n")[0] : "";
-
-				div.textContent = docText || typeLabel || data.name || "No type info found";
-
-				return div;
-			},
-			completionTip: (data) => {
-				if (!data) return null;
-
-				const div = document.createElement("div");
-				div.className = "cm-tern-completion-tip";
-
-				const header = document.createElement("div");
-				header.className = "cm-tern-header";
-
-				// --- ICON ---
-				const icon = document.createElement("span");
-				icon.className = "cm-tern-icon";
-
-				const type = data.type || "";
-				if (type.startsWith("fn")) icon.classList.add("is-fn");
-				else if (type.includes("string")) icon.classList.add("is-string");
-				else if (type.includes("number")) icon.classList.add("is-number");
-				else if (type.includes("bool")) icon.classList.add("is-bool");
-				else icon.classList.add("is-obj");
-
-				header.appendChild(icon);
-
-				// --- NAME ---
-				const name = document.createElement("span");
-				name.className = "cm-tern-name";
-				name.textContent = data.name || "";
-				header.appendChild(name);
-
-				div.appendChild(header);
-
-				// --- TYPE ---
-				if (data.type) {
-					const typeEl = document.createElement("div");
-					typeEl.className = "cm-tern-type";
-					typeEl.textContent = data.type;
-					div.appendChild(typeEl);
+				// Expand left
+				while (
+					start > 0 &&
+					/[\w$]/.test(line[start - 1])
+				) {
+					start--;
 				}
 
-				// --- DOC ---
-				if (data.doc) {
-					const desc = document.createElement("div");
-					desc.className = "cm-tern-doc";
-
-					const firstLine = data.doc.split("\n").find(l => l.trim());
-					desc.textContent = firstLine || data.doc;
-
-					if (data.doc.includes("LGML")) {
-						desc.classList.add("is-lgml");
-					}
-
-					div.appendChild(desc);
+				// Expand right
+				while (
+					end < line.length &&
+					/[\w$]/.test(line[end])
+				) {
+					end++;
 				}
 
-				return div;
+				return {
+					from: CodeMirror.Pos(cur.line, start),
+					to: CodeMirror.Pos(cur.line, end)
+				};
 			}
-		});
-
-		window.ternServer = ternServer;
-
-		function extractConstStrings(code) {
-			variableMap.clear();
-
-			// Matches:
-			// const a = "Module:Items"
-			// let b = 'Module:Test'
-			const regex = /\b(const|let|var)\s+([\w$]+)\s*=\s*["']([^"']+)["']/g;
-
-			let match;
-			while ((match = regex.exec(code)) !== null) {
-				const varName = match[2];
-				const value = match[3];
-
-				variableMap.set(varName, value);
-			}
-		}
-
-		function syncDependencies(cm) {
-			const code = cm.getValue();
-
-			const requireRx = /require\s*\(\s*["'](.+?)["']\s*\)/g;
-			const requireDataRx = /requireData\s*\(\s*["'](.+?)["']\s*\)/g;
-			const requireDataVarRx = /requireData\s*\(\s*([\w$]+)\s*\)/g;
-
-			const missingModuleNames = new Set();
-			const missingDataNames = new Set();
-			const usedDataVars = new Set();
-			let match;
-
-			function normalizeApiPath(modName) {
-				return `/api/v2/wikis/${wikiName}/pages/${"Module:" + encodeURIComponent(modName.replace("Module:", ""))}`;
-			}
-
-			function loadModule(modName) {
-				return $.get(normalizeApiPath(modName)).then(res => {
-					if (!res || !res.exists || !res.page) {
-						console.warn("Module not found:", modName);
-						moduleCache.set(modName, "");
-						markVirtualDocDirty();
-						return;
-					}
-
-					const content = res.page.content || "";
-					const varName = "__mod_" + modName.replace(/[:.-\/]/g, "_");
-					const wrapped = `/** @type {Object} */ var ${varName} = (function(){\n var exports = {};\n ${content}\n return exports;\n})();\n`;
-					moduleCache.set(modName, wrapped);
-					markVirtualDocDirty();
-				});
-			}
-
-			function loadDataModule(modName) {
-				return $.get(normalizeApiPath(modName)).then(res => {
-					if (!res || !res.exists || !res.page) {
-						console.warn("Data module not found:", modName);
-						const safe = "__data_" + modName.replace(/[:.-\/]/g, "_");
-						dataCache.set(modName, `var ${safe} = {};\n`);
-						markVirtualDocDirty();
-						return;
-					}
-
-					const content = res.page.content || "";
-					let parsed;
-					try {
-						parsed = content ? JSON.parse(content) : {};
-					} catch {
-						parsed = {};
-					}
-
-					const varName = "__data_" + modName.replace(/[:.-\/]/g, "_");
-					const wrapped = `var ${varName} = ${JSON.stringify(parsed, null, 2)};\n`;
-					dataCache.set(modName, wrapped);
-					markVirtualDocDirty();
-				});
-			}
-
-			while ((match = requireRx.exec(code)) !== null) {
-				const modName = match[1];
-				if (!moduleCache.has(modName) && !missingModuleNames.has(modName)) {
-					moduleCache.set(modName, "// loading...");
-					missingModuleNames.add(modName);
-				}
-			}
-
-			while ((match = requireDataRx.exec(code)) !== null) {
-				const modName = match[1];
-				if (!dataCache.has(modName) && !missingDataNames.has(modName)) {
-					dataCache.set(modName, "// loading...");
-					missingDataNames.add(modName);
-				}
-			}
-
-			while ((match = requireDataVarRx.exec(code)) !== null) {
-				usedDataVars.add(match[1]);
-			}
-
-			variableMap.forEach((modName, varName) => {
-				if (usedDataVars.has(varName) && !dataCache.has(modName) && !missingDataNames.has(modName)) {
-					dataCache.set(modName, "// loading...");
-					missingDataNames.add(modName);
-				}
-			});
-
-			const allFetches = [];
-			missingModuleNames.forEach(modName => allFetches.push(loadModule(modName)));
-			missingDataNames.forEach(modName => allFetches.push(loadDataModule(modName)));
-
-			if (!allFetches.length) return;
-
-			Promise.all(allFetches).catch(() => { /* ignore individual failures */ }).then(() => {
-				updateVirtualDoc(cm);
-			});
-		}
-
-		function updateVirtualDoc(cm) {
-			// Start with a clean prefix. Ensure exactly 1 newline at the end.
-			let prefix = "var exports = {}; var frame = { cache: {} };\n";
-
-			moduleCache.forEach((content) => {
-				if (content && content !== "// loading..." && content.trim() !== "") {
-					prefix += content.trim() + "\n";
-				}
-			});
-
-			// Inject data modules
-			dataCache.forEach((content, modName) => {
-				if (content && content !== "// loading..." && content.trim() !== "") {
-					prefix += content.trim() + "\n";
-				}
-			});
-
-			const wrapperHead = "(async function() {\n";
-			const userCode = cm.getValue();
-
-			const transformedCode = userCode
-				.replace(/require\s*\(\s*["'](.+?)["']\s*\)/g, (match, modName) => {
-					const replacement = "__mod_" + modName.replace(/[:.-\/]/g, "_");
-					return replacement.padEnd(match.length, " ");
-				})
-				.replace(/requireData\s*\(\s*([^)]+)\s*\)/g, (match, argRaw) => {
-					const arg = argRaw.trim();
-
-					// Case 1: literal string
-					const literalMatch = arg.match(/^["'](.+?)["']$/);
-					if (literalMatch) {
-						const modName = literalMatch[1];
-						const replacement = "__data_" + modName.replace(/[:.-\/]/g, "_");
-						return replacement.padEnd(match.length, " ");
-					}
-
-					// Case 2: variable → resolve via variableMap
-					if (variableMap.has(arg)) {
-						const modName = variableMap.get(arg);
-						const replacement = "__data_" + modName.replace(/[:.-\/]/g, "_");
-						return replacement.padEnd(match.length, " ");
-					}
-
-					// fallback → leave untouched (important)
-					return match;
-				});
-
-			const wrapperFoot = "\n})();";
-			const newVirtualDoc = prefix + wrapperHead + transformedCode + wrapperFoot;
-
-			if (!virtualDocDirty && newVirtualDoc === lastVirtualDoc && userCode === lastUserCode && prefix === lastPrefix) {
-				return;
-			}
-
-			ternServer.server.addFile("editor.js", newVirtualDoc);
-			lastVirtualDoc = newVirtualDoc;
-			lastUserCode = userCode;
-			lastPrefix = prefix;
-			virtualDocDirty = false;
-			lineOffsetDirty = true;
-		}
-
-		function getTernLineOffset() {
-			if (!lineOffsetDirty) return cachedTernLineOffset;
-
-			let lines = 1; // exports/frame line
-
-			moduleCache.forEach((content) => {
-				if (content && content !== "// loading..." && content.trim() !== "") {
-					const m = content.trim().match(/\n/g);
-					lines += (m ? m.length : 0) + 1;
-				}
-			});
-
-			dataCache.forEach((content) => {
-				if (content && content !== "// loading..." && content.trim() !== "") {
-					const m = content.trim().match(/\n/g);
-					lines += (m ? m.length : 0) + 1;
-				}
-			});
-
-			cachedTernLineOffset = lines + 1;
-			lineOffsetDirty = false;
-			return cachedTernLineOffset;
-		}
-
-		const ternHintProvider = function (cm, callback) {
-			updateVirtualDoc(cm);
 
 			const cur = cm.getCursor();
-			const line = cm.getLine(cur.line);
-			const offset = getTernLineOffset();
 
-			// 1. Find the start of the word manually to avoid token drift
-			// This regex looks backward from the cursor for the first non-word character
-			const wordPart = line.slice(0, cur.ch).match(/[\w$]+$/);
-			const startCh = wordPart ? cur.ch - wordPart[0].length : cur.ch;
+			if (!lspClient) {
+				return callback({
+					list: [],
+					from: cur,
+					to: cur
+				});
+			}
 
-			const query = {
-				type: "completions",
-				file: "editor.js",
-				end: { line: cur.line + offset, ch: cur.ch },
-				types: true,
-				docs: true,
-				caseInsensitive: true
-			};
+			try {
+				const textDocument = {
+					uri: `wiki://${wikiName}/${pageName}`
+				};
 
-			ternServer.server.request({ query }, (err, data) => {
-				if (err || !data || !data.completions) return callback(null);
+				const position = {
+					line: cur.line,
+					character: cur.ch
+				};
+
+				let completions =
+					await lspClient.getCompletions(
+						textDocument,
+						position
+					);
+
+				// LSP CompletionList support
+				if (
+					completions &&
+					Array.isArray(completions.items)
+				) {
+					completions =
+						completions.items;
+				}
+
+				if (!Array.isArray(completions)) {
+					completions = [];
+				}
+
+				// Fallback replacement range
+				const replaceRange =
+					getCompletionRange(cm, cur);
 
 				const result = {
-					list: data.completions
-						.filter(c => !c.name.startsWith("__mod_") && !c.name.startsWith("__data_"))
-						.map(c => {
-							let displayName = c.name;
+					from: replaceRange.from,
+					to: replaceRange.to,
 
-							if (displayName.startsWith("__data_")) {
-								displayName = displayName.slice("__data_".length);
-							}
+					list: completions.map((item) => {
+						// Prefer textEdit
+						let insertText =
+							item.textEdit?.newText ||
+							item.insertText ||
+							item.label;
 
-							if (displayName.startsWith("__mod_")) {
-								displayName = displayName.slice("__mod_".length);
-							}
+						// Prevent function signatures
+						// from being inserted literally
+						if (
+							!item.insertText &&
+							!item.textEdit &&
+							insertText.includes("(")
+						) {
+							insertText =
+								insertText.replace(/\(.*$/, "");
+						}
 
-							return {
-								text: c.name, // IMPORTANT: keep actual insert
-								render: (el) => {
-									// Clone completion object so we don't mutate Tern internals
-									const patched = { ...c };
+						return {
+							text: insertText,
 
-									// Transform type string if present
-									if (patched.type) {
-										patched.type = patched.type.replace(/__(mod|data)_([\w$]+)(?:_Schema)?/g, "exports");
+							displayText:
+								item.label,
 
-										// Optional: Clean up the "fn" arrows so the tooltip looks like modern JS
-										patched.type = patched.type.replace(/fn\((.*?)\) -> (.*)/g, "($1) => $2");
-									}
+							className:
+								item.kind
+									? `lsp-completion-${item.kind}`
+									: "",
 
-									const tip = ternServer.options.completionTip(patched);
+							render: (el) => {
+								el.className +=
+									" lsp-hint-item";
 
-									if (tip) {
-										// Override visible name inside tip
-										const nameEl = tip.querySelector(".cm-tern-name");
-										if (nameEl) nameEl.textContent = displayName;
+								const container =
+									document.createElement(
+										"div"
+									);
 
-										el.appendChild(tip);
-									} else {
-										el.textContent = displayName;
-									}
+								container.className =
+									"lsp-hint-container";
+
+								const name =
+									document.createElement(
+										"span"
+									);
+
+								name.className =
+									"lsp-hint-name";
+
+								const signature =
+									document.createElement(
+										"span"
+									);
+
+								signature.className =
+									"lsp-hint-signature";
+
+								// Split:
+								// foo(bar) -> type
+								const match =
+									item.label.match(
+										/^([^(]+)(.*)$/
+									);
+
+								if (match) {
+									name.textContent =
+										match[1];
+
+									signature.textContent =
+										match[2];
+								} else {
+									name.textContent =
+										item.label;
 								}
-							};
-						}),
-					// 2. THE ANCHOR: This defines exactly what gets replaced
-					// 'from' is the start of the word (e.g., the 'L' in 'LO')
-					// 'to' is the current cursor (the end of the word)
-					from: CodeMirror.Pos(cur.line, startCh),
-					to: cur
+
+								container.appendChild(
+									name
+								);
+
+								if (
+									signature.textContent
+								) {
+									container.appendChild(
+										signature
+									);
+								}
+
+								el.appendChild(
+									container
+								);
+
+								// Optional details
+								if (item.detail) {
+									const detail =
+										document.createElement(
+											"div"
+										);
+
+									detail.className =
+										"lsp-hint-detail";
+
+									detail.textContent =
+										item.detail;
+
+									el.appendChild(
+										detail
+									);
+								}
+							},
+
+							hint: (
+								cm,
+								data,
+								completion
+							) => {
+								let from =
+									data.from;
+
+								let to =
+									data.to;
+
+								// Prefer LSP ranges
+								if (
+									item.textEdit
+										?.range
+								) {
+									from =
+										CodeMirror.Pos(
+											item.textEdit
+												.range
+												.start
+												.line,
+											item.textEdit
+												.range
+												.start
+												.character
+										);
+
+									to =
+										CodeMirror.Pos(
+											item.textEdit
+												.range
+												.end
+												.line,
+											item.textEdit
+												.range
+												.end
+												.character
+										);
+								}
+
+								cm.replaceRange(
+									insertText,
+									from,
+									to
+								);
+
+								// additionalTextEdits
+								if (
+									Array.isArray(
+										item.additionalTextEdits
+									)
+								) {
+									item.additionalTextEdits.forEach(
+										(edit) => {
+											cm.replaceRange(
+												edit.newText,
+												CodeMirror.Pos(
+													edit.range
+														.start
+														.line,
+													edit.range
+														.start
+														.character
+												),
+												CodeMirror.Pos(
+													edit.range
+														.end
+														.line,
+													edit.range
+														.end
+														.character
+												)
+											);
+										}
+									);
+								}
+							}
+						};
+					})
 				};
 
 				callback(result);
-			});
+			} catch (error) {
+				console.error(
+					"[LSP] Completion error:",
+					error
+				);
+
+				callback({
+					list: [],
+					from: cur,
+					to: cur
+				});
+			}
 		};
-		// Critical for CodeMirror 5 async hints
-		ternHintProvider.async = true;
+		lspHintProvider.async = true;
+
+		/* ===== COMMENTED OUT: Tern.js virtual document functions =====
+		function extractConstStrings(code) { ... }
+		function syncDependencies(cm) { ... }
+		function updateVirtualDoc(cm) { ... }
+		function getTernLineOffset() { ... }
+		const ternHintProvider = function (cm, callback) { ... };
+		===== END VIRTUAL DOC FUNCTIONS =====
+		*/
 
 		const darkTheme = $("body").data("theme") === "dark";
 		const editor = CodeMirror.fromTextArea($editorTextarea[0], {
@@ -649,11 +602,13 @@ $(function () {
 						return;
 					}
 
-					// 2. Otherwise, sync and show as normal
-					updateVirtualDoc(cm);
+					// 2. Otherwise, show completions via LSP proxy
+					if (cm.state.completionActive) {
+						cm.state.completionActive.close();
+					}
 
 					cm.showHint({
-						hint: ternHintProvider,
+						hint: lspHintProvider,
 						async: true,
 						completeSingle: false,
 						closeOnUnfocus: true,
@@ -661,28 +616,23 @@ $(function () {
 						updateOnCursorActivity: true
 					});
 				},
-				"F12": (cm) => {
-					ternServer.jumpToDef(cm, (data) => {
-						if (!data || data.file !== "editor.js") return;
-
-						let lineOffset = 0;
-						moduleCache.forEach(c => {
-							if (c !== "// loading..." && c.trim() !== "") {
-								const lines = c.match(/\n/g);
-								lineOffset += (lines ? lines.length : 0) + (c.endsWith("\n") ? 0 : 1);
-							}
-						});
-
-						// Move cursor to the corrected line
-						cm.setCursor({ line: data.start.line - lineOffset, ch: data.start.ch });
-						cm.focus();
-					});
-				},
+				/* ===== COMMENTED OUT: Tern.js specific key bindings =====
+				"F12": (cm) => { ternServer.jumpToDef(cm, ...); },
 				"Shift-F12": (cm) => { ternServer.showRefs(cm); },
 				"F2": (cm) => { ternServer.rename(cm); },
+				"Shift-Ctrl-Space": (cm) => { ternServer.updateArgHints(cm); },
+				===== END TERN BINDINGS =====
+				*/
 				"Enter": (cm) => {
-					if (cm.state.completionActive) cm.state.completionActive.pick();
-					else return CodeMirror.Pass;
+					const completion =
+						cm.state.completionActive;
+
+					if (completion?.widget) {
+						completion.pick();
+						return;
+					}
+
+					return CodeMirror.Pass;
 				},
 				"Space": (cm) => {
 					if (cm.state.completionActive) cm.state.completionActive.close();
@@ -695,32 +645,65 @@ $(function () {
 						return CodeMirror.Pass;
 					}
 
-					// 🔥 Close Tern tooltips
-					document.querySelectorAll(".CodeMirror-Tern-tooltip")
+					// Close LSP tooltips
+					document.querySelectorAll(".CodeMirror-Tern-tooltip, .lsp-tooltip")
 						.forEach(el => el.remove());
 
 					return CodeMirror.Pass;
-				},
-				"Shift-Ctrl-Space": (cm) => {
-					// 1. Sync the virtual doc so Tern knows the latest code state
-					updateVirtualDoc(cm);
-
-					// 2. This specifically triggers the parameter/argument tooltip
-					// It is more robust for functions than .showType()
-					ternServer.updateArgHints(cm);
-
-					// 3. Fallback: If updateArgHints doesn't show (e.g., not inside parens),
-					// request the full type info manually
-					const data = ternServer.request(cm, "type", (err, data) => {
-						if (data && !document.querySelector(".CodeMirror-Tern-tooltip")) {
-							ternServer.showType(cm);
-						}
-					});
 				}
 			}
 		});
 
 		if (editorMode.includes("javascript")) {
+			// Initialize LSP Proxy Client for this editor
+			initializeLSPClient().then(success => {
+				if (success) {
+					console.log('[LSP] LSP Proxy Client initialized');
+
+					// Send initial document to LSP server
+					const initialContent = editor.getValue();
+					const textDocument = {
+						uri: `wiki://${wikiName}/${pageName}`,
+						languageId: 'javascript',
+						version: 1,
+						text: initialContent
+					};
+
+					lspClient.didOpen(textDocument).catch(err => {
+						console.error('[LSP] Failed to send initial document:', err);
+					});
+				} else {
+					console.warn('[LSP] Failed to initialize LSP Proxy Client');
+				}
+			});
+
+			// Setup document change synchronization (debounced)
+			let docVersion = 1;
+
+			editor.on("change", (cm, change) => {
+				if (!lspClient) return;
+
+				docVersion++;
+
+				const content = cm.getValue();
+
+				const textDocument = {
+					uri: `wiki://${wikiName}/${pageName}`,
+					version: docVersion
+				};
+
+				lspClient.didChange(
+					textDocument,
+					content
+				).catch(err => {
+					console.error(
+						'[LSP] Failed to sync document changes:',
+						err
+					);
+				});
+			});
+
+			/* ===== COMMENTED OUT: Tern.js event handlers =====
 			editor.ternServer = ternServer;
 
 			editor.on("change", (cm) => {
@@ -730,7 +713,7 @@ $(function () {
 					extractConstStrings(code);
 					syncDependencies(cm);
 					markVirtualDocDirty();
-					updateVirtualDoc(cm); // Refresh Tern's view of the code
+					updateVirtualDoc(cm);
 				}, 500);
 			});
 
@@ -738,83 +721,120 @@ $(function () {
 				ternServer.updateArgHints(cm);
 			});
 
-			let typingTimeout;
-
 			editor.on("inputRead", function (cm, change) {
-				// 1. Abort if the change comes from the completion itself
-				if (change.origin === "complete") return;
-
-				const typedChar = change.text[0];
-				if (!typedChar || typedChar === " " || typedChar === ";") return;
-
-				if (typingTimeout) clearTimeout(typingTimeout);
-
-				typingTimeout = setTimeout(() => {
-					const cur = cm.getCursor();
-					const token = cm.getTokenAt(cur);
-
-					// 2. THE FIX: Check for strings
-					// CodeMirror modes typically use "string" or "string-2"
-					const isInsideString = token.type && token.type.includes("string");
-
-					if (isInsideString) {
-						if (cm.state.completionActive) cm.state.completionActive.close();
-						return;
-					}
-
-					// 3. Normal trigger logic
-					const isTriggerChar = typedChar === "." || typedChar === ":";
-					const isIdentifier = /variable|property|type/.test(token.type);
-					const isWord = /[a-zA-Z0-9_$]/.test(typedChar);
-
-					if (isTriggerChar || isIdentifier || isWord) {
-						updateVirtualDoc(cm);
-
-						cm.showHint({
-							hint: ternHintProvider,
-							completeSingle: false,
-							updateOnCursorActivity: true,
-							closeOnNoMatch: true,
-							async: true
-						});
-					}
-				}, 120);
+				... (auto-trigger logic)
 			});
 
 			editor.on("cursorActivity", (cm) => {
-				// If the menu is NOT active, but the user is in the middle of a word
-				// we might want to trigger it automatically (like VS Code)
-				const cur = cm.getCursor();
-				const token = cm.getTokenAt(cur);
-
-				if (!cm.state.completionActive && token.string.length >= 2 && token.type === "variable") {
-					// Optional: auto-trigger on backspace if 2+ chars remain
-					// cm.execCommand("autocomplete"); 
-				}
-
-				// Existing "Close if empty" logic
-				if (cm.state.completionActive && token.string.trim() === "" && token.type !== "property") {
-					cm.state.completionActive.close();
-				}
+				... (cursor activity logic)
 			});
 
-			// --- Initial sync ---
 			(function initEditorState() {
-				const value = editor.getValue();
-
-				// Sync textarea
-				$editorTextarea.val(value);
-
-				// Build variable map
-				extractConstStrings(value);
-
-				// Load dependencies (require + requireData)
-				syncDependencies(editor);
-
-				// Build Tern virtual doc
-				updateVirtualDoc(editor);
+				... (virtual doc initialization)
 			})();
+			===== END TERN.JS EVENT HANDLERS =====
+			*/
+
+			// Optional: Add auto-trigger for completions via LSP
+			let completionRequestId = 0;
+			let completionTimeout = null;
+
+			editor.on("inputRead", function (cm, change) {
+				// Ignore completion insertions
+				if (change.origin === "complete") {
+					return;
+				}
+
+				const typedChar = change.text?.[0];
+
+				if (!typedChar) {
+					return;
+				}
+
+				// Close completion on whitespace/newline
+				if (/^\s+$/.test(typedChar)) {
+					if (cm.state.completionActive?.close) {
+						cm.state.completionActive.close();
+					}
+					return;
+				}
+
+				// Ignore obvious non-trigger chars
+				if (
+					!/[\w$.:]/.test(typedChar)
+				) {
+					return;
+				}
+
+				// Cancel pending completion refresh
+				if (completionTimeout) {
+					clearTimeout(completionTimeout);
+				}
+
+				const requestId = ++completionRequestId;
+
+				completionTimeout = setTimeout(() => {
+					// Ignore stale requests
+					if (requestId !== completionRequestId) {
+						return;
+					}
+
+					const cur = cm.getCursor();
+					const token = cm.getTokenAt(cur);
+
+					// Disable inside strings/comments
+					if (
+						token.type?.includes("string") ||
+						token.type?.includes("comment")
+					) {
+						if (cm.state.completionActive?.close) {
+							cm.state.completionActive.close();
+						}
+						return;
+					}
+
+					// Trigger conditions
+					const shouldTrigger =
+						typedChar === "." ||
+						typedChar === ":" ||
+						/[a-zA-Z0-9_$]/.test(typedChar);
+
+					if (!shouldTrigger) {
+						return;
+					}
+
+					// Refresh popup instead of stacking sessions
+					if (cm.state.completionActive?.close) {
+						cm.state.completionActive.close();
+					}
+
+					cm.showHint({
+						hint: lspHintProvider,
+						async: true,
+
+						completeSingle: false,
+						closeOnUnfocus: true,
+						closeOnNoMatch: true,
+
+						// Important for async LSP
+						alignWithWord: false
+					});
+				}, 80);
+			});
 		}
+
+		// Send document close notification when page is unloading
+		$(window).on('beforeunload', function () {
+			if (lspClient && editorMode.includes("javascript")) {
+				const textDocument = {
+					uri: `wiki://${wikiName}/${pageName}`
+				};
+				// Fire and forget - we can't wait for response on beforeunload
+				lspClient.didClose(textDocument).catch(err => {
+					console.warn('[LSP] Failed to send didClose on unload:', err);
+				});
+			}
+		});
 
 		// --- Magic words ---
 		const LGWL_MAGIC_WORDS = new Set(["PAGENAME", "NAMESPACE", "FULLPAGENAME", "BASEPAGENAME", "PAGELANGUAGE", "SITENAME", "DATE", "TIME"]);
@@ -887,7 +907,23 @@ $(function () {
 		if (saved && saved !== editor.getValue().trim()) {
 			const $banner = $("<div class='draft-banner'>A draft was found</div>").prependTo("form.wiki-edit-form");
 			const $btns = $("<div class='draft-buttons'></div>").appendTo($banner);
-			$("<button class='restore-draft'>Restore</button>").appendTo($btns).on("click", () => { editor.setValue(saved); $banner.remove(); });
+			$("<button class='restore-draft'>Restore</button>").appendTo($btns).on("click", () => {
+				editor.setValue(saved);
+				$banner.remove();
+
+				// Sync document with LSP server if in JS mode
+				if (lspClient && editorMode.includes("javascript")) {
+					const textDocument = {
+						uri: `wiki://${wikiName}/${pageName}`,
+						version: 1,
+						text: saved
+					};
+
+					lspClient.didChange(textDocument, saved).catch(err => {
+						console.error('[LSP] Failed to sync restored draft:', err);
+					});
+				}
+			});
 			$("<button class='discard-draft'>Discard</button>").appendTo($btns).on("click", () => { localStorage.removeItem(storageKey); $banner.remove(); });
 		}
 

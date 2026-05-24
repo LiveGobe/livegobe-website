@@ -110,6 +110,9 @@ router.post("/register", (req, res) => {
     });
 });
 
+// LSP Proxy routes (browser communicates through these endpoints)
+router.use("/lsp", require("./lsp"));
+
 // Versioned routes
 router.use("/v1", (req, res) => { res.status(500).json({ message: req.t("api.deprecated") }) }, require("./v1"));
 router.use("/v2", require("./v2"));

@@ -1,0 +1,42 @@
+{
+  "server": {
+    "port": 8081,
+    "host": "localhost",
+    "workers": 1
+  },
+  "wikiApi": {
+    "baseUrl": "http://localhost:8080/api",
+    "version": 2,
+    "timeout": 5000,
+    "retryAttempts": 3,
+    "retryDelay": 1000,
+    "connectionPoolSize": 10
+  },
+  "cache": {
+    "strategy": "multi-level",
+    "modulesCacheTTL": 300000,
+    "apiCacheTTL": 600000,
+    "maxCacheSize": 104857600,
+    "enableFsCache": false
+  },
+  "analysis": {
+    "enableTypeInference": true,
+    "enableLinting": true,
+    "maxFileSize": 1048576,
+    "parseTimeout": 5000
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "destination": "./logs/lsp.log"
+  },
+  "features": {
+    "completion": true,
+    "hover": true,
+    "definition": true,
+    "references": true,
+    "rename": true,
+    "diagnostics": true,
+    "formatting": false
+  }
+}

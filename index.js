@@ -128,19 +128,46 @@ async function main() {
     io.use(wrap(passport.session()));
     require("./bin/socket-handler")(io);
 
-    const server = httpServer.listen(config.port, "0.0.0.0", () => {
+    const server = httpServer.listen(config.port, () => {
         console.log(`Server started on port ${config.port} in ${app.get("env")} mode`);
     });
 
-    process.on("SIGTERM", () => {
-        mongoose.connection.close().then(() => {
-            console.log("Mongoose connection closed");
-            server.close((e) => {
-                if (e) console.log(e);
-                process.exit(0);
+    let shuttingDown = false;
+
+    async function shutdown(signal) {
+        if (shuttingDown) return;
+        shuttingDown = true;
+
+        console.log(`${signal} received, shutting down...`);
+
+        try {
+            // Stop accepting new socket connections
+            io.close();
+
+            // Stop accepting new HTTP connections
+            await new Promise((resolve, reject) => {
+                httpServer.close((err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
             });
-        });
-    });
+
+            console.log("HTTP server closed");
+
+            // Close Mongo connection
+            await mongoose.connection.close();
+
+            console.log("Mongoose connection closed");
+
+            process.exit(0);
+        } catch (e) {
+            console.error("Shutdown error:", e);
+            process.exit(1);
+        }
+    }
+
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
-main();
+main().catch(console.error);

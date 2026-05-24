@@ -22,10 +22,10 @@
 
 - [x] **Security**
   - [x] Restrict access to `require`, `fs`, `process`, or DB
-  - [-] Limit execution time and memory usage
+  - [x] Limit execution time and memory usage
   - [ ] Optionally validate LGML code before storing
   
 - [-] **Advanced Features (Future)**
   - [x] Support module-to-module calls
-  - [ ] Allow modules to define page variables / caching hooks
+  - [] Allow modules to define page variables / caching hooks
   - [x] Optionally add async LGML functions
