@@ -7,7 +7,7 @@ const MockAdapter = require('axios-mock-adapter');
 const { createModuleResolver } = require('../../src/modules/resolver');
 const { createWikiApiCacheStrategy } = require('../../src/wiki-api/cache-strategy');
 const { createDocumentAnalyzer } = require('../../src/analysis/document-analyzer');
-const { createTernManager } = require('../../src/analysis/tern-manager');
+const { createTypeScriptManager } = require('../../src/analysis/typescript-manager');
 const { getLogger } = require('../../src/logging/logger');
 
 describe('End-to-End: Completion Workflow', () => {

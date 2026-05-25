@@ -1,10 +1,10 @@
 /**
  * Document Analyzer - Orchestrates code analysis
- * Combines module resolution, virtual document generation, and Tern.js
+ * Combines module resolution, virtual document generation, and TypeScript language service
  */
 
 const { createModuleResolver } = require('../modules/resolver');
-const { createTernManager } = require('./tern-manager');
+const { createTypeScriptManager } = require('./typescript-manager');
 const { createVirtualDocumentGenerator } = require('../utils/virtual-doc');
 const { getLogger } = require('../logging/logger');
 
@@ -17,7 +17,7 @@ class DocumentAnalyzer {
 
     // Initialize components
     this.moduleResolver = createModuleResolver(config);
-    this.ternManager = createTernManager(config);
+    this.typeScriptManager = createTypeScriptManager(config);
     this.virtualDocGenerator = createVirtualDocumentGenerator(config);
 
     // Track analyzed documents
@@ -38,39 +38,39 @@ class DocumentAnalyzer {
     try {
       logger.debug({ uri, size: content.length }, 'Starting document analysis');
 
-      // Extract dependencies from code
-      const dependencies = this._extractDependencies(content);
-      logger.debug({ uri, deps: dependencies.length }, 'Dependencies extracted');
+    // Analyze a document (resolve modules, generate virtual doc, prepare TypeScript)
+    const dependencies = this._extractDependencies(content);
+    logger.debug({ uri, deps: dependencies.length }, 'Dependencies extracted');
 
-      // Extract variable mappings for requireData()
-      const variableMap = this._extractVariableMappings(content);
+    // Extract variable mappings for requireData()
+    const variableMap = this._extractVariableMappings(content);
 
-      // Resolve all dependencies using workspace cache
-      const resolvedModules = await this._resolveDependencies(
-        dependencies,
-        wiki,
-        variableMap,
-        workspace  // Pass workspace for cache isolation
-      );
-      logger.debug(
-        { uri, resolved: Object.keys(resolvedModules).length },
-        'Dependencies resolved'
-      );
+    // Resolve all dependencies using workspace cache
+    const resolvedModules = await this._resolveDependencies(
+      dependencies,
+      wiki,
+      variableMap,
+      workspace  // Pass workspace for cache isolation
+    );
+    logger.debug(
+      { uri, resolved: Object.keys(resolvedModules).length },
+      'Dependencies resolved'
+    );
 
 
-      // Generate virtual document
-      const virtualDoc = this.virtualDocGenerator.generate(
-        content,
-        resolvedModules,
-        variableMap
-      );
-      logger.debug(
-        { uri, lineOffset: virtualDoc.lineOffset },
-        'Virtual document generated'
-      );
+    // Generate virtual document
+    const virtualDoc = this.virtualDocGenerator.generate(
+      content,
+      resolvedModules,
+      variableMap
+    );
+    logger.debug(
+      { uri, lineOffset: virtualDoc.lineOffset },
+      'Virtual document generated'
+    );
 
-      // Add to Tern for analysis
-      this.ternManager.addFile(uri, virtualDoc.code);
+    // Add to TypeScript for analysis
+    this.typeScriptManager.addFile(uri, virtualDoc.code);
 
       // Cache document analysis
       this.documents.set(uri, {
@@ -121,8 +121,8 @@ class DocumentAnalyzer {
       // Map original line to virtual document line
       const virtualLine = line + docAnalysis.lineOffset;
 
-      // Get completions from Tern
-      const completions = await this.ternManager.getCompletions(uri, virtualLine, ch);
+      // Get completions from TypeScript
+      const completions = await this.typeScriptManager.getCompletions(uri, virtualLine, ch);
 
       logger.debug(
         { uri, line, ch, count: completions.length },
@@ -158,8 +158,8 @@ class DocumentAnalyzer {
       // Map to virtual document
       const virtualLine = line + docAnalysis.lineOffset;
 
-      // Get hover from Tern
-      const hover = await this.ternManager.getHover(uri, virtualLine, ch);
+      // Get hover from TypeScript
+      const hover = await this.typeScriptManager.getHover(uri, virtualLine, ch);
 
       logger.debug({ uri, line, ch }, 'Hover information retrieved');
       return hover;
@@ -191,8 +191,8 @@ class DocumentAnalyzer {
       // Map to virtual document
       const virtualLine = line + docAnalysis.lineOffset;
 
-      // Get definition from Tern
-      const definition = await this.ternManager.getDefinition(uri, virtualLine, ch);
+      // Get definition from TypeScript
+      const definition = await this.typeScriptManager.getDefinition(uri, virtualLine, ch);
 
       if (definition) {
         // Map virtual line back to original
@@ -224,7 +224,7 @@ class DocumentAnalyzer {
    */
   removeDocument(uri) {
     this.documents.delete(uri);
-    this.ternManager.removeFile(uri);
+    this.typeScriptManager.removeFile(uri);
     logger.debug({ uri }, 'Document removed from analysis');
   }
 
@@ -235,7 +235,7 @@ class DocumentAnalyzer {
   getStats() {
     return {
       documentsAnalyzed: this.documents.size,
-      ternStats: this.ternManager.getStats(),
+      typeScriptStats: this.typeScriptManager.getStats(),
       documents: Array.from(this.documents.entries()).map(([uri, analysis]) => ({
         uri,
         size: analysis.originalContent.length,

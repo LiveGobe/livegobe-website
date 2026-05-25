@@ -25,11 +25,12 @@ class VirtualDocumentGenerator {
     let lineOffset = 0;
 
     // Add base frame
+    virtualCode += '// @ts-check\n';
     virtualCode += '/** @type {Object} */\n';
     virtualCode += 'var exports = {};\n';
     virtualCode += '/** @type {Object} */\n';
     virtualCode += 'var frame = { cache: {} };\n';
-    lineOffset += 4;
+    lineOffset += 5;
 
     // Add module definitions
     const moduleLines = this._injectModules(resolvedModules);
@@ -41,16 +42,9 @@ class VirtualDocumentGenerator {
     // virtualCode += varLines.code;
     // lineOffset += varLines.count;
 
-    // Wrap user code in async IIFE to capture exports
-    virtualCode += '(async function() {\n';
-    lineOffset += 1;
-
     // Transform user code to use virtual module references
     const transformedCode = this._transformUserCode(userCode, Object.keys(resolvedModules), variableMap);
     virtualCode += transformedCode.code;
-
-    // Close IIFE
-    virtualCode += '\n})();\n';
 
     logger.debug(
       {
@@ -113,7 +107,7 @@ class VirtualDocumentGenerator {
       } else {
 
         // Wrap module in an IIFE to capture exports
-        code += `\nvar ${varName} = (async function() {\n`;
+        code += `\nvar ${varName} = (function() {\n`;
         code += `${content.replace(/exports\s*=\s*/g, 'return ')}\n`;
         code += `})();\n`;
 

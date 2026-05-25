@@ -383,63 +383,63 @@ class TernManager {
     // Define custom LGML/wiki functions
     const lgmlDefs = {
       "requireData": {
-        "!type": "fn(name: string) -> ?",
-        "!resolve": function (self, args, graph) {
-          const nameNode = args && args[0];
-          if (!nameNode) return null;
+        "!type": "fn(name: string) -> +Promise",
+        // "!resolve": function (self, args, graph) {
+        //   const nameNode = args && args[0];
+        //   if (!nameNode) return null;
 
-          function resolveModule(modName) {
-            const varName = "__data_" + modName.replace(/[:.-\/]/g, "_");
-            const found = graph.lookup(varName, graph.ecma5);
-            return found ? found.getType() : null;
-          }
+        //   function resolveModule(modName) {
+        //     const varName = "__data_" + modName.replace(/[:.-\/]/g, "_");
+        //     const found = graph.lookup(varName, graph.ecma5);
+        //     return found ? found.getType() : null;
+        //   }
 
-          // --- 1. Literal ---
-          if (typeof nameNode.value === "string") {
-            const t = resolveModule(nameNode.value);
-            return t || "?";
-          }
+        //   // --- 1. Literal ---
+        //   if (typeof nameNode.value === "string") {
+        //     const t = resolveModule(nameNode.value);
+        //     return t || "?";
+        //   }
 
-          // --- 2. Variable lookup (FIXED)
-          const varName =
-            (nameNode.node && nameNode.node.name) ||
-            nameNode.name;
+        //   // --- 2. Variable lookup (FIXED)
+        //   const varName =
+        //     (nameNode.node && nameNode.node.name) ||
+        //     nameNode.name;
 
-          if (varName && variableMap.has(varName)) {
-            const modName = variableMap.get(varName);
-            const t = resolveModule(modName);
-            if (t) return t;
-          }
+        //   if (varName && variableMap.has(varName)) {
+        //     const modName = variableMap.get(varName);
+        //     const t = resolveModule(modName);
+        //     if (t) return t;
+        //   }
 
-          // --- 3. Fallback
-          let union = null;
+        //   // --- 3. Fallback
+        //   let union = null;
 
-          dataCache.forEach((_, modName) => {
-            const t = resolveModule(modName);
-            if (t) {
-              union = union ? (union.or ? union.or(t) : t) : t;
-            }
-          });
+        //   dataCache.forEach((_, modName) => {
+        //     const t = resolveModule(modName);
+        //     if (t) {
+        //       union = union ? (union.or ? union.or(t) : t) : t;
+        //     }
+        //   });
 
-          return union || "?";
-        }
+        //   return union || "?";
+        // }
       },
       "require": {
-        "!type": "fn(name: string) -> ?",
+        "!type": "fn(name: string) -> +Promise",
         // Inside your lgmlDefs.require definition
-        "!resolve": function (self, args, graph) {
-          const nameNode = args && args[0];
-          if (!nameNode) return null;
+        // "!resolve": function (self, args, graph) {
+        //   const nameNode = args && args[0];
+        //   if (!nameNode) return null;
 
-          // --- 1. Literal string ---
-          if (typeof nameNode.value === "string") {
-            const varName = "__mod_" + nameNode.value.replace(/[:.-\/]/g, "_");
-            const found = graph.lookup(varName, graph.ecma5);
-            return found ? found.getType() : "?";
-          }
+        //   // --- 1. Literal string ---
+        //   if (typeof nameNode.value === "string") {
+        //     const varName = "__mod_" + nameNode.value.replace(/[:.-\/]/g, "_");
+        //     const found = graph.lookup(varName, graph.ecma5);
+        //     return found ? found.getType() : "?";
+        //   }
 
-          return null;
-        }
+        //   return null;
+        // }
       },
       "exports": { "!type": "object" },
       "!define": {
