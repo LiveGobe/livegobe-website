@@ -552,11 +552,25 @@ class TypeScriptManager {
                 ch
             );
 
-            // Get quickinfo (type information) from TypeScript
+            // --- TAKEN FROM GETCOMPLETIONS: Extract current identifier prefix ---
+            let start = position;
+            while (
+                start > 0 &&
+                /[A-Za-z0-9_$]/.test(
+                    sourceFile.text[start - 1]
+                )
+            ) {
+                start--;
+            }
+
+            const prefix = sourceFile.text.slice(start, position);
+            // ------------------------------------------------------------------
+
+            // Get quickinfo (type information) from TypeScript using the derived position
             const quickInfo = this.languageService.getQuickInfoAtPosition(uri, position);
 
             if (!quickInfo) {
-                logger.debug({ uri, line, ch }, 'No type information found');
+                logger.debug({ uri, line, ch, prefix }, 'No type information found');
                 return null;
             }
 
@@ -564,11 +578,12 @@ class TypeScriptManager {
                 type: ts.displayPartsToString(quickInfo.displayParts),
                 doc: quickInfo.documentation ? ts.displayPartsToString(quickInfo.documentation) : '',
                 kind: quickInfo.kind,
-                kindModifiers: quickInfo.kindModifiers || ''
+                kindModifiers: quickInfo.kindModifiers || '',
+                prefix: prefix // Optional: Included if you want to know what identifier matched this type
             };
 
             logger.debug(
-                { uri, line, ch, type: typeInfo.type },
+                { uri, line, ch, type: typeInfo.type, prefix },
                 'Type information retrieved'
             );
 
@@ -593,35 +608,24 @@ class TypeScriptManager {
     async getHover(uri, line, ch) {
         try {
             const typeInfo = await this.getType(uri, line, ch);
+            if (!typeInfo) return null;
 
-            if (!typeInfo) {
-                return null;
-            }
+            const textParts = [
+                // Raw type signature layout
+                typeInfo.type
+            ];
 
-            // Format hover information in LSP format
-            const hover = {
-                contents: {
-                    language: 'typescript',
-                    value: typeInfo.type
-                }
-            };
-
-            // Add documentation if available
+            // Add a clean textual separator and the description block if available
             if (typeInfo.doc) {
-                hover.contents = [
-                    hover.contents,
-                    { language: 'markdown', value: typeInfo.doc }
-                ];
+                textParts.push('━━━━━━━━━');
+                textParts.push(typeInfo.doc);
             }
 
-            logger.debug({ uri, line, ch }, 'Hover information retrieved');
-            return hover;
-
+            return {
+                contents: textParts.join('\n') // Flattens everything into a single plain text string
+            };
         } catch (error) {
-            logger.error(
-                { uri, line, ch, error: error.message },
-                'Hover request failed'
-            );
+            logger.error({ uri, line, ch, error: error.message }, 'Hover request failed');
             return null;
         }
     }

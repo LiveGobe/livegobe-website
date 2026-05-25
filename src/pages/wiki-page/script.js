@@ -583,12 +583,14 @@ $(function () {
 			indentWithTabs: false,
 			indentUnit: 0,
 			extraKeys: {
+				// Save draft to localStorage
 				"Ctrl-S": (cm) => {
 					try {
 						localStorage.setItem(storageKey, cm.getValue());
 						showSaveToast("Draft saved");
 					} catch { }
 				},
+				// Trigger LSP completions manually
 				"Ctrl-Space": (cm) => {
 					const cur = cm.getCursor();
 					const token = cm.getTokenAt(cur);
@@ -613,6 +615,138 @@ $(function () {
 						updateOnCursorActivity: true
 					});
 				},
+				// Trigger LSP formatting
+				"Shift-Alt-F": (cm) => {
+					// TODO: Implement formatting support in LSP Proxy Client and trigger it here
+				},
+				// Comment/uncomment line or selection
+				"Ctrl-/": (cm) => {
+					const from = cm.getCursor("start");
+					const to = cm.getCursor("end");
+
+					// Determine the range of lines to modify
+					const startLine = from.line;
+					const endLine = to.line;
+
+					// Read all text within the targeted lines
+					const lines = [];
+					for (let i = startLine; i <= endLine; i++) {
+						lines.push(cm.getLine(i));
+					}
+
+					// Check if ALL non-empty lines in the selection already start with "//"
+					const isUncomment = lines.every(line => {
+						const trimmed = line.trim();
+						return trimmed.length === 0 || trimmed.startsWith("//");
+					});
+
+					// Batch operations together so it registers as a single "Undo" action
+					cm.operation(() => {
+						if (isUncomment) {
+							// Remove "//" from lines
+							for (let i = startLine; i <= endLine; i++) {
+								const line = cm.getLine(i);
+								const match = line.match(/^(\s*)\/\/ ?/);
+								if (match) {
+									const startCh = match[1].length;
+									const endCh = match[0].length;
+									// Replace the "// " part with nothing
+									cm.replaceRange("", { line: i, ch: startCh }, { line: i, ch: endCh });
+								}
+							}
+						} else {
+							// Add "// " to the beginning of lines
+							for (let i = startLine; i <= endLine; i++) {
+								const line = cm.getLine(i);
+								// Skip completely empty lines if desired, or comment them out
+								if (line.trim().length > 0 || startLine === endLine) {
+									cm.replaceRange("// ", { line: i, ch: 0 });
+								}
+							}
+						}
+					});
+				},
+				// Move lines up
+				"Alt-Up": (cm) => {
+					cm.operation(() => {
+						const doc = cm.getDoc();
+						const selections = doc.listSelections();
+
+						// Loop backwards to handle multiple cursors cleanly from bottom to top
+						for (let i = selections.length - 1; i >= 0; i--) {
+							const sel = selections[i];
+							const from = Math.min(sel.anchor.line, sel.head.line);
+							const to = Math.max(sel.anchor.line, sel.head.line);
+
+							// Already at the top line, can't move up
+							if (from === 0) continue;
+
+							const targetLine = from - 1;
+							const targetLineContent = doc.getLine(targetLine);
+
+							// Get the block of text being moved
+							const movingLines = [];
+							for (let l = from; l <= to; l++) {
+								movingLines.push(doc.getLine(l));
+							}
+
+							// Swap the text in the document
+							doc.replaceRange(
+								movingLines.join("\n") + "\n" + targetLineContent,
+								{ line: targetLine, ch: 0 },
+								{ line: to, ch: doc.getLine(to).length }
+							);
+
+							// Shift the selection up to follow the moved text
+							selections[i] = {
+								anchor: { line: sel.anchor.line - 1, ch: sel.anchor.ch },
+								head: { line: sel.head.line - 1, ch: sel.head.ch }
+							};
+						}
+						doc.setSelections(selections);
+					});
+				},
+				// Move lines down
+				"Alt-Down": (cm) => {
+					cm.operation(() => {
+						const doc = cm.getDoc();
+						const selections = doc.listSelections();
+						const lastLineNum = doc.lastLine();
+
+						// Loop forwards to handle multiple cursors cleanly from top to bottom
+						for (let i = 0; i < selections.length; i++) {
+							const sel = selections[i];
+							const from = Math.min(sel.anchor.line, sel.head.line);
+							const to = Math.max(sel.anchor.line, sel.head.line);
+
+							// Already at the bottom line, can't move down
+							if (to === lastLineNum) continue;
+
+							const targetLine = to + 1;
+							const targetLineContent = doc.getLine(targetLine);
+
+							// Get the block of text being moved
+							const movingLines = [];
+							for (let l = from; l <= to; l++) {
+								movingLines.push(doc.getLine(l));
+							}
+
+							// Swap the text in the document
+							doc.replaceRange(
+								targetLineContent + "\n" + movingLines.join("\n"),
+								{ line: from, ch: 0 },
+								{ line: targetLine, ch: doc.getLine(targetLine).length }
+							);
+
+							// Shift the selection down to follow the moved text
+							selections[i] = {
+								anchor: { line: sel.anchor.line + 1, ch: sel.anchor.ch },
+								head: { line: sel.head.line + 1, ch: sel.head.ch }
+							};
+						}
+						doc.setSelections(selections);
+					});
+				},
 				/* ===== COMMENTED OUT: Tern.js specific key bindings =====
 				"F12": (cm) => { ternServer.jumpToDef(cm, ...); },
 				"Shift-F12": (cm) => { ternServer.showRefs(cm); },
@@ -620,6 +754,7 @@ $(function () {
 				"Shift-Ctrl-Space": (cm) => { ternServer.updateArgHints(cm); },
 				===== END TERN BINDINGS =====
 				*/
+				// Handle Enter key to accept completion if menu is open
 				"Enter": (cm) => {
 					const completion =
 						cm.state.completionActive;
@@ -631,10 +766,12 @@ $(function () {
 
 					return CodeMirror.Pass;
 				},
+				// Close completion on Space to prevent accidental selection
 				"Space": (cm) => {
 					if (cm.state.completionActive) cm.state.completionActive.close();
 					return CodeMirror.Pass;
 				},
+				// Handle Escape to close completion or LSP tooltips
 				"Esc": (cm) => {
 					// Close autocomplete
 					if (cm.state.completionActive) {
@@ -643,8 +780,7 @@ $(function () {
 					}
 
 					// Close LSP tooltips
-					document.querySelectorAll(".CodeMirror-Tern-tooltip, .lsp-tooltip")
-						.forEach(el => el.remove());
+					$(".lsp-hover-tooltip").remove();
 
 					return CodeMirror.Pass;
 				}
@@ -672,6 +808,98 @@ $(function () {
 				} else {
 					console.warn('[LSP] Failed to initialize LSP Proxy Client');
 				}
+			});
+
+			// Hover implementation state
+			let hoverTimeout = null;
+
+			editor.getWrapperElement().addEventListener("mouseover", (e) => {
+				// Clear any pending hover lookups while moving the mouse
+				clearTimeout(hoverTimeout);
+
+				// Find the exact character coordinates under the mouse pointer
+				const coords = editor.coordsChar({ left: e.clientX, top: e.clientY }, "window");
+
+				// Exit if the mouse is not directly over text characters
+				if (!coords || coords.ch === undefined) {
+					return;
+				}
+
+				// Debounce to avoid spamming your LSP while moving the mouse
+				hoverTimeout = setTimeout(() => {
+					const token = editor.getTokenAt(coords);
+
+					// Optional: Ignore hovering over empty spaces or specific symbols
+					if (!token.string.trim()) return;
+
+					// Fetch documentation/types from your LSP proxy
+					if (lspClient) {
+						const textDocument = {
+							uri: `wiki://${wikiName}/${pageName}`,
+						};
+
+						lspClient.getHover(textDocument, { line: coords.line, character: coords.ch }).then(hover => {
+							if (hover && hover.contents) {
+								// Remove existing tooltips
+								$(".lsp-hover-tooltip").remove();
+
+								// Create a new tooltip element
+								const tooltip = $("<div class='lsp-hover-tooltip'></div>").appendTo("body");
+
+								// Convert LSP MarkupContent to HTML (Safe plain-text assignment)
+								// Checks if 'contents' is an object with a value property, or a direct string
+								const textValue = typeof hover.contents === 'object' ? hover.contents.value : hover.contents;
+								tooltip.text(textValue);
+
+								// Position the tooltip near the mouse cursor
+								const tooltipWidth = tooltip.outerWidth();
+								const tooltipHeight = tooltip.outerHeight();
+
+								let left = e.clientX + 10;
+								let top = e.clientY + 10;
+
+								// Ensure the tooltip doesn't go off the right edge of the window
+								if (left + tooltipWidth > window.innerWidth) {
+									left = e.clientX - tooltipWidth - 10;
+								}
+
+								// Ensure the tooltip doesn't go off the bottom edge of the window
+								if (top + tooltipHeight > window.innerHeight) {
+									top = e.clientY - tooltipHeight - 10;
+								}
+
+								tooltip.css({ left, top });
+
+								// Remove the tooltip when the mouse moves far away or mouse leaves the editor
+								const handleMouseMove = (moveEvent) => {
+									const distanceX = Math.abs(moveEvent.clientX - e.clientX);
+									const distanceY = Math.abs(moveEvent.clientY - e.clientY);
+
+									// Remove tooltip if cursor moves further than 15 pixels away from origin point
+									if (distanceX > 15 || distanceY > 15) {
+										cleanupTooltip();
+									}
+								};
+
+								const cleanupTooltip = () => {
+									tooltip.remove();
+									$(document).off("mousemove", handleMouseMove);
+									editor.off("cursorActivity", cleanupTooltip);
+								};
+
+								// Attach event listeners to dismiss the tooltip
+								$(document).on("mousemove", handleMouseMove);
+								editor.on("cursorActivity", cleanupTooltip);
+							}
+						});
+					}
+				}, 300); // 300ms delay before triggering
+			});
+
+			// Clear tooltips immediately if the mouse leaves the editor entirely
+			editor.getWrapperElement().addEventListener("mouseleave", () => {
+				clearTimeout(hoverTimeout);
+				$(".lsp-hover-tooltip").remove();
 			});
 
 			// Setup document change synchronization (debounced)
