@@ -1062,43 +1062,119 @@ $(function () {
 		});
 
 		// --- Magic words ---
-		const LGWL_MAGIC_WORDS = new Set(["PAGENAME", "NAMESPACE", "FULLPAGENAME", "BASEPAGENAME", "PAGELANGUAGE", "SITENAME", "DATE", "TIME"]);
+		const LGWL_MAGIC_WORDS = new Set(["PAGENAME", "NAMESPACE", "FULLPAGENAME", "BASEPAGENAME", "PAGELANGUAGE", "SITENAME", "DATE", "TIME", "#og:", "#og_image:"]);
 
 		// --- Linkify functions ---
-		const REQUIRE_REGEX = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/g;
+		const REQUIRE_REGEX = /\brequire\s*\(\s*["']([^"']+)["']\s*\)/;
+		const TEMPLATE_REGEX = /(?<!\{)\{\{(?!\{)([\s\S]{0,1000}?)(?<!\})\}\}(?!\})/;
+
 		function isWikiModule(name) { return !(/^(\.\/|\.\.\/|\/|.*:\/\/|@)/.test(name) || /\.[a-z0-9]+$/i.test(name)); }
 		function normalizeModuleName(name) { return name.startsWith("Module:") ? name : "Module:" + name; }
 
-		function linkifyModuleRequires(cm) {
-			const text = cm.getValue();
-			cm.getAllMarks().forEach(mark => mark.className === "cm-module-link" && mark.clear());
-			let match;
-			while ((match = REQUIRE_REGEX.exec(text))) {
-				const rawName = match[1]; if (!isWikiModule(rawName)) continue;
-				const moduleName = normalizeModuleName(rawName);
-				const startPos = cm.posFromIndex(match.index + match[0].indexOf(rawName));
-				const endPos = cm.posFromIndex(match.index + match[0].indexOf(rawName) + rawName.length);
-				cm.markText(startPos, endPos, { className: "cm-module-link", attributes: { "data-module": moduleName }, inclusiveLeft: false, inclusiveRight: false, clearWhenEmpty: true });
-			}
+		function processVisibleLinks(cm) {
+			cm.operation(() => {
+				const viewport = cm.getViewport();
+
+				// Fix: Use lastLine() to ensure we never query past the document end
+				const lastLineNum = cm.lastLine();
+				const endLine = Math.min(viewport.to, lastLineNum);
+				const endCh = cm.getLine(endLine)?.length || 0;
+
+				// 1. Clear existing links safely within viewport boundaries
+				cm.findMarks(
+					{ line: viewport.from, ch: 0 },
+					{ line: endLine, ch: endCh }
+				).forEach(mark => {
+					if (mark.className === "cm-module-link" || mark.className === "cm-template-link") {
+						mark.clear();
+					}
+				});
+
+				// 2. Scan only the visible lines
+				cm.eachLine(viewport.from, endLine + 1, (lineHandle) => {
+					const lineNum = cm.lineInfo(lineHandle)?.line;
+					if (lineNum === null || lineNum === undefined) return;
+					const text = lineHandle.text;
+
+					// Handle Requires
+					let reqMatch = REQUIRE_REGEX.exec(text);
+					if (reqMatch) {
+						const rawName = reqMatch[1]; // Fix: Extract the captured group string
+						if (isWikiModule(rawName)) {
+							const modName = normalizeModuleName(rawName);
+							const startCh = reqMatch.index + reqMatch[0].indexOf(rawName);
+							cm.markText(
+								{ line: lineNum, ch: startCh },
+								{ line: lineNum, ch: startCh + rawName.length },
+								{ className: "cm-module-link", attributes: { "data-module": modName } }
+							);
+						}
+					}
+
+					// Handle Templates
+					let tempMatch = TEMPLATE_REGEX.exec(text);
+					if (tempMatch) {
+						const fullTemplate = tempMatch[1].trim(); // Fix: Extract the captured group string
+						const templateName = fullTemplate.split("|")[0].trim();
+						// Fix: Check if BUILTIN_TEMPLATES exists before accessing it
+						const isBuiltIn = typeof BUILTIN_TEMPLATES !== "undefined" && BUILTIN_TEMPLATES[templateName];
+
+						if (templateName && !LGWL_MAGIC_WORDS.has(templateName) && !isBuiltIn) {
+							const startCh = tempMatch.index + tempMatch[0].indexOf(templateName);
+							cm.markText(
+								{ line: lineNum, ch: startCh },
+								{ line: lineNum, ch: startCh + templateName.length },
+								{ className: "cm-template-link", attributes: { "data-template": templateName } }
+							);
+						}
+					}
+				});
+			});
 		}
 
-		function linkifyTemplates(cm) {
-			const text = cm.getValue();
-			cm.getAllMarks().forEach(mark => mark.className === "cm-template-link" && mark.clear());
-			const regex = /(?<!\{)\{\{(?!\{)([\s\S]{0,1000}?)(?<!\})\}\}(?!\})/g;
-			let match;
-			while ((match = regex.exec(text))) {
-				const fullTemplate = match[1].trim();
-				const templateName = fullTemplate.split("|")[0].trim();
-				if (!templateName || LGWL_MAGIC_WORDS.has(templateName) || BUILTIN_TEMPLATES[templateName]) continue;
-				const startPos = cm.posFromIndex(match.index + 2);
-				const endPos = cm.posFromIndex(match.index + 2 + templateName.length);
-				cm.markText(startPos, endPos, { className: "cm-template-link", attributes: { "data-template": templateName }, inclusiveLeft: false, inclusiveRight: false, clearWhenEmpty: true });
-			}
+		// --- Efficient Event Bindings ---
+		let debounceTimeout;
+		let isInitialized = false;
+
+		function handleUpdate() {
+			clearTimeout(debounceTimeout);
+			debounceTimeout = setTimeout(() => {
+				// RequestAnimationFrame ensures layout calculations are done 
+				// before we query viewport dimensions
+				requestAnimationFrame(() => {
+					processVisibleLinks(editor);
+				});
+			}, 150);
 		}
 
-		editor.on("change", () => { linkifyTemplates(editor); linkifyModuleRequires(editor); });
-		linkifyTemplates(editor); linkifyModuleRequires(editor);
+		// Ignore heavy processing during rapid initial updates
+		editor.on("change", () => {
+			if (!isInitialized) return;
+			handleUpdate();
+		});
+
+		editor.on("viewportChange", () => {
+			if (!isInitialized) return;
+			handleUpdate();
+		});
+
+		// Wait for the browser to finish rendering the initial layout entirely
+		if (document.readyState === "complete") {
+			initEditorLinks();
+		} else {
+			window.addEventListener("load", initEditorLinks);
+		}
+
+		function initEditorLinks() {
+			// A double requestAnimationFrame ensures CodeMirror's DOM is completely stabilized
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					isInitialized = true;
+					processVisibleLinks(editor);
+					editor.refresh(); // Forces a single, clean final layout pass
+				});
+			});
+		}
 
 		// --- Clickable links ---
 		editor.on('mousedown', function (cm, event) {
@@ -1117,8 +1193,14 @@ $(function () {
 			}
 		});
 
-		// --- Sync textarea ---
-		editor.on("change", () => $editorTextarea.val(editor.getValue()));
+		// --- Sync textarea (Debounced to remove typing lag) ---
+		let syncTimeout;
+		editor.on("change", () => {
+			clearTimeout(syncTimeout);
+			syncTimeout = setTimeout(() => {
+				$editorTextarea.val(editor.getValue());
+			}, 500); // Only syncs after the user stops typing for 500ms
+		});
 
 		// --- Refresh on resize ---
 		$(window).on("resize", () => editor.refresh());
