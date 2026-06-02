@@ -208,7 +208,7 @@ WikiPageSchema.pre("save", async function (next) {
 WikiPageSchema.post('save', function (doc) {
     if (doc._needsBackgroundRender) {
         const WikiPage = this.constructor;
-        renderQueue.enqueue(async () => {
+        renderQueue.enqueue(this._id.toString(), async () => {
             try {
                 await WikiPage.backgroundRender(doc._id);
             } catch (e) {
