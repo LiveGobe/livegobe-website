@@ -3,7 +3,7 @@ module.exports = {
     name: "livegobe-website",
     script: "./index.js",
     instances: 6,
-    max_memory_restart: "1G",
+    max_memory_restart: "3G",
     exec_mode: "cluster",
     env_production: {
       NODE_ENV: "production"
