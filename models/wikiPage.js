@@ -85,13 +85,11 @@ const WikiPageSchema = new mongoose.Schema({
     }],
     // For templates
     templateUsedBy: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'WikiPage'
+        type: String
     }],
     // Pages that this page uses as templates
     templatesUsed: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'WikiPage'
+        type: String
     }],
     // Page protection level
     protected: {
@@ -271,7 +269,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
         }
 
         // --- Render LGWL content ---
-        const { html, categories, tags, noIndex, meta = {}, og, frameSize } = await renderWikiText(currentContent, {
+        const { html, categories, tags, noIndex, meta = {}, og, frameSize, templatesUsed } = await renderWikiText(currentContent, {
             wikiName: this.wiki.name,
             wikiId: this.wiki._id,
             pageName: this.path,
@@ -285,6 +283,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
 
         FRAME_SIZE = frameSize;
         this.noIndex = noIndex;
+        this.templatesUsed = templatesUsed;
         // Persist rendered HTML to file storage (unless caller handles it)
         if (!dryRun && !skipWrite) {
             try { await fileStorage.writeHtml(this.wiki._id, this.namespace, this.path, html); } catch (e) { }
@@ -321,11 +320,7 @@ WikiPageSchema.methods.renderContent = async function ({ noredirect = false, sou
 
     this.lastModifiedAt = new Date();
 
-    if (this.namespace === "Template") {
-        setImmediate(async () => { await this.purgeCache(); });
-    }
-
-    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, meta: this.meta, og: this.meta.og || null, frameSize: FRAME_SIZE };
+    return { html: this.html, categories: this.categories, tags: this.tags, redirectTarget: this.redirectTarget, meta: this.meta, og: this.meta.og || null, frameSize: FRAME_SIZE, templatesUsed: this.templatesUsed || [] };
 };
 
 // Instance method to add a new revision (stores text on disk; keeps metadata in DB)
@@ -396,18 +391,18 @@ WikiPageSchema.methods.enqueuePurge = function () {
                 if (!freshPage) return;
 
                 // Force re-render (skipWrite: true to avoid duplicate writes since we persist below)
-                const { html, categories, tags, meta } = await freshPage.renderContent({ skipWrite: true });
+                const { html, categories, tags, meta, templatesUsed } = await freshPage.renderContent({ skipWrite: true });
                 // write HTML to file and update DB metadata
                 try { await fileStorage.writeHtml(freshPage.wiki._id, freshPage.namespace, freshPage.path, html); } catch (e) { }
-                await WikiPage.updateOne({ _id: pageId }, { $set: { categories, tags, lastModifiedAt: new Date(), meta } });
+                await WikiPage.updateOne({ _id: pageId }, { $set: { categories, tags, lastModifiedAt: new Date(), meta, templatesUsed } });
 
                 // Enqueue dependents (renderQueue prevents duplicates automatically)
-                if (freshPage.templateUsedBy?.length) {
-                    for (const depId of freshPage.templateUsedBy) {
-                        const depPage = await WikiPage.findById(depId);
-                        if (depPage) depPage.enqueuePurge();
-                    }
-                }
+                // if (freshPage.templateUsedBy?.length) {
+                //     for (const depId of freshPage.templateUsedBy) {
+                //         const depPage = await WikiPage.findById(depId);
+                //         if (depPage) depPage.enqueuePurge();
+                //     }
+                // }
             } catch (err) {
                 console.error(`[Purge] Error purging id=${pageId}:`, err);
             } finally {
@@ -421,7 +416,18 @@ WikiPageSchema.methods.enqueuePurge = function () {
 };
 
 // Recursively purge and re-render a page and its dependents (non-blocking via render queue)
-WikiPageSchema.methods.purgeCache = function () {
+WikiPageSchema.methods.purgeCache = async function () {
+    // Purge used templates first to ensure correct render order (dependents will be re-rendered via their own purgeCache calls)
+    if (this.templatesUsed && this.templatesUsed.length > 0) {
+        for (const template of this.templatesUsed) {
+            const [namespace, path] = template.split(":", 2);
+            const templatePage = await this.constructor.findOne({ wiki: this.wiki, namespace, path });
+            if (templatePage) {
+                templatePage.purgeCache();
+            }
+        }
+    }
+
     this.enqueuePurge();
     return { success: true };
 };
@@ -580,26 +586,30 @@ WikiPageSchema.statics.listPages = function (wiki, namespace = "Main", limit = 1
         { $match: { wiki, namespace } },
         // Deduplicate by path, keeping the latest modified version
         { $sort: { lastModifiedAt: -1 } },
-        { $group: { 
-            _id: "$path",
-            title: { $first: "$title" },
-            path: { $first: "$path" },
-            namespace: { $first: "$namespace" },
-            lastModifiedAt: { $first: "$lastModifiedAt" },
-            lastModifiedBy: { $first: "$lastModifiedBy" }
-        }},
+        {
+            $group: {
+                _id: "$path",
+                title: { $first: "$title" },
+                path: { $first: "$path" },
+                namespace: { $first: "$namespace" },
+                lastModifiedAt: { $first: "$lastModifiedAt" },
+                lastModifiedBy: { $first: "$lastModifiedBy" }
+            }
+        },
         { $sort: { path: 1 } },
         { $skip: skip },
         { $limit: limit },
         { $lookup: { from: "users", localField: "lastModifiedBy", foreignField: "_id", as: "lastModifiedByData" } },
-        { $project: { 
-            title: 1, 
-            path: 1, 
-            namespace: 1, 
-            lastModifiedAt: 1,
-            lastModifiedBy: { $arrayElemAt: ["$lastModifiedByData.name", 0] },
-            _id: 1
-        }}
+        {
+            $project: {
+                title: 1,
+                path: 1,
+                namespace: 1,
+                lastModifiedAt: 1,
+                lastModifiedBy: { $arrayElemAt: ["$lastModifiedByData.name", 0] },
+                _id: 1
+            }
+        }
     ]);
 };
 
@@ -609,9 +619,9 @@ WikiPageSchema.statics.backgroundRender = async function (id) {
     if (!page) return false;
 
     try {
-        const { html, categories, tags, noIndex, meta } = await page.renderContent({ skipWrite: true });
+        const { html, categories, tags, noIndex, meta, templatesUsed } = await page.renderContent({ skipWrite: true });
         try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
-        await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, lastModifiedAt: new Date(), meta } });
+        await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, lastModifiedAt: new Date(), meta, templatesUsed } });
         // invalidate per-wiki page cache so redlink detection stays fresh
         try { pageCache.invalidate(page.wiki._id); } catch (e) { }
         return true;

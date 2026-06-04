@@ -1951,6 +1951,8 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
       if (moduleName.endsWith("/doc"))
         return `<span class="error">[Cannot invoke documentation page: ${moduleName}]</span>`;
 
+      options.templatesUsed.add(`Module:${moduleName}`);
+
       try {
         const moduleResult = await executeWikiModule(options, moduleName, functionName, args);
         if (typeof moduleResult === "string") {
@@ -2210,6 +2212,8 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
       return `<span class="missing-template">{{${name}}}</span>`;
     }
 
+    options.templatesUsed.add(templateKey);
+
     let content = processIncludeBlocks(templatePage.content, false);
 
     // Helper to expand triple-brace parameters
@@ -2365,6 +2369,7 @@ async function renderWikiText(text, options = {}) {
   // --- Prepare existing files set ---
   const existingFiles = getExistingFiles(wikiName);
   options.existingFiles = existingFiles;
+  options.templatesUsed = new Set();
 
   const { protectedText, nowikiBlocks } = protectNowikiBlocks(text);
   let working = protectedText;
@@ -2383,13 +2388,6 @@ async function renderWikiText(text, options = {}) {
   let frameFooter = "\n" + options?.frame?.__footer || "";
 
   working = frameHeader + working + frameFooter;
-
-  if (WikiPage && currentPageId) {
-    await WikiPage.updateOne(
-      { _id: currentPageId },
-      { $set: { templatesUsed: [] } }
-    ).catch(() => { });
-  }
 
   // --- Tokenize and parse ---
   working = await parseTables(working, expandTemplates, { ...options });
@@ -2483,7 +2481,8 @@ async function renderWikiText(text, options = {}) {
     noIndex,
     meta: options.meta,
     og,
-    frameSize: Buffer.byteLength(JSON.stringify(options.frame), "utf-8")
+    frameSize: Buffer.byteLength(JSON.stringify(options.frame), "utf-8"),
+    templatesUsed: Array.from(options.templatesUsed)
   };
 }
 

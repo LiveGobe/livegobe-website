@@ -870,6 +870,8 @@ router.post("/wikis/:wikiName/pages/:pageTitle*/purge", async (req, res) => {
 
 // Purge all pages cache (for admins or editors)
 router.post("/wikis/:wikiName/purge", async (req, res) => {
+    return res.status(501).json({ message: "Not Available" }); // Disable for now to prevent abuse, can be re-enabled later with proper rate limiting and permissions
+
     try {
         const wikiName = req.params.wikiName;
 
