@@ -394,7 +394,7 @@ WikiPageSchema.methods.enqueuePurge = function () {
                 const { html, categories, tags, meta, templatesUsed } = await freshPage.renderContent({ skipWrite: true });
                 // write HTML to file and update DB metadata
                 try { await fileStorage.writeHtml(freshPage.wiki._id, freshPage.namespace, freshPage.path, html); } catch (e) { }
-                await WikiPage.updateOne({ _id: pageId }, { $set: { categories, tags, lastModifiedAt: new Date(), meta, templatesUsed } });
+                await WikiPage.updateOne({ _id: pageId }, { $set: { categories, tags, meta, templatesUsed } });
 
                 // Enqueue dependents (renderQueue prevents duplicates automatically)
                 // if (freshPage.templateUsedBy?.length) {
@@ -621,7 +621,7 @@ WikiPageSchema.statics.backgroundRender = async function (id) {
     try {
         const { html, categories, tags, noIndex, meta, templatesUsed } = await page.renderContent({ skipWrite: true });
         try { await fileStorage.writeHtml(page.wiki._id, page.namespace, page.path, html); } catch (e) { }
-        await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, lastModifiedAt: new Date(), meta, templatesUsed } });
+        await this.updateOne({ _id: id }, { $set: { categories, tags, noIndex, meta, templatesUsed } });
         // invalidate per-wiki page cache so redlink detection stays fresh
         try { pageCache.invalidate(page.wiki._id); } catch (e) { }
         return true;
