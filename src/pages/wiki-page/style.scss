@@ -286,6 +286,10 @@
   /* Hover state for Missing Category link */
   --wiki-page-meta_categories_ul_li_awiki-missing-categoryhover-background: #ffcccc;
   /* slightly darker red */
+
+  --wiki-ban-notice-background: rgba(192, 0, 0, 0.8);
+  --wiki-ban-notice-color: #fff;
+  --wiki-ban-notice-border: 1px solid #a00000;
 }
 
 body[data-theme="dark"] {
@@ -1057,6 +1061,16 @@ body {
   font-size: 1.5rem;
   font-weight: 600;
   color: var(--wiki-content_pre_wiki-content_code-color);
+}
+
+/* === EDITING BAN === */
+.wiki-ban-notice {
+  background: var(--wiki-ban-notice-background);
+  color: var(--wiki-ban-notice-color);
+  border: var(--wiki-ban-notice-border);
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  text-align: center;
 }
 
 /* === OLD REVISION === */

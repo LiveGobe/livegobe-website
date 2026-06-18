@@ -19,6 +19,8 @@ $(() => {
     const $userSettings = $("#user-settings");
     const $userSave = $("#user-save");
     const $permissions = $("#permissions");
+    const $bans = $("#bans");
+    const $userBansSave = $("#user-bans-save");
     const $userId = $("#user-id");
     const $userIdInput = $("#user-id-input");
     const $filestorageRefreshButton = $("#filestorage-refresh-button");
@@ -119,6 +121,11 @@ $(() => {
                             if (permissions != $permissions.val().trimStart().trimEnd().replace(/[ ]+/, " ")) $userSave.prop("disabled", false);
                             else $userSave.prop("disabled", true);
                         });
+                        const bans = $bans.val(data.users[i].bans.join(" ")).val();
+                        $bans.on("input", (e) => {
+                            if (bans != $bans.val().trimStart().trimEnd().replace(/[ ]+/, " ")) $userBansSave.prop("disabled", false);
+                            else $userBansSave.prop("disabled", true);
+                        });
                     });
                     $usersList.append(element);
                 }
@@ -157,6 +164,35 @@ $(() => {
             },
             complete: function() {
                 $permissions.prop("disabled", false);
+            }
+        });
+    });
+
+    $userBansSave.on("click", (e) => {
+        if ($userBansSave.prop("disabled")) return;
+
+        const bans = $bans.val().split(/[ ]+/);
+        $userBansSave.prop("disabled", true);
+        $bans.prop("disabled", true);
+        $.ajax({
+            url: `/api/v2/users/${$(".selected").attr("data-username")}/bans`,
+            method: "PATCH",
+            data: {
+                bans
+            },
+            success: function(data) {
+                if ($userSectionButton.hasClass("active")) {
+                    $usersList.empty();
+                    showSection($userStats, $userSectionButton);
+                }
+                $userBansSave.prop("disabled", true);
+                createMessage(data.message);
+            },
+            error: function(xhr, status, err) {
+                createError(xhr.responseJSON?.message ?? err);
+            },
+            complete: function() {
+                $bans.prop("disabled", false);
             }
         });
     });

@@ -82,6 +82,8 @@ WikiSchema.methods.canAccess = function(user) {
 WikiSchema.methods.canEdit = function(user) {
     if (!user) return false;
     
+    if (user.hasBan("wiki", this.name)) return false; // User is banned from editing this wiki
+    
     return (
         user.hasRole("admin") ||
         user.hasWikiRole(this.name, "admin") ||

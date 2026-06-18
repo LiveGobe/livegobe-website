@@ -4,6 +4,7 @@ const utils = require("../bin/utils");
 const { renderWikiText } = require("../bin/wiki-renderer");
 
 const Wiki = require("../models/wiki");
+const User = require("../models/user");
 const WikiPage = require("../models/wikiPage");
 const fileStorage = require("../bin/wiki-file-storage");
 
@@ -646,6 +647,14 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
         // --- Get available locale variants for language selector ---
         const localeVariants = await getPageLocaleVariants(wiki, namespace, basePath || pagePathToLoad);
 
+        // Check if user is banned from editing this wiki
+        let isUserBanned = false;
+        if (namespace === "User" && mode === "view") {
+            const user = await User.findOne({ username: pageTitle });
+
+            if (user && user.hasBan("wiki", wiki.name)) isUserBanned = true;
+        }
+
         res.serve("wiki-page", {
             wiki,
             page,
@@ -657,6 +666,7 @@ router.get("/:wikiName/:pageTitle*", async (req, res) => {
             canDelete: canAccessMode(wiki, req.user, "delete"),
             currentLocale: requestedLocale,
             localeVariants,
+            isUserBanned,
             canonicalLink: `/wikis/${wiki.name}/${namespace != "Main" ? `${namespace}:` : ""}${basePath || pagePathToLoad}${requestedLocale ? `/${requestedLocale}` : ""}${req.query.mode ? `?mode=${req.query.mode}` : ""}` // for SEO, point to the clean URL without ?noredirect or ?oldid
         });
     } catch (err) {

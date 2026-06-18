@@ -469,6 +469,29 @@ router.route("/users/:username/permissions").patch((req, res) => {
     });
 });
 
+router.route("/users/:username/bans").patch((req, res) => {
+    if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
+    if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly") });
+
+    let username = req.params.username;
+    let bans = req.query.bans ?? req.body.bans;
+    if (!username || typeof username != "string") return res.status(400).json({ message: req.t("api.users.usernamemissing") });
+    if (!bans || typeof bans != "object") return res.status(400).json({ message: req.t("api.users.bansmissing") });
+
+    User.findOne({ username }).then(user => {
+        if (!user) return res.status(400).json({ message: req.t("api.users.usernotfound") });
+
+        user.bans = bans;
+        user.save().then(user => {
+            res.json({ message: req.t("api.users.banschanged", { username: user.username, name: user.name }), bans: user.bans });
+        }).catch(err => {
+            res.status(500).json({ message: err.toString() })
+        });
+    }).catch(err => {
+        res.status(500).json({ message: err.toString() })
+    });
+});
+
 router.route("/users/filestorage").get((req, res) => {
     if (!req.user) return res.status(401).json({ message: req.t("api.usermissing") });
     if (!req.user.hasRole("admin")) return res.status(403).json({ message: req.t("api.adminonly") });

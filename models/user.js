@@ -22,6 +22,10 @@ const UserSchema = new mongoose.Schema({
     permissions: [{
         type: String,
         lowercase: true
+    }],
+    bans: [{
+        type: String,
+        lowercase: true
     }]
 });
 
@@ -37,6 +41,12 @@ UserSchema.methods.hasWikiRole = function(namespace, role) {
   if (!namespace || !role) return false;
   const perm = `wiki:${namespace}:${role}`.toLowerCase();
   return this.permissions.includes(perm) || this.hasRole('admin'); // global admin override
+}
+
+UserSchema.methods.hasBan = function(namespace, value) {
+    if (!namespace || !value) return false;
+    const ban = `${namespace}:${value}`.toLowerCase();
+    return this.bans.includes(ban);
 }
 
 UserSchema.methods.allowFilestorage = function() {

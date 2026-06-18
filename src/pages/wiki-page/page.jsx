@@ -311,7 +311,7 @@ function SpecialUpload({ wiki, t, user }) {
 }
 
 module.exports = function WikiPage(props) {
-  const { wiki, page = {}, namespace = "Main", mode, canEdit, canDelete, t, query = {}, pageData, user } = props;
+  const { wiki, page = {}, namespace = "Main", mode, canEdit, canDelete, t, query = {}, pageData, user, isUserBanned } = props;
 
   // Provide safe defaults for page to avoid undefined property access
   const safePage = {
@@ -728,6 +728,13 @@ module.exports = function WikiPage(props) {
               </div>
             ) : (
               <>
+                {/* Banned from Editing notice */}
+                {isUserBanned && (
+                  <div className="wiki-ban-notice">
+                    <p>{t("wiki.ban.editingBanned")}</p>
+                  </div>
+                )}
+
                 {!safePage.exists ? (
                   <>
                     <div className="wiki-page-empty">

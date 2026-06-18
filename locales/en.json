@@ -107,6 +107,8 @@
       "usernamemissing": "Username is required",
       "permissionmissing": "Permissions array is required",
       "permissionschanged": "Permissions for user {name} ({username}) changed successfully",
+      "bansmissing": "Bans array is required",
+      "banschanged": "Bans for user {name} ({username}) changed successfully",
       "filestoragenonexistent": "Filestorage doesn't exist",
       "maxsizemissing": "Max size of filestorage is missing",
       "usernotfound": "User not found",
@@ -246,7 +248,9 @@
         "none": "No users where found",
         "permissions": "Permissions: ",
         "save": "Save Permissions",
-        "id": "ID: "
+        "id": "ID: ",
+        "bans": "Bans: ",
+        "bans_save": "Save Bans"
       },
       "filestorage": {
         "refresh": "Lookup",
@@ -589,6 +593,9 @@
     "backtomain": "Back to Main Page"
   },
   "wiki": {
+    "ban": {
+      "editingBanned": "This user has been banned from editing pages on this wiki."
+    },
     "protected": {
       "none": " ",
       "edit": " Protected (Edit)",

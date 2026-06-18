@@ -52,6 +52,11 @@ module.exports = function(props) {
                                     <input type="text" name="permissions" id="permissions" />
                                 </label>
                                 <button disabled type="button" id="user-save">{props.t("page.admin.user.save")}</button>
+                                <label htmlFor="bans">
+                                    {props.t("page.admin.user.bans")}
+                                    <input type="text" name="bans" id="bans" />
+                                </label>
+                                <button disabled type="button" id="user-bans-save">{props.t("page.admin.user.bans_save")}</button>
                             </div>
                         </div>
                         <div id="filestorage-stats" style={{ display: "none" }}>
