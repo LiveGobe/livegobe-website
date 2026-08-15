@@ -138,5 +138,8 @@ locales/*-missing.json
 # filestorage files
 /filestorage/
 
+# wiki-storage files
+/wiki-storage/
+
 # config
 config.js

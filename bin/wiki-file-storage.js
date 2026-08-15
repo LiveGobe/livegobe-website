@@ -29,7 +29,7 @@ function normalizeName(name) {
 }
 
 function getWikiBase(wikiId) {
-    const base = `./public/wiki-storage/`;
+    const base = `./wiki-storage/`;
     // Resolve relative to project root
     return path.resolve(process.cwd(), base, String(wikiId));
 }
