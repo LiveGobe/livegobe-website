@@ -1,7 +1,7 @@
 "use strict";
 
 const { parentPort } = require("worker_threads");
-const { VM } = require("vm2");
+const ivm = require("isolated-vm");
 const { readContent } = require("./wiki-file-storage");
 
 const moduleCache = new Map();
@@ -18,20 +18,20 @@ function getObjectSize(obj) {
     }
 }
 
-const vm = new VM({
-    sandbox: {
-        module: { exports: {} },
-        exports: {},
-        frame: {},
-        availablePages: {},
-        requireData: async () => {
-            throw new Error("requireData not initialized");
-        }
-    },
-    allowAsync: true,
-    eval: false,
-    wasm: false
-});
+const isolate = new ivm.Isolate({ memoryLimit: 1024 }); // 1 GB memory limit
+const context = isolate.createContextSync();
+
+const jail = context.global;
+jail.setSync("global", jail.derefInto());
+context.evalClosureSync(`
+    global.module = { exports: {} };
+    global.exports = {};
+    global.frame = {};
+    global.availablePages = new Set();
+    global.requireData = async function() {
+        throw new Error("requireData not initialized");
+    }
+`);
 
 // ===============================
 // Execution handler
@@ -49,73 +49,92 @@ async function executeTask(workerData) {
         frame
     } = workerData;
 
-    // Inject runtime helpers into sandbox per task
-    vm.setGlobals({
-        frame: frame || {},
-        availablePages: existingPages || {},
+    await context.evalClosure(`
+        global.frame = $0;
+        global.availablePages = new Set($1);
+    `, [frame || {}, Array.from(existingPages || new Set())], { arguments: { copy: true } });
 
-        requireData: async function(name) {
-            const key = String(name || "")
-                .trim()
-                .replace(/\s+/g, "_");
+    await context.evalClosure(`
+        global.requireData = async function(...args) {
+            return $0.apply(undefined, args, {
+                arguments: { copy: true },
+                result: { promise: true, copy: true }
+            });
+        };
+    `, [async function (name) {
+        const key = String(name || "")
+            .trim()
+            .replace(/\s+/g, "_");
 
-            if (!key) {
-                throw new Error("requireData() expects module name");
-            }
+        if (!key) {
+            throw new Error("requireData() expects module name");
+        }
 
-            const content = await readContent(wikiId, "Module", key);
+        const content = await readContent(wikiId, "Module", key);
 
-            if (!content) {
-                throw new Error(`requireData: module "${key}" not found`);
-            }
+        if (!content) {
+            throw new Error(`requireData: module "${key}" not found`);
+        }
 
-            try {
-                return JSON.parse(content);
-            }
-            catch (err) {
-                throw new Error(
-                    `requireData: failed to parse "${key}": ${err.message}`
-                );
-            }
-        },
-        console: process.env.NODE_ENV === "development" ? console : null
-    });
+        try {
+            return JSON.parse(content);
+        }
+        catch (err) {
+            throw new Error(
+                `requireData: failed to parse "${key}": ${err.message}`
+            );
+        }
+    }], { arguments: { reference: true } });
 
     if (!moduleCache.has(moduleHash)) {
-        const compiled = await vm.run(
-            code,
-            `LGML:Module:${moduleName}`
-        );
+        const script = await isolate.compileScript(code, {
+            filename: `LGML: Module: ${moduleName}`,
+            lineOffset: 0,
+            columnOffset: 0,
+            cachedData: null
+        });
 
-        moduleCache.set(moduleHash, compiled);
+        moduleCache.set(moduleHash, script);
     }
 
-    const exported = moduleCache.get(moduleHash);
+    const moduleScript = await moduleCache.get(moduleHash);
+
+    await moduleScript.run(context, { timeout: 10000 });
+
+    const exported = context.global.getSync("module", { reference: true }).getSync("exports", { reference: true });
 
     let result;
 
     if (functionName === "__default__") {
-        result = exported;
+        if (exported.typeof === "function") {
+            result = await exported.apply(undefined, [args], { arguments: { copy: true }, result: { promise: true, copy: true } });
+        } else result = exported.copySync();
     }
-    else if (typeof exported === "function") {
-        result = await exported(args);
-    }
-    else if (exported && typeof exported[functionName] === "function") {
-        result = await exported[functionName](args);
+    else if (exported.typeof === "object") {
+        const funcRef = exported.getSync(functionName, { reference: true });
+
+        if (funcRef.typeof === "function") {
+            result = await funcRef.apply(undefined, [args], { arguments: { copy: true }, result: { promise: true, copy: true } });
+        }
+        else {
+            throw new Error(
+                `function "${functionName}" not found in Module: ${moduleName}`
+            );
+        }
     }
     else {
         throw new Error(
-            `function "${functionName}" not found in Module:${moduleName}`
+            `Module: ${moduleName} does not export a function or object`
         );
     }
 
     // Check frame size before returning
-    const frameToReturn = vm.sandbox.frame || {};
+    const frameToReturn = context.global.getSync("frame", { copy: true }) || {};
     const frameSize = getObjectSize(frameToReturn);
-    
+
     if (frameSize > FRAME_SIZE_LIMIT) {
         throw new Error(
-            `frame object exceeds size limit (${frameSize} > ${FRAME_SIZE_LIMIT} bytes)`
+            `frame object exceeds size limit(${frameSize} > ${FRAME_SIZE_LIMIT} bytes)`
         );
     }
 

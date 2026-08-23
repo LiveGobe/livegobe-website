@@ -483,7 +483,7 @@ async function buildWikiBundle(options, entryModule) {
     // Support `exports = {}` safely
     // --------------------------------------------------
     source = source.replace(
-      /\bexports\s*=\s*/g,
+      /(?<!module\.)\bexports\s*=\s*/g,
       "module.exports = "
     );
 
@@ -589,9 +589,9 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 
   const finalCode = `
 "use strict";
-module.exports = (async () => {
+(async () => {
 ${bundleCode}
-})();
+})().then(result => { module.exports = result });
 `;
 
   if (!global.__LGWS_POOL) {
@@ -1934,6 +1934,8 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
         rawArgString = remainder.slice(secondPipeIndex + 1);
       }
 
+      functionName = functionName || "__default__";
+
       // Split arguments by top-level pipes
       const rawArgs = rawArgString ? splitTemplateArgs(rawArgString) : [];
 
@@ -1946,8 +1948,6 @@ async function expandTemplates(text, options = {}, depth = 0, visited = new Set(
         args.push(expanded);
       }
 
-      if (!functionName)
-        return `<span class="error">[Invalid #invoke syntax]</span>`;
       if (moduleName.endsWith("/doc"))
         return `<span class="error">[Cannot invoke documentation page: ${moduleName}]</span>`;
 

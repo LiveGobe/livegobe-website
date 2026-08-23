@@ -27,6 +27,7 @@
     "express-react-views": "^0.11.0",
     "express-session": "^1.18.2",
     "helmet": "^6.2.0",
+    "isolated-vm": "^6.2.0",
     "isomorphic-dompurify": "^2.15.0",
     "jquery": "^3.7.1",
     "jquery.hotkeys": "^0.1.0",
@@ -43,8 +44,7 @@
     "socket.io": "^4.8.0",
     "socket.io-client": "^4.8.0",
     "tern": "^0.24.3",
-    "uuid": "^14.0.0",
-    "vm2": "^3.10.3"
+    "uuid": "^14.0.0"
   },
   "devDependencies": {
     "@babel/core": "^7.18.13",
