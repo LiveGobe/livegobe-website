@@ -4,7 +4,7 @@
   "description": "My website rewritten",
   "main": "index.js",
   "scripts": {
-    "test": "set NODE_ENV=development&&nodemon ./ -e js,json --ignore public/ --ignore filestorage/ --ignore misc/ --ignore src/ --ignore lgml-language-server/ --ignore locales/*-missing.json",
+    "test": "set NODE_ENV=development&&nodemon ./ -e js,json --ignore public/ --ignore filestorage/ --ignore misc/ --ignore src/ --ignore lgml-language-server/ --ignore locales/*-missing.json --ignore wiki-storage/",
     "build:dev": "set NODE_ENV=development&&webpack --progress",
     "build:prod": "set NODE_ENV=production&&webpack --progress",
     "watch": "set NODE_ENV=development&&webpack --watch --progress"
