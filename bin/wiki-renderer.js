@@ -591,7 +591,7 @@ async function executeWikiModule(options = {}, moduleName, functionName, args = 
 "use strict";
 (async () => {
 ${bundleCode}
-})().then(result => { module.exports = result });
+})().then(result => { module.exports = result; __finished() });
 `;
 
   if (!global.__LGWS_POOL) {
